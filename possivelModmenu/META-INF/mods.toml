@@ -1,0 +1,29 @@
+modLoader="javafml"
+loaderVersion="[47,)"
+license="GPLv3"
+[[mods]]
+modId="lodestone"
+version="1.20.1-1.6.4.1.257"
+displayName="Lodestone"
+authors="Lodestar"
+description='''A library containing various utilities.'''
+[[dependencies.lodestone]]
+modId="forge"
+mandatory=true
+versionRange="[47,)"
+ordering="NONE"
+# Side this dependency is applied on - BOTH, CLIENT, or SERVER
+side="BOTH"
+# Here's another dependency
+[[dependencies.lodestone]]
+modId="minecraft"
+mandatory=true
+versionRange="[1.20.1,1.21]"
+ordering="NONE"
+side="BOTH"
+
+# Features are specific properties of the game environment, that you may want to declare you require. This example declares
+# that your mod requires GL version 3.2 or higher. Other features will be added. They are side aware so declaring this won't
+# stop your mod loading on the server for example.
+#[features.lodestone]
+#openGLVersion="[3.2,)"

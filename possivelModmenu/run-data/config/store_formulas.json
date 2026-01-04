@@ -1,0 +1,23 @@
+{
+  "stepAssistCostPerAssist": 50,
+  "areaMiningCostBase": 100,
+  "flightCostPerSecond": 500,
+  "sureKillBaseCost": 5000,
+  "sureKillHealthMultiplier": 100.0,
+  "noAggroCostPerCancel": 200,
+  "noAggroMaintenance": 300,
+  "damageCancelMultiplier": 100.0,
+  "damageCancelMaintenance": 50,
+  "repairCostPerPoint": 10,
+  "repairMaintenance": 100,
+  "chestHighlightMaintenancePerRange": 2,
+  "trapHighlightMaintenancePerRange": 2,
+  "entityESPMaintenancePerRange": 2,
+  "itemMagnetMaintenancePerRangeOps": 1,
+  "xpMagnetMaintenancePerRangeOps": 1,
+  "autoSellerMaintenance": 150,
+  "spawnBoostMaintenance": 500,
+  "spawnBoostPerSpawnBase": 1000,
+  "growCropsMaintenance": 200,
+  "growCropsPerOperation": 100
+}
