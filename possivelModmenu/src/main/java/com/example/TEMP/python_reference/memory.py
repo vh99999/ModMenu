@@ -3,6 +3,7 @@ import json
 import time
 from collections import deque
 from typing import Dict, Any, List, Optional
+from learning_control import can_learn
 
 class MemoryBuffer:
     """
@@ -27,17 +28,6 @@ class MemoryBuffer:
              controller: str) -> None:
         """
         Adds a new experience to the buffer.
-        
-        Fields stored:
-        - timestamp: UTC unix timestamp
-        - state: Full parsed state (raw, normalized, derived)
-        - intent: Semantic intent string
-        - confidence: Policy confidence [0.0, 1.0]
-        - result: Raw outcome metrics
-        - reward: Scalar reward
-        - reward_breakdown: Component rewards
-        - controller: Origin of action (HUMAN, HEURISTIC, AI)
-        - state_version: Version of the state parser used
         """
         experience = {
             "timestamp": time.time(),
@@ -50,6 +40,15 @@ class MemoryBuffer:
             "controller": controller,
             "state_version": state.get("version", 0)
         }
+
+        # LEARNING ENTRY POINT (DISABLED BY DESIGN)
+        # Storing data in MemoryBuffer is considered a precursor to learning.
+        allowed, reason = can_learn(experience, {"caller": "MemoryBuffer.push"})
+        if not allowed:
+            # We log but do NOT push to the buffer if blocked.
+            # This ensures no data is persisted as "learned knowledge".
+            return
+
         self.buffer.append(experience)
 
     def sample(self, batch_size: int) -> List[Dict[str, Any]]:

@@ -110,6 +110,7 @@ class AIServer:
                 # Calculate reward for the action just taken
                 reward, reward_breakdown = self.reward_calc.calculate(result)
 
+                # LEARNING ENTRY POINT (DISABLED BY DESIGN)
                 # Store in memory and train if we have a valid experience
                 if intent_taken:
                     logger.debug(f"Experience: intent={intent_taken}, controller={controller}, reward={reward:.2f}")

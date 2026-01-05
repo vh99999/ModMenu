@@ -1,6 +1,7 @@
 import logging
 from typing import Dict, Any
 from policy import Policy, LearnedPolicy
+from learning_control import can_learn
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,12 @@ class Trainer:
         currently in control, allowing the system to learn from human 
         demonstrations even when the AI is not active.
         """
+        # LEARNING ENTRY POINT (DISABLED BY DESIGN)
+        allowed, reason = can_learn(experience, {"caller": "Trainer.train_on_experience"})
+        if not allowed:
+            logger.debug(f"Learning blocked by Control Plane: {reason}")
+            return
+
         controller = experience.get("controller", "AI")
         
         if controller == "HUMAN":
