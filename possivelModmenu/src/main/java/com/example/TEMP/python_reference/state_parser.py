@@ -1,100 +1,163 @@
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 import logging
+import math
 
 logger = logging.getLogger(__name__)
 
 class StateParser:
     """
-    Validates, normalizes and categorizes incoming state data.
-    Ensures the AI only sees generic, semantic information.
+    STRICT, VERSIONED STATE PARSER
     
     Architecture Goal:
     Maintain a stable feature vector format that won't change 
     when moving from heuristic-based to ML-based policies.
+    
+    Guarantees:
+    - Never crashes on malformed input.
+    - No NaN / Infinity propagation.
+    - Strict range enforcement (clamping).
+    - Explicit default injection for missing data.
+    - Separation of RAW, NORMALIZED, and DERIVED state.
+    - NO reward calculation.
     """
-    STATE_VERSION = 1
-    MAX_DISTANCE = 100.0
+    
+    CURRENT_VERSION = 1
+    SUPPORTED_VERSIONS = [0, 1] # 0 is legacy/unknown
+    
+    # SCHEMA DEFINITION
+    # field: (type, default_if_missing, range_min, range_max)
+    # Range is used for both clamping and normalization.
+    SCHEMA = {
+        "health": (float, 1.0, 0.0, 1.0),
+        "energy": (float, 1.0, 0.0, 1.0),
+        "target_distance": (float, 1000.0, 0.0, 1000.0),
+        "is_colliding": (bool, False, None, None)
+    }
 
     @classmethod
-    def parse(cls, raw_data: Any) -> Optional[Dict[str, Any]]:
+    def parse(cls, raw_payload: Any) -> Optional[Dict[str, Any]]:
         """
         Parses raw JSON data into a structured state dictionary.
-        Returns None if data is malformed.
-        
-        Guarantees:
-        - Never crashes on malformed input.
-        - Returns a consistent structure with versioning.
-        - All numeric values are bounded and normalized.
-        - Explicitly separates RAW, NORMALIZED, and DERIVED state.
+        Returns None only on non-recoverable errors.
         """
         try:
-            if not isinstance(raw_data, dict):
-                logger.error("State data must be a dictionary")
+            # 1. Type Check Root
+            if not isinstance(raw_payload, dict):
+                logger.error("STATE FAILURE: Root payload must be a dictionary.")
                 return None
 
-            raw = cls._extract_raw(raw_data)
-            normalized = cls._normalize(raw)
+            # 2. Version Validation
+            # Java is dumb, might not send version yet. Fallback to 0.
+            version = raw_payload.get("state_version", 0)
+            
+            if version < cls.CURRENT_VERSION:
+                # Backward compatibility check
+                if version not in cls.SUPPORTED_VERSIONS:
+                    logger.error(f"STATE FAILURE: Legacy version {version} is not supported.")
+                    return None
+                logger.warning(f"STATE WARNING: Processing legacy version {version}.")
+            
+            elif version > cls.CURRENT_VERSION:
+                # Forward compatibility: Ignore unknown, parse known
+                logger.warning(f"STATE WARNING: Newer version {version} detected. Forward compatibility mode active.")
+
+            # 3. Extraction, Type Enforcement & Sanity (NaN/Inf)
+            raw_extracted = cls._extract_and_validate(raw_payload)
+            
+            # 4. Normalization (To [0, 1] range)
+            normalized = cls._normalize(raw_extracted)
+            
+            # 5. Derivation (Interpretation happens ONLY here)
             derived = cls._derive(normalized)
 
             return {
-                "version": cls.STATE_VERSION,
-                "raw": raw,
+                "version": version,
+                "raw": raw_extracted,
                 "normalized": normalized,
                 "derived": derived
             }
+
         except Exception as e:
-            logger.error(f"Critical failure in StateParser: {e}", exc_info=True)
+            # Catch-all to prevent bubbling up to gameplay/server loop
+            logger.error(f"STATE CRITICAL: Unexpected failure in StateParser: {e}", exc_info=True)
             return None
 
-    @staticmethod
-    def _extract_raw(data: Dict[str, Any]) -> Dict[str, Any]:
-        """Filters and cleans raw input data, ensuring key stability."""
-        expected_keys = {"health", "energy", "target_distance", "is_colliding"}
-        raw = {}
-        for key in expected_keys:
-            val = data.get(key)
+    @classmethod
+    def _extract_and_validate(cls, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Extracts fields from the raw data, enforces types, 
+        checks for NaN/Inf, and applies defaults.
+        """
+        validated = {}
+        for field, (f_type, f_default, f_min, f_max) in cls.SCHEMA.items():
+            val = data.get(field)
+            
+            # 3.1 Handle Missing Data (Explicit Default Injection)
             if val is None:
-                # Default values for missing keys to ensure downstream stability
-                if key == "is_colliding":
-                    raw[key] = False
-                elif key == "health" or key == "energy":
-                    raw[key] = 1.0 # Assume healthy/full energy if unknown
+                logger.warning(f"STATE WARNING: Field '{field}' missing. Using default: {f_default}")
+                validated[field] = f_default
+                continue
+
+            # 3.2 Type Enforcement & Sanity (NaN/Inf)
+            try:
+                if f_type == float:
+                    # Explicit cast and sanity check
+                    f_val = float(val)
+                    if not math.isfinite(f_val):
+                        logger.warning(f"STATE WARNING: Field '{field}' is NaN/Inf. Using default: {f_default}")
+                        validated[field] = f_default
+                    else:
+                        # 3.3 Range Enforcement (Clamping)
+                        clamped = max(f_min, min(f_max, f_val))
+                        if clamped != f_val:
+                            logger.debug(f"STATE: Field '{field}' value {f_val} clamped to {clamped}")
+                        validated[field] = clamped
+                
+                elif f_type == bool:
+                    # Generic truthy check for boolean observations
+                    validated[field] = bool(val)
+                
+                elif f_type == int:
+                    i_val = int(val)
+                    if f_min is not None and f_max is not None:
+                        i_val = max(f_min, min(f_max, i_val))
+                    validated[field] = i_val
+                
                 else:
-                    raw[key] = 0.0
-            else:
-                raw[key] = val
-        return raw
+                    validated[field] = val
+
+            except (ValueError, TypeError):
+                logger.warning(f"STATE WARNING: Field '{field}' invalid type {type(val)}. Using default: {f_default}")
+                validated[field] = f_default
+        
+        return validated
 
     @classmethod
     def _normalize(cls, raw: Dict[str, Any]) -> Dict[str, Any]:
         """Binds and normalizes numeric values to [0.0, 1.0]."""
         normalized = {}
-        
-        def _clamp_norm(val: Any, min_val: float, max_val: float, default: float) -> float:
-            try:
-                f_val = float(val)
-                # Clamp first to avoid extrapolation
-                clamped = max(min_val, min(max_val, f_val))
-                # Normalize
-                return (clamped - min_val) / (max_val - min_val) if max_val > min_val else default
-            except (ValueError, TypeError):
-                return default
-
-        normalized["health"] = _clamp_norm(raw.get("health"), 0.0, 1.0, 1.0)
-        normalized["energy"] = _clamp_norm(raw.get("energy"), 0.0, 1.0, 1.0)
-        normalized["target_distance"] = _clamp_norm(raw.get("target_distance"), 0.0, cls.MAX_DISTANCE, 0.0)
-        normalized["is_colliding"] = 1.0 if bool(raw.get("is_colliding")) else 0.0
-        
+        for field, (f_type, _, f_min, f_max) in cls.SCHEMA.items():
+            val = raw[field]
+            if f_type == float and f_min is not None and f_max is not None:
+                denominator = f_max - f_min
+                normalized[field] = (val - f_min) / denominator if denominator > 0 else 0.0
+            elif f_type == bool:
+                normalized[field] = 1.0 if val else 0.0
+            else:
+                normalized[field] = val
         return normalized
 
     @classmethod
     def _derive(cls, normalized: Dict[str, Any]) -> Dict[str, Any]:
-        """Computes explicit semantic interpretations from normalized data."""
+        """
+        Computes explicit semantic interpretations from normalized data.
+        These are used by policies for decision making.
+        """
         derived = {}
         
-        # Distance categories (Explicit thresholds)
-        # Using normalized value to derive actual distance for thresholding
-        actual_dist = normalized["target_distance"] * cls.MAX_DISTANCE
+        # 5.1 Distance categories (Generic thresholds)
+        # target_distance is normalized based on 0-1000 range.
+        actual_dist = normalized["target_distance"] * 1000.0
         
         if actual_dist < 3.0:
             derived["distance_category"] = "CLOSE"
@@ -103,11 +166,9 @@ class StateParser:
         else:
             derived["distance_category"] = "FAR"
 
-        # Combat readiness (Semantic flags)
+        # 5.2 Combat & Survival Semantics
         derived["can_attack"] = normalized["energy"] > 0.2
         derived["is_threatened"] = normalized["health"] < 0.5 or normalized["is_colliding"] > 0.5
-        
-        # Movement freedom
         derived["is_obstructed"] = normalized["is_colliding"] > 0.5
-
+        
         return derived

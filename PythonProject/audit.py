@@ -1,0 +1,215 @@
+import json
+import time
+import hashlib
+import logging
+from typing import Dict, Any, List, Optional, Tuple
+from enum import Enum
+from collections import deque
+
+from intent_space import Intent, ExecutionStatus, FailureReason
+
+logger = logging.getLogger(__name__)
+
+class ViolationSeverity(str, Enum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
+
+class Auditor:
+    """
+    Central Auditor for recording and validating request/response cycles.
+    Maintains a sliding window for drift detection.
+    """
+    def __init__(self, window_size: int = 1000):
+        self.window_size = window_size
+        self.history = deque(maxlen=window_size)
+        self.quarantine: List[Dict[str, Any]] = []
+
+    def record_cycle(self, 
+                     raw_state: Any,
+                     state_version: int,
+                     intent_issued: str,
+                     confidence: float,
+                     policy_source: str,
+                     controller: str,
+                     raw_java_result: Any,
+                     reward_total: float,
+                     reward_breakdown: Dict[str, float]) -> Dict[str, Any]:
+        """
+        Records a single cycle, runs validation, and returns the audit entry.
+        """
+        state_str = json.dumps(raw_state, sort_keys=True)
+        state_hash = hashlib.sha256(state_str.encode('utf-8')).hexdigest()
+
+        entry = {
+            "timestamp": time.time(),
+            "state_hash": state_hash,
+            "state_version": state_version,
+            "intent_issued": intent_issued,
+            "confidence": confidence,
+            "policy_source": policy_source,
+            "controller": controller,
+            "java_result": raw_java_result,
+            "reward_total": reward_total,
+            "reward_breakdown": reward_breakdown,
+            "violations": []
+        }
+
+        # 1. Detect Contract Violations
+        violations = ViolationDetector.detect(entry)
+        entry["violations"] = violations
+
+        # 2. Add to history for drift detection
+        self.history.append(entry)
+
+        # 3. Log high-severity violations
+        for v in violations:
+            if v["severity"] in [ViolationSeverity.HIGH, ViolationSeverity.CRITICAL]:
+                logger.error(f"AUDIT VIOLATION [{v['severity']}]: {v['type']} - {v.get('field', '')}")
+
+        return entry
+
+    def check_quality_gate(self, entry: Dict[str, Any]) -> bool:
+        """
+        Returns True if the experience passes all quality gates and can be used for training.
+        """
+        is_valid = DataQualityGate.is_pass(entry)
+        if not is_valid:
+            self.quarantine.append(entry)
+            logger.warning(f"AUDIT: Experience quarantined due to quality gate failure. Hash: {entry['state_hash'][:8]}")
+        return is_valid
+
+    def calculate_drift_metrics(self) -> Dict[str, Any]:
+        """
+        Calculates drift metrics over the current sliding window.
+        """
+        if not self.history:
+            return {}
+
+        count = len(self.history)
+        intent_counts = {}
+        total_conf = 0.0
+        total_reward = 0.0
+        violation_count = 0
+
+        for entry in self.history:
+            intent = entry["intent_issued"]
+            intent_counts[intent] = intent_counts.get(intent, 0) + 1
+            total_conf += entry["confidence"]
+            total_reward += entry["reward_total"]
+            if entry["violations"]:
+                violation_count += 1
+
+        metrics = {
+            "window_size": count,
+            "intent_frequencies": {k: v / count for k, v in intent_counts.items()},
+            "avg_confidence": total_conf / count,
+            "avg_reward": total_reward / count,
+            "violation_rate": violation_count / count
+        }
+
+        # Check for collapses
+        for intent, freq in metrics["intent_frequencies"].items():
+            if freq < 0.01:
+                logger.warning(f"DRIFT WARNING: Intent frequency collapse for '{intent}': {freq:.4f}")
+        
+        if metrics["avg_confidence"] > 0.99:
+            logger.warning(f"DRIFT WARNING: Confidence inflation detected: {metrics['avg_confidence']:.4f}")
+        
+        if metrics["violation_rate"] > 0.05:
+            logger.error(f"DRIFT ERROR: High violation rate: {metrics['violation_rate']:.4f}")
+
+        return metrics
+
+class ViolationDetector:
+    """
+    STRICT contract violation detection.
+    """
+    @staticmethod
+    def detect(entry: Dict[str, Any]) -> List[Dict[str, Any]]:
+        violations = []
+        res = entry["java_result"]
+        
+        if not isinstance(res, dict):
+            violations.append({
+                "type": "MALFORMED_PAYLOAD",
+                "severity": ViolationSeverity.HIGH,
+                "description": "Java result is not a dictionary"
+            })
+            return violations
+
+        # 1. Unknown Enums
+        status = res.get("status")
+        if status not in [e.value for e in ExecutionStatus]:
+            violations.append({
+                "type": "UNKNOWN_ENUM",
+                "severity": ViolationSeverity.MEDIUM,
+                "field": "status",
+                "value": str(status)
+            })
+
+        reason = res.get("failure_reason")
+        if reason and reason not in [e.value for e in FailureReason]:
+            violations.append({
+                "type": "UNKNOWN_ENUM",
+                "severity": ViolationSeverity.MEDIUM,
+                "field": "failure_reason",
+                "value": str(reason)
+            })
+
+        # 2. Missing Fields
+        mandatory = ["status", "failure_reason", "outcomes"]
+        for field in mandatory:
+            if field not in res:
+                violations.append({
+                    "type": "MISSING_FIELD",
+                    "severity": ViolationSeverity.HIGH,
+                    "field": field
+                })
+
+        # 3. Intent Mismatch (If Java reports what it did, but here we only have the result)
+        # Assuming metadata might contain the intent Java thought it was executing
+        java_intent = res.get("metadata", {}).get("intent_executed")
+        if java_intent and java_intent != entry["intent_issued"]:
+            violations.append({
+                "type": "INTENT_MISMATCH",
+                "severity": ViolationSeverity.CRITICAL,
+                "expected": entry["intent_issued"],
+                "actual": java_intent
+            })
+
+        # 4. Partial Execution without explanation
+        if res.get("partial_execution") is True:
+            flags = res.get("safety_flags", {})
+            if not any(flags.values()):
+                violations.append({
+                    "type": "EXPLANATION_MISSING",
+                    "severity": ViolationSeverity.MEDIUM,
+                    "description": "partial_execution set but no safety flags are True"
+                })
+
+        return violations
+
+class DataQualityGate:
+    """
+    HARD BLOCKERS for training data.
+    """
+    @staticmethod
+    def is_pass(entry: Dict[str, Any]) -> bool:
+        # 1. Critical Violations are immediate fail
+        for v in entry["violations"]:
+            if v["severity"] == ViolationSeverity.CRITICAL:
+                return False
+            if v["type"] in ["MALFORMED_PAYLOAD", "MISSING_FIELD"]:
+                return False
+
+        # 2. Missing Reward Breakdown
+        if not entry.get("reward_breakdown"):
+            return False
+
+        # 3. Unknown Intent
+        if not Intent.has_value(entry["intent_issued"]):
+            return False
+
+        return True

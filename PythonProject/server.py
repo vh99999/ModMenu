@@ -10,7 +10,8 @@ from reward import RewardCalculator
 from policy import RandomWeightedPolicy, HeuristicCombatPolicy, Policy
 from memory import MemoryBuffer
 from trainer import Trainer
-from intent_space import Intent
+from intent_space import Intent, IntentValidator
+from audit import Auditor
 
 # Configure logging to be more descriptive
 logging.basicConfig(
@@ -45,6 +46,7 @@ class AIServer:
         self.trainer = Trainer(self.policies["RANDOM"]) # Trainer can be updated to point to a LearnedPolicy later
         self.parser = StateParser()
         self.reward_calc = RewardCalculator()
+        self.auditor = Auditor()
 
     def handle_client(self, conn: socket.socket, addr: Tuple[str, int]) -> None:
         """
@@ -71,7 +73,8 @@ class AIServer:
                         "status": "OK",
                         "version": self.version,
                         "timestamp": time.time(),
-                        "active_policy": self.active_policy_name
+                        "active_policy": self.active_policy_name,
+                        "audit_metrics": self.auditor.calculate_drift_metrics()
                     }).encode('utf-8'))
                     return
 
@@ -91,24 +94,41 @@ class AIServer:
                 # 3. Process experience (Shadow Learning)
                 intent_taken = request.get("intent_taken")
                 controller = request.get("controller", "AI").upper()
-                result = request.get("result", {})
                 last_confidence = request.get("last_confidence", 0.0)
+
+                # STRICT VALIDATION: Java Result Contract
+                raw_result = request.get("result", {})
+                result = IntentValidator.validate_result(raw_result)
 
                 # Validate controller mode
                 if controller not in ["HUMAN", "HEURISTIC", "AI"]:
                     logger.warning(f"Unknown controller mode: {controller}. Defaulting to AI.")
                     controller = "AI"
 
-                # Validate intent_taken
+                # Validate intent_taken (CONTRACT VIOLATION if invalid)
                 if intent_taken and not Intent.has_value(intent_taken):
-                    logger.warning(f"Invalid intent received: {intent_taken}")
+                    logger.error(f"CONTRACT VIOLATION: Invalid intent received from Java: {intent_taken}. Rejecting experience.")
                     intent_taken = None
 
                 # Calculate reward for the action just taken
                 reward, reward_breakdown = self.reward_calc.calculate(result)
 
-                # Store in memory and train if we have a valid experience
-                if intent_taken:
+                # 3.1 AUDIT RECORDING
+                # We record what Java reports as having just happened.
+                audit_entry = self.auditor.record_cycle(
+                    raw_state=raw_state,
+                    state_version=normalized_state["version"],
+                    intent_issued=intent_taken if intent_taken else "NONE",
+                    confidence=last_confidence,
+                    policy_source=request.get("policy_source", "UNKNOWN"),
+                    controller=controller,
+                    raw_java_result=raw_result,
+                    reward_total=reward,
+                    reward_breakdown=reward_breakdown
+                )
+
+                # Store in memory and train if we have a valid experience and it passes QUALITY GATES
+                if intent_taken and self.auditor.check_quality_gate(audit_entry):
                     logger.debug(f"Experience: intent={intent_taken}, controller={controller}, reward={reward:.2f}")
                     self.memory.push(
                         state=normalized_state,
@@ -142,7 +162,12 @@ class AIServer:
                     suggested_intent, suggested_conf = self.policies[self.active_policy_name].decide(normalized_state)
                     logger.debug(f"Shadow Observation: Human took {intent_taken}, AI would take {suggested_intent}")
 
-                # 5. Return response
+                # 5. Return response (Validate outgoing intent)
+                if not Intent.has_value(next_intent):
+                    logger.error(f"POLICY VIOLATION: Policy generated invalid intent '{next_intent}'. Falling back to STOP.")
+                    next_intent = Intent.STOP.value
+                    confidence = 0.0
+
                 response = {
                     "intent": next_intent,
                     "confidence": float(confidence),

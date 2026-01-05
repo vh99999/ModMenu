@@ -39,6 +39,7 @@ public class AIController {
     private final AtomicBoolean isProcessing = new AtomicBoolean(false);
     
     private IntentType lastIntentTaken = IntentType.STOP;
+    private ExecutionResult lastExecutionResult = ExecutionResult.success();
 
     // Result tracking state
     private float lastHealth = -1;
@@ -75,11 +76,13 @@ public class AIController {
 
         // 2. Collect Results since last tick
         updateResultTrackers(player);
-        JsonObject result = new JsonObject();
-        result.addProperty("damage_dealt", damageDealtAcc);
-        result.addProperty("damage_received", damageReceivedAcc);
-        result.addProperty("is_alive", player.isAlive());
-        result.addProperty("action_wasted", false); 
+        JsonObject result = lastExecutionResult.toJsonObject();
+        JsonObject outcomes = new JsonObject();
+        outcomes.addProperty("damage_dealt", damageDealtAcc);
+        outcomes.addProperty("damage_received", damageReceivedAcc);
+        outcomes.addProperty("is_alive", player.isAlive());
+        outcomes.addProperty("action_wasted", lastExecutionResult.status() == ExecutionStatus.FAILURE); 
+        result.add("outcomes", outcomes);
 
         // 3. Collect State (Sensor)
         JsonObject state = stateCollector.collect(player);
@@ -101,16 +104,21 @@ public class AIController {
                 // Explicit fallback if queue is empty (e.g. timeout or server lag)
                 lastIntentTaken = FALLBACK_INTENT;
             }
-            // Execute the decided intent exactly as received (or fallback)
-            intentExecutor.execute(player, lastIntentTaken);
+            
+            LOGGER.info("[EXECUTION_ATTEMPT] Intent: {}", lastIntentTaken);
+            lastExecutionResult = intentExecutor.execute(player, lastIntentTaken);
+            LOGGER.info("[EXECUTION_RESULT] Status: {}, Reason: {}", lastExecutionResult.status(), lastExecutionResult.failureReason());
+            
         } else if (mode == ControlMode.HUMAN) {
             // Shadow Learning: Observe and report human intent.
             // MUST NOT execute anything or interfere with human inputs.
             lastIntentTaken = humanIntent;
+            lastExecutionResult = ExecutionResult.success();
         } else {
             // Other modes (e.g. HEURISTIC or DISABLED)
             intentExecutor.releaseAllInputs();
             lastIntentTaken = FALLBACK_INTENT;
+            lastExecutionResult = ExecutionResult.success();
         }
     }
 
@@ -126,9 +134,8 @@ public class AIController {
     public void setMode(ControlMode mode) {
         LOGGER.info("AI Control Mode changed to: {}", mode);
         this.mode = mode;
-        if (mode == ControlMode.DISABLED) {
-            intentQueue.clear();
-        }
+        intentQueue.clear();
+        intentExecutor.releaseAllInputs(); // Safety: release all inputs when changing mode
     }
 
     public ControlMode getMode() {
@@ -172,12 +179,13 @@ public class AIController {
                 AIClient.Response response = client.getNextIntent(payload);
                 
                 if (response.isSuccess()) {
+                    LOGGER.info("[INTENT_RECEIVED] Raw: {}", response.intent);
                     if (mode == ControlMode.AI) {
                         intentQueue.add(response.intent);
                     }
                 } else {
                     // Fail-safe requirement: Trigger explicit fallback intent
-                    LOGGER.warn("AI Server failure [{}]. Using explicit fallback: {}", response.errorMessage, FALLBACK_INTENT);
+                    LOGGER.warn("[CONTRACT_DEVIATION] AI Server error: {}. Using explicit fallback: {}", response.errorMessage, FALLBACK_INTENT);
                     if (mode == ControlMode.AI) {
                         intentQueue.add(FALLBACK_INTENT);
                         // Report the fallback intent back to Python as intent_taken in next cycle
@@ -199,6 +207,7 @@ public class AIController {
     }
 
     public void shutdown() {
+        intentExecutor.releaseAllInputs(); // Safety: release all inputs on shutdown
         executor.shutdownNow();
     }
 }

@@ -26,63 +26,79 @@ public class IntentExecutor {
      * Executes the given intent.
      * @param player The player to act on.
      * @param intent The opaque semantic intent.
+     * @return Structured result of the execution attempt.
      */
-    public void execute(Player player, IntentType intent) {
-        if (player == null || intent == null) return;
+    public ExecutionResult execute(Player player, IntentType intent) {
+        if (player == null) return ExecutionResult.failure(FailureReason.UNKNOWN_STATE, "PLAYER_NULL");
+        if (intent == null) return ExecutionResult.failure(FailureReason.UNKNOWN_STATE, "INTENT_NULL");
 
-        switch (intent) {
-            case PRIMARY_ATTACK:
-                performPrimaryAttack(player);
-                break;
-            case EVADE:
-                performEvade(player);
-                break;
-            case MOVE:
-                // PLACEHOLDER: MOVE is mapped to walking forward.
-                // In a final implementation, MOVE might involve complex pathfinding 
-                // or direction parameters not yet present in the Intent JSON.
-                setKeyState(mc.options.keyUp, true);
-                break;
-            case JUMP:
-                performJump(player);
-                break;
-            case HOLD:
-                // PLACEHOLDER: HOLD is mapped to the 'use' key (right click).
-                setKeyState(mc.options.keyUse, true);
-                break;
-            case RELEASE:
-                releaseAllInputs();
-                break;
-            case STOP:
-                performStop(player);
-                break;
+        try {
+            return switch (intent) {
+                case PRIMARY_ATTACK -> performPrimaryAttack(player);
+                case EVADE -> performEvade(player);
+                case MOVE -> performMove(player);
+                case JUMP -> performJump(player);
+                case HOLD -> performHold(player);
+                case RELEASE -> performRelease(player);
+                case STOP -> performStop(player);
+            };
+        } catch (Exception e) {
+            releaseAllInputs(); // Safety: release all inputs on failure
+            return ExecutionResult.failure(FailureReason.UNKNOWN_STATE, "EXECUTION_EXCEPTION");
         }
     }
 
-    private void performPrimaryAttack(Player player) {
+    private ExecutionResult performPrimaryAttack(Player player) {
         if (mc.hitResult instanceof EntityHitResult entityHitResult) {
-            mc.gameMode.attack(player, entityHitResult.getEntity());
+            if (mc.gameMode != null) {
+                mc.gameMode.attack(player, entityHitResult.getEntity());
+                player.swing(InteractionHand.MAIN_HAND);
+                return ExecutionResult.success();
+            }
         }
         player.swing(InteractionHand.MAIN_HAND);
+        return new ExecutionResult(ExecutionStatus.PARTIAL, FailureReason.BLOCKED, true, "SWUNG_ONLY_NO_TARGET");
     }
 
-    private void performEvade(Player player) {
-        // PLACEHOLDER: EVADE is mapped to a simple backward motion.
-        // The game decides HOW to evade based on this intent.
+    private ExecutionResult performEvade(Player player) {
+        // 1:1 Map to backward movement logic
         player.setDeltaMovement(player.getLookAngle().reverse().multiply(1.0, 0.0, 1.0));
+        return ExecutionResult.success();
     }
 
-    private void performJump(Player player) {
-        // PLACEHOLDER: JUMP is mapped to the jump key.
+    private ExecutionResult performMove(Player player) {
+        if (mc.options == null) return ExecutionResult.failure(FailureReason.INVALID_STATE, "OPTIONS_NULL");
+        setKeyState(mc.options.keyUp, true);
+        return ExecutionResult.success();
+    }
+
+    private ExecutionResult performJump(Player player) {
+        if (mc.options == null) return ExecutionResult.failure(FailureReason.INVALID_STATE, "OPTIONS_NULL");
         setKeyState(mc.options.keyJump, true);
+        return ExecutionResult.success();
     }
 
-    private void performStop(Player player) {
-        // PLACEHOLDER: STOP is mapped to releasing movement keys.
+    private ExecutionResult performHold(Player player) {
+        if (mc.options == null) return ExecutionResult.failure(FailureReason.INVALID_STATE, "OPTIONS_NULL");
+        setKeyState(mc.options.keyUse, true);
+        return ExecutionResult.success();
+    }
+
+    private ExecutionResult performRelease(Player player) {
+        releaseAllInputs();
+        return ExecutionResult.success();
+    }
+
+    private ExecutionResult performStop(Player player) {
+        if (mc.options == null) return ExecutionResult.failure(FailureReason.INVALID_STATE, "OPTIONS_NULL");
         setKeyState(mc.options.keyUp, false);
         setKeyState(mc.options.keyDown, false);
         setKeyState(mc.options.keyLeft, false);
         setKeyState(mc.options.keyRight, false);
+        setKeyState(mc.options.keyJump, false);
+        setKeyState(mc.options.keyUse, false);
+        setKeyState(mc.options.keyAttack, false);
+        return ExecutionResult.success();
     }
 
     public void releaseAllInputs() {

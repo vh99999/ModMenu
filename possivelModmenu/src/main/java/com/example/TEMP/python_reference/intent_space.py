@@ -1,5 +1,8 @@
 from enum import Enum
-from typing import Dict, Any
+from typing import Dict, Any, Optional, List
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Intent(str, Enum):
     """
@@ -18,62 +21,126 @@ class Intent(str, Enum):
     def metadata(self) -> Dict[str, Any]:
         """
         Returns architectural metadata for each intent.
-        This is engine-agnostic and helps the policy or bridge 
-        understand the 'nature' of the intent.
         """
         registry = {
             Intent.PRIMARY_ATTACK: {
-                "risk_level": "MEDIUM",
-                "cooldown_sensitive": True,
+                "params": [],
                 "priority": 3,
-                "is_combat": True,
-                "is_atomic": True
+                "is_combat": True
             },
             Intent.EVADE: {
-                "risk_level": "LOW",
-                "cooldown_sensitive": True,
+                "params": [],
                 "priority": 4,
-                "is_combat": False,
-                "is_atomic": True
+                "is_combat": False
             },
             Intent.MOVE: {
-                "risk_level": "LOW",
-                "cooldown_sensitive": False,
+                "params": ["vector"],
                 "priority": 1,
-                "is_combat": False,
-                "is_atomic": True
+                "is_combat": False
             },
             Intent.HOLD: {
-                "risk_level": "LOW",
-                "cooldown_sensitive": False,
+                "params": [],
                 "priority": 2,
-                "is_combat": False,
-                "is_atomic": True
+                "is_combat": False
             },
             Intent.RELEASE: {
-                "risk_level": "LOW",
-                "cooldown_sensitive": False,
+                "params": [],
                 "priority": 2,
-                "is_combat": False,
-                "is_atomic": True
+                "is_combat": False
             },
             Intent.STOP: {
-                "risk_level": "NONE",
-                "cooldown_sensitive": False,
+                "params": [],
                 "priority": 5,
-                "is_combat": False,
-                "is_atomic": True
+                "is_combat": False
             },
             Intent.JUMP: {
-                "risk_level": "LOW",
-                "cooldown_sensitive": True,
+                "params": [],
                 "priority": 2,
-                "is_combat": False,
-                "is_atomic": True
+                "is_combat": False
             }
         }
         return registry.get(self, {})
 
     @classmethod
-    def has_value(cls, value):
+    def has_value(cls, value: str) -> bool:
         return value in cls._value2member_map_
+
+class ExecutionStatus(str, Enum):
+    SUCCESS = "SUCCESS"
+    FAILURE = "FAILURE"
+    PARTIAL = "PARTIAL"
+
+class FailureReason(str, Enum):
+    NONE = "NONE"
+    COOLDOWN = "COOLDOWN"
+    BLOCKED = "BLOCKED"
+    INVALID_STATE = "INVALID_STATE"
+    RESOURCE_EXHAUSTED = "RESOURCE_EXHAUSTED"
+    UNKNOWN = "UNKNOWN"
+
+class IntentValidator:
+    """
+    STRICT validator for Intent Execution Results from Java.
+    """
+    
+    @staticmethod
+    def validate_result(raw_result: Any) -> Dict[str, Any]:
+        """
+        Enforces the EXECUTION RESULT CONTRACT.
+        Returns a sanitized result dictionary or a safe-fallback FAILURE result.
+        """
+        fallback = {
+            "status": ExecutionStatus.FAILURE.value,
+            "failure_reason": FailureReason.UNKNOWN.value,
+            "partial_execution": False,
+            "safety_flags": {
+                "is_blocked": False,
+                "on_cooldown": False,
+                "invalid_environment": False
+            },
+            "outcomes": {
+                "damage_dealt": 0.0,
+                "damage_received": 0.0,
+                "is_alive": True,
+                "action_wasted": False
+            },
+            "metadata": {}
+        }
+
+        if not isinstance(raw_result, dict):
+            logger.error("CONTRACT VIOLATION: Result must be a dictionary.")
+            return fallback
+
+        # 1. Validate Status
+        status = raw_result.get("status")
+        if status not in [e.value for e in ExecutionStatus]:
+            logger.error(f"CONTRACT VIOLATION: Invalid status '{status}'")
+            return fallback
+
+        # 2. Validate Failure Reason
+        reason = raw_result.get("failure_reason", "UNKNOWN")
+        if reason not in [e.value for e in FailureReason]:
+            logger.warning(f"CONTRACT WARNING: Unknown failure reason '{reason}'. Defaulting to UNKNOWN.")
+            reason = FailureReason.UNKNOWN.value
+
+        # 3. Type Enforcement & Sanitization
+        raw_outcomes = raw_result.get("outcomes", {})
+        sanitized = {
+            "status": status,
+            "failure_reason": reason,
+            "partial_execution": bool(raw_result.get("partial_execution", False)),
+            "safety_flags": {
+                "is_blocked": bool(raw_result.get("safety_flags", {}).get("is_blocked", False)),
+                "on_cooldown": bool(raw_result.get("safety_flags", {}).get("on_cooldown", False)),
+                "invalid_environment": bool(raw_result.get("safety_flags", {}).get("invalid_environment", False))
+            },
+            "outcomes": {
+                "damage_dealt": float(raw_outcomes.get("damage_dealt", 0.0)),
+                "damage_received": float(raw_outcomes.get("damage_received", 0.0)),
+                "is_alive": bool(raw_outcomes.get("is_alive", True)),
+                "action_wasted": bool(raw_outcomes.get("action_wasted", False))
+            },
+            "metadata": raw_result.get("metadata", {})
+        }
+
+        return sanitized

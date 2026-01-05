@@ -40,11 +40,14 @@ class RewardCalculator:
         - Full breakdown of contributing factors.
         """
         try:
-            # Extract metrics with safe defaults
-            damage_dealt = float(result.get("damage_dealt", 0.0))
-            damage_received = float(result.get("damage_received", 0.0))
-            is_alive = bool(result.get("is_alive", True))
-            wasted = bool(result.get("action_wasted", False))
+            # Outcomes are now nested under 'outcomes' key in the new protocol
+            outcomes = result.get("outcomes", {})
+            
+            # Extract metrics with safe defaults from the nested outcomes
+            damage_dealt = float(outcomes.get("damage_dealt", 0.0))
+            damage_received = float(outcomes.get("damage_received", 0.0))
+            is_alive = bool(outcomes.get("is_alive", True))
+            wasted = bool(outcomes.get("action_wasted", False))
 
             # Breakdown calculation
             breakdown = {
