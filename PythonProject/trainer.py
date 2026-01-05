@@ -8,9 +8,14 @@ import math
 from typing import Dict, Any, List, Optional, Tuple
 
 from policy import Policy, LearnedPolicy, MLPolicy, RandomWeightedPolicy, HeuristicCombatPolicy
+from learning_freeze import LEARNING_STATE
+
+# UNCONDITIONAL FREEZE CHECK
+assert LEARNING_STATE == "FROZEN"
 from dataset import DatasetPipeline
 from reward import RewardCalculator
 from intent_space import Intent
+from execution_mode import ExecutionMode, enforce_mode
 
 logger = logging.getLogger(__name__)
 
@@ -22,10 +27,29 @@ class Trainer:
         self.policy = policy
 
     def train_on_experience(self, experience: Dict[str, Any]) -> None:
+        assert False, "Trainer reached while learning is disabled"
+        # Logic below is unreachable by design
         """
         Main entry point for online learning.
         Routes experience to either Imitation or Reinforcement learning paths.
         """
+        # HARDENED PERMISSION CHECK (PROTOCOL VERIFICATION HOOK)
+        lineage = experience.get("lineage", {})
+        assert lineage, "Protocol Violation: Experience missing lineage metadata"
+        
+        if not lineage.get("learning_allowed"):
+            logger.warning(f"TRAINER REJECT: Learning NOT ALLOWED for experience {experience.get('experience_id')}")
+            return
+
+        # Trust Boundary Enforcement
+        if lineage.get("trust_boundary") == "EXTERNAL_UNTRUSTED":
+            # We only learn from INTERNAL_VERIFIED data (e.g., after state parser and audit)
+            # but received_lineage in server.py marks it as EXTERNAL_UNTRUSTED initially.
+            # Wait, if AIServer produces the experience, it should probably be marked as verified 
+            # after all checks pass.
+            logger.warning(f"TRAINER REJECT: Trust boundary violation for experience {experience.get('experience_id')}")
+            return
+
         controller = experience.get("controller", "AI")
         
         if controller == "HUMAN":
@@ -56,6 +80,7 @@ class OfflineTrainer:
     of ML models before deployment.
     """
     def __init__(self, ml_policy: MLPolicy, random_seed: int = 42):
+        enforce_mode([ExecutionMode.OFFLINE_TRAINING])
         self.ml_policy = ml_policy
         self.random_seed = random_seed
         self.reward_calc = RewardCalculator()

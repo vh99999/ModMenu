@@ -26,23 +26,36 @@ class RewardCalculator:
     }
 
     @classmethod
-    def calculate(cls, result: Dict[str, Any]) -> Tuple[float, Dict[str, float]]:
+    def calculate(cls, result: Dict[str, Any], learning_allowed: bool = False, is_evaluative: bool = False) -> Tuple[float, Dict[str, float], str]:
         """
         Calculates a continuous scalar reward and its breakdown.
         'result' is a dictionary containing outcome metrics.
-        Returns (total_reward, breakdown).
+        Returns (total_reward, breakdown, classification).
         
         Guarantees:
         - Bounded result within [-2.0, 2.0].
         - Deterministic output.
         - Dominance (Death) enforcement.
         - NaN/Inf immunity.
+        - Reward classification (DIAGNOSTIC | EVALUATIVE | LEARNING_APPLICABLE).
         """
+        # Determine classification
+        if learning_allowed:
+            classification = "LEARNING_APPLICABLE"
+        elif is_evaluative:
+            classification = "EVALUATIVE"
+        else:
+            classification = "DIAGNOSTIC"
+
+        # INVARIANT: If learning_allowed is false, classification cannot be LEARNING_APPLICABLE
+        if not learning_allowed and classification == "LEARNING_APPLICABLE":
+            classification = "DIAGNOSTIC"
+
         try:
             # 1. Input Validation (Contract Integrity)
             if not isinstance(result, dict):
                 logger.error("REWARD FAILURE: Input result is not a dictionary.")
-                return 0.0, {"error_invalid_input": 0.0}
+                return 0.0, {"error_invalid_input": 0.0}, "DIAGNOSTIC"
 
             outcomes = result.get("outcomes")
             if not isinstance(outcomes, dict):
@@ -95,8 +108,11 @@ class RewardCalculator:
             # R MUST be in range [-2.0, 2.0]
             clamped_reward = max(-2.0, min(2.0, float(total_reward)))
             
-            return clamped_reward, breakdown
+            # PROTOCOL VERIFICATION HOOK
+            assert -2.0 <= clamped_reward <= 2.0, f"Protocol Violation: Reward {clamped_reward} out of bounds"
+            
+            return clamped_reward, breakdown, classification
             
         except Exception as e:
             logger.error(f"REWARD CRITICAL: Unexpected failure: {e}", exc_info=True)
-            return 0.0, {"error_system_failure": 0.0}
+            return 0.0, {"error_system_failure": 0.0}, "DIAGNOSTIC"

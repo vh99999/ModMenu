@@ -18,6 +18,7 @@ class MemoryBuffer:
         self.buffer = deque(maxlen=capacity)
 
     def push(self, 
+             experience_id: str,
              state: Dict[str, Any], 
              intent: str, 
              confidence: float,
@@ -27,25 +28,22 @@ class MemoryBuffer:
              controller: str,
              episode_id: int = 0,
              fallback_reason: Optional[str] = None,
-             model_version: Optional[str] = None) -> None:
+             model_version: Optional[str] = None,
+             lineage: Optional[Dict[str, Any]] = None) -> None:
         """
         Adds a new experience to the buffer.
-        
-        Fields stored:
-        - timestamp: UTC unix timestamp
-        - state: Full parsed state (raw, normalized, derived)
-        - intent: Semantic intent string
-        - confidence: Policy confidence [0.0, 1.0]
-        - result: Raw outcome metrics
-        - reward: Scalar reward
-        - reward_breakdown: Component rewards
-        - controller: Origin of action (HUMAN, HEURISTIC, AI)
-        - state_version: Version of the state parser used
-        - episode_id: Unique identifier for the current life/session
-        - fallback_reason: Reason for policy fallback (if any)
-        - model_version: Full fingerprint of the model used
         """
+        # HARDENED LINEAGE VALIDATION
+        if lineage is None:
+            raise ValueError(f"DATA_LINEAGE_VIOLATION: Experience {experience_id} rejected due to missing lineage metadata.")
+        
+        required_lineage = ["source", "trust_boundary", "learning_allowed", "decision_authority"]
+        for field in required_lineage:
+            if field not in lineage or lineage[field] == "UNKNOWN":
+                raise ValueError(f"DATA_LINEAGE_VIOLATION: Experience {experience_id} missing lineage field '{field}'.")
+
         experience = {
+            "experience_id": experience_id,
             "timestamp": time.time(),
             "state": state,
             "intent": intent,
@@ -57,7 +55,8 @@ class MemoryBuffer:
             "state_version": state.get("version", 0),
             "episode_id": episode_id,
             "fallback_reason": fallback_reason,
-            "model_version": model_version
+            "model_version": model_version,
+            "lineage": lineage
         }
         self.buffer.append(experience)
 

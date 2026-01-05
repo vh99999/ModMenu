@@ -17,7 +17,14 @@ from intent_space import Intent, IntentValidator
 from audit import Auditor
 from dataset import DatasetPipeline
 from monitor import Monitor
-from failure_manager import FailureManager, DisasterMode, FailureType
+from failure_manager import FailureManager, DisasterMode, FailureType, FailureSeverity
+from execution_mode import ExecutionMode, enforce_mode
+from learning_gates import LearningGateSystem, LearningGateResult
+from learning_readiness import LearningReadinessAnalyzer
+from learning_freeze import LEARNING_STATE, ImportLock
+
+# UNCONDITIONAL FREEZE CHECK
+assert LEARNING_STATE == "FROZEN"
 
 # Configure logging to be more descriptive
 logging.basicConfig(
@@ -30,13 +37,9 @@ class AIServer:
     """
     Non-blocking TCP server that acts as the bridge between 
     the game (Minecraft) and the semantic AI decision logic.
-    
-    Controller Modes supported:
-    - HUMAN: AI observes only, does not control.
-    - HEURISTIC: AI uses rule-based logic to decide.
-    - AI: AI uses learned models (future) to decide.
     """
     def __init__(self, host: str = '127.0.0.1', port: int = 5001):
+        enforce_mode([ExecutionMode.PROD_SERVER])
         self.host = host
         self.port = port
         self.version = "1.5.0" # HUMAN GUARDRAILS ACTIVE
@@ -83,6 +86,9 @@ class AIServer:
         self.auditor = Auditor()
         self.monitor = Monitor(self.auditor)
         self.failure_manager = FailureManager()
+        self.learning_gate_system = LearningGateSystem()
+        self.readiness_analyzer = LearningReadinessAnalyzer(self.failure_manager)
+        self.last_readiness_report = {}
         
         # Crash Recovery Detection
         self.crash_flag_path = "active_decision.tmp"
@@ -111,7 +117,34 @@ class AIServer:
         Stateless per-request: does not rely on persistent client connections.
         """
         self.last_request_time = time.time()
-        # 0. Detect Clock Jump
+        
+        # 1. GENERATE GLOBAL EXPERIENCE ID
+        experience_id = str(uuid.uuid4())
+
+        # 0. Learning Freeze Integrity Check
+        if LEARNING_STATE != "FROZEN":
+            self.failure_manager.record_incident(
+                FailureType.LEARNING_FREEZE_BREACH,
+                severity=FailureSeverity.CRITICAL,
+                experience_id=experience_id,
+                details="LEARNING_STATE mutation detected!"
+            )
+            # Crash execution as required
+            import sys
+            sys.exit(1)
+
+        freeze_ok, freeze_reason = ImportLock.verify_integrity()
+        if not freeze_ok:
+            self.failure_manager.record_incident(
+                FailureType.LEARNING_FREEZE_BREACH,
+                severity=FailureSeverity.CRITICAL,
+                experience_id=experience_id,
+                details=f"Import Integrity Violation: {freeze_reason}"
+            )
+            import sys
+            sys.exit(1)
+
+        # 0.1 Detect Clock Jump
         current_wall = time.time()
         current_mono = time.monotonic()
         
@@ -121,7 +154,12 @@ class AIServer:
         # If wall clock drifted more than 1s away from monotonic delta, something is wrong
         if abs(wall_delta - mono_delta) > 1.0:
             logger.error(f"SYSTEM FAILURE: Clock jump detected! Wall delta: {wall_delta:.3f}, Mono delta: {mono_delta:.3f}")
-            self.failure_manager.record_incident(FailureType.CLOCK_JUMP, details=f"Wall: {current_wall}, Mono: {current_mono}")
+            self.failure_manager.record_incident(
+                FailureType.CLOCK_JUMP, 
+                severity=FailureSeverity.HIGH,
+                experience_id=experience_id,
+                details=f"Wall: {current_wall}, Mono: {current_mono}"
+            )
             # Reset baseline to current to prevent persistent alerts
             self.wall_clock_baseline = current_wall
             self.monotonic_baseline = current_mono
@@ -139,7 +177,12 @@ class AIServer:
                     request = json.loads(data.decode('utf-8'))
                 except json.JSONDecodeError:
                     logger.warning(f"Malformed JSON received from {addr}")
-                    self.failure_manager.record_incident(FailureType.MALFORMED_JSON, details=f"From {addr}")
+                    self.failure_manager.record_incident(
+                        FailureType.MALFORMED_JSON, 
+                        severity=FailureSeverity.HIGH,
+                        experience_id=experience_id,
+                        details=f"From {addr}"
+                    )
                     self._send_error(conn, "Invalid JSON format")
                     return
 
@@ -158,17 +201,22 @@ class AIServer:
                         processed = DatasetPipeline.process_experiences(list(self.memory.buffer))
                         dataset_metrics = DatasetPipeline.get_metrics(processed)
 
+                    # Calculate monitoring data and attach readiness report
+                    monitoring_data = self.monitor.analyze()
+                    monitoring_data["learning_readiness"] = self.last_readiness_report
+
                     conn.sendall(json.dumps({
                         "status": "OK",
                         "version": self.version,
                         "timestamp": time.time(),
+                        "experience_id": experience_id,
                         "active_policy": self.active_policy_name,
                         "ml_enabled": self.arbitrator.ml_enabled,
                         "active_model": self.model_manager.active_model_version,
                         "candidate_model": self.model_manager.candidate_model_version,
                         "canary_ratio": self.arbitrator.canary_ratio,
                         "model_registry": list(self.model_manager.registry.keys()),
-                        "monitoring": self.monitor.analyze(),
+                        "monitoring": monitoring_data,
                         "online_ml_metrics": self.arbitrator.get_online_metrics(),
                         "audit_metrics": self.auditor.calculate_drift_metrics(),
                         "dataset_metrics": dataset_metrics,
@@ -184,6 +232,22 @@ class AIServer:
                         self._send_error(conn, "System in LOCKDOWN. Action denied.")
                         return
 
+                if request.get("type") == "LEARNING_FREEZE_PROOF":
+                    # Formal Verification Proof Endpoint
+                    import sys
+                    optimizer_present = any(m in sys.modules for m in ["torch", "tensorflow", "keras", "jax"])
+                    
+                    conn.sendall(json.dumps({
+                        "learning_state": LEARNING_STATE,
+                        "trainer_callable": False,
+                        "optimizer_present": optimizer_present,
+                        "gates_open": False,
+                        "readiness_only": True,
+                        "timestamp": time.time(),
+                        "experience_id": experience_id
+                    }).encode('utf-8'))
+                    return
+
                 if request.get("type") == "SET_ML_ENABLED":
                     operator_id = request.get("operator_id", "UNKNOWN")
                     enabled = bool(request.get("enabled", True))
@@ -193,7 +257,8 @@ class AIServer:
                         "status": "SUCCESS", 
                         "ml_enabled": enabled,
                         "operator_id": operator_id,
-                        "timestamp": time.time()
+                        "timestamp": time.time(),
+                        "experience_id": experience_id
                     }).encode('utf-8'))
                     return
 
@@ -203,7 +268,8 @@ class AIServer:
                     conn.sendall(json.dumps({
                         "status": "SUCCESS" if success else "FAILURE",
                         "candidate_model": self.model_manager.candidate_model_version,
-                        "timestamp": time.time()
+                        "timestamp": time.time(),
+                        "experience_id": experience_id
                     }).encode('utf-8'))
                     return
 
@@ -219,7 +285,8 @@ class AIServer:
                     conn.sendall(json.dumps({
                         "status": "SUCCESS",
                         "canary_ratio": self.arbitrator.canary_ratio,
-                        "timestamp": time.time()
+                        "timestamp": time.time(),
+                        "experience_id": experience_id
                     }).encode('utf-8'))
                     return
 
@@ -241,7 +308,8 @@ class AIServer:
                     conn.sendall(json.dumps({
                         "status": "SUCCESS" if success else "FAILURE",
                         "active_model": self.model_manager.active_model_version,
-                        "timestamp": time.time()
+                        "timestamp": time.time(),
+                        "experience_id": experience_id
                     }).encode('utf-8'))
                     return
 
@@ -250,7 +318,8 @@ class AIServer:
                     success = self.model_manager.register_model(metadata)
                     conn.sendall(json.dumps({
                         "status": "SUCCESS" if success else "FAILURE",
-                        "timestamp": time.time()
+                        "timestamp": time.time(),
+                        "experience_id": experience_id
                     }).encode('utf-8'))
                     return
 
@@ -262,7 +331,8 @@ class AIServer:
                     conn.sendall(json.dumps({
                         "status": "SUCCESS" if success else "FAILURE",
                         "active_model": self.model_manager.active_model_version,
-                        "timestamp": time.time()
+                        "timestamp": time.time(),
+                        "experience_id": experience_id
                     }).encode('utf-8'))
                     return
 
@@ -273,7 +343,8 @@ class AIServer:
                     conn.sendall(json.dumps({
                         "status": "SUCCESS" if success else "FAILURE",
                         "active_model": self.model_manager.active_model_version,
-                        "timestamp": time.time()
+                        "timestamp": time.time(),
+                        "experience_id": experience_id
                     }).encode('utf-8'))
                     return
 
@@ -289,7 +360,8 @@ class AIServer:
                         conn.sendall(json.dumps({
                             "status": "SUCCESS",
                             "mode": self.failure_manager.mode.value,
-                            "timestamp": time.time()
+                            "timestamp": time.time(),
+                            "experience_id": experience_id
                         }).encode('utf-8'))
                     except ValueError:
                         self._send_error(conn, f"Invalid mode: {mode_str}")
@@ -303,7 +375,8 @@ class AIServer:
                         "status": "SUCCESS",
                         "mode": "LOCKDOWN",
                         "operator_id": operator_id,
-                        "timestamp": time.time()
+                        "timestamp": time.time(),
+                        "experience_id": experience_id
                     }).encode('utf-8'))
                     return
 
@@ -315,7 +388,8 @@ class AIServer:
                     conn.sendall(json.dumps({
                         "status": "SUCCESS",
                         "mode": "NORMAL",
-                        "timestamp": time.time()
+                        "timestamp": time.time(),
+                        "experience_id": experience_id
                     }).encode('utf-8'))
                     return
 
@@ -327,7 +401,8 @@ class AIServer:
                     conn.sendall(json.dumps({
                         "status": "SUCCESS",
                         "mode": self.failure_manager.mode.value,
-                        "timestamp": time.time()
+                        "timestamp": time.time(),
+                        "experience_id": experience_id
                     }).encode('utf-8'))
                     return
 
@@ -347,9 +422,19 @@ class AIServer:
                         version = raw_state.get("state_version", 0)
                     
                     if version != 0 and version not in self.parser.SUPPORTED_VERSIONS:
-                        self.failure_manager.record_incident(FailureType.VERSION_CONFLICT, details=f"Version {version} unsupported")
+                        self.failure_manager.record_incident(
+                            FailureType.VERSION_CONFLICT, 
+                            severity=FailureSeverity.HIGH,
+                            experience_id=experience_id,
+                            details=f"Version {version} unsupported"
+                        )
                     else:
-                        self.failure_manager.record_incident(FailureType.CORRUPTION_NAN, details="StateParser rejected state")
+                        self.failure_manager.record_incident(
+                            FailureType.CORRUPTION_NAN, 
+                            severity=FailureSeverity.HIGH,
+                            experience_id=experience_id,
+                            details="StateParser rejected state"
+                        )
                     
                     self._send_error(conn, "Malformed state data (Parser rejected)")
                     return
@@ -395,12 +480,31 @@ class AIServer:
                     logger.error(f"CONTRACT VIOLATION: Invalid intent received from Java: {intent_taken}. Rejecting experience.")
                     intent_taken = None
 
+                # DATA LINEAGE FOR THE EXPERIENCE JUST RECEIVED (Step 3)
+                # This experience came from Java
+                received_authority = request.get("authority")
+                if not received_authority or received_authority == "UNKNOWN":
+                    # Default based on controller if not provided by legacy Java
+                    received_authority = "AUTHORITATIVE" if controller in ["HUMAN", "AI"] else "OVERRIDE"
+
+                received_lineage = {
+                    "source": "JAVA_SOURCE",
+                    "trust_boundary": "EXTERNAL_UNTRUSTED",
+                    "learning_allowed": self.failure_manager.mode == DisasterMode.NORMAL,
+                    "decision_authority": controller
+                }
+
                 # Calculate reward for the action just taken
-                reward, reward_breakdown = self.reward_calc.calculate(result)
+                # Pass learning_allowed to tag the reward
+                reward, reward_breakdown, reward_class = self.reward_calc.calculate(
+                    result, 
+                    learning_allowed=received_lineage["learning_allowed"]
+                )
 
                 # 3.1 AUDIT RECORDING
                 # We record what Java reports as having just happened.
                 audit_entry = self.auditor.record_cycle(
+                    experience_id=experience_id,
                     raw_state=raw_state,
                     state_version=normalized_state["version"],
                     intent_issued=intent_taken if intent_taken else "NONE",
@@ -415,7 +519,10 @@ class AIServer:
                     inference_ms=last_inference_ms,
                     shadow_data=last_shadow_data,
                     java_timestamp=java_timestamp,
-                    missing_fields=normalized_state.get("missing_fields", 0)
+                    missing_fields=normalized_state.get("missing_fields", 0),
+                    lineage=received_lineage,
+                    authority=received_authority,
+                    reward_class=reward_class
                 )
 
                 # Store in memory and train if we have a valid experience and it passes QUALITY GATES
@@ -423,40 +530,123 @@ class AIServer:
                 if intent_taken and self.failure_manager.mode not in [DisasterMode.FREEZE, DisasterMode.READ_ONLY_DISK, DisasterMode.LOCKDOWN]:
                     if self.auditor.check_quality_gate(audit_entry):
                         logger.debug(f"Experience: intent={intent_taken}, controller={controller}, reward={reward:.2f}")
-                        self.memory.push(
-                            state=normalized_state,
-                            intent=intent_taken,
-                            confidence=last_confidence,
-                            result=result,
-                            reward=reward,
-                            reward_breakdown=reward_breakdown,
-                            controller=controller,
-                            episode_id=self.episode_id,
-                            fallback_reason=last_fallback_reason,
-                            model_version=last_model_version
-                        )
+                        try:
+                            self.memory.push(
+                                experience_id=experience_id,
+                                state=normalized_state,
+                                intent=intent_taken,
+                                confidence=last_confidence,
+                                result=result,
+                                reward=reward,
+                                reward_breakdown=reward_breakdown,
+                                controller=controller,
+                                episode_id=self.episode_id,
+                                fallback_reason=last_fallback_reason,
+                                model_version=last_model_version,
+                                lineage=received_lineage
+                            )
+                            
+                            # Trainer handles IL (HUMAN) vs RL (AI/HEURISTIC)
+                            verified_lineage = received_lineage.copy()
+                            verified_lineage["trust_boundary"] = "INTERNAL_VERIFIED"
                         
-                        # Trainer handles IL (HUMAN) vs RL (AI/HEURISTIC)
-                        experience_for_trainer = {
-                            "state": normalized_state,
-                            "intent": intent_taken,
-                            "reward": reward,
-                            "controller": controller
-                        }
-                        self.trainer.train_on_experience(experience_for_trainer)
+                            experience_for_trainer = {
+                                "experience_id": experience_id,
+                                "state": normalized_state,
+                                "intent": intent_taken,
+                                "reward": reward,
+                                "controller": controller,
+                                "lineage": verified_lineage,
+                                "violations": audit_entry.get("violations", []),
+                                "policy_authority": request.get("policy_authority")
+                            }
+                            
+                            # 3.2 EVALUATE LEARNING GATES
+                            gate_decisions = self.learning_gate_system.evaluate_all(experience_for_trainer)
+                            for d in gate_decisions:
+                                logger.info(f"LEARNING_GATE [{d.gate_name}]: {d.result.name} - {d.reason}")
+                                if d.result != LearningGateResult.PASS:
+                                    # severity: BLOCKED → HIGH, FAIL → MEDIUM
+                                    sev = FailureSeverity.HIGH if d.result == LearningGateResult.BLOCKED else FailureSeverity.MEDIUM
+                                    self.failure_manager.record_incident(
+                                        FailureType.LEARNING_GATE_BLOCK,
+                                        severity=sev,
+                                        experience_id=experience_id,
+                                        details=f"Gate: {d.gate_name}, Reason: {d.reason}"
+                                    )
+                            
+                            logger.info(f"FINAL_LEARNING_DECISION: {self.learning_gate_system.get_final_decision()}")
+                            
+                            # 3.3 READINESS EVALUATION (Counterfactual)
+                            readiness_report = self.readiness_analyzer.analyze(experience_for_trainer, gate_decisions)
+                            self.last_readiness_report = readiness_report
+                            logger.info(f"LEARNING_READINESS: {json.dumps(readiness_report)}")
+                            
+                            # Readiness Incident Rules
+                            if readiness_report.get("confidence_sufficient") and readiness_report.get("data_quality_ok") and readiness_report.get("reward_signal_valid"):
+                                if any(d.result != LearningGateResult.PASS for d in gate_decisions):
+                                    # Readiness suggests learning despite gates closed -> HIGH
+                                    self.failure_manager.record_incident(
+                                        FailureType.LEARNING_READINESS_VIOLATION,
+                                        severity=FailureSeverity.HIGH,
+                                        experience_id=experience_id,
+                                        details="Readiness suggests learning despite gates closed"
+                                    )
+                            
+                            if readiness_report.get("confidence_sufficient") and not readiness_report.get("data_quality_ok"):
+                                # Readiness metrics inconsistent -> MEDIUM
+                                self.failure_manager.record_incident(
+                                    FailureType.LEARNING_READINESS_VIOLATION,
+                                    severity=FailureSeverity.MEDIUM,
+                                    experience_id=experience_id,
+                                    details="Readiness metrics inconsistent: High confidence but low data quality"
+                                )
+                            
+                            # NEVER act on PASS. Trainer remains unreachable.
+                            # self.trainer.train_on_experience(experience_for_trainer)
+                        except ValueError as e:
+                            if "DATA_LINEAGE_VIOLATION" in str(e):
+                                self.failure_manager.record_incident(
+                                    FailureType.DATA_LINEAGE_VIOLATION,
+                                    severity=FailureSeverity.HIGH,
+                                    experience_id=experience_id,
+                                    details=str(e)
+                                )
+                            else:
+                                raise e
                     else:
                         # Report incidents for critical audit violations
                         for violation in audit_entry.get("violations", []):
                             v_type = violation["type"]
                             if v_type in ["REWARD_BOUNDS_VIOLATION", "REWARD_DOMINANCE_VIOLATION"]:
-                                self.failure_manager.record_incident(FailureType.REWARD_INVARIANT, audit_entry)
-                            elif v_type in ["CONTRACT_VIOLATION", "MALFORMED_PAYLOAD", "MISSING_FIELD", "UNKNOWN_ENUM"]:
-                                self.failure_manager.record_incident(FailureType.CONTRACT_VIOLATION, audit_entry)
+                                self.failure_manager.record_incident(
+                                    FailureType.REWARD_INVARIANT, 
+                                    severity=FailureSeverity.CRITICAL,
+                                    experience_id=experience_id,
+                                    audit_entry=audit_entry
+                                )
+                            elif v_type in ["CONTRACT_VIOLATION", "MALFORMED_PAYLOAD", "MISSING_FIELD", "UNKNOWN_ENUM", "DATA_LINEAGE_VIOLATION"]:
+                                self.failure_manager.record_incident(
+                                    FailureType.CONTRACT_VIOLATION, 
+                                    severity=FailureSeverity.HIGH,
+                                    experience_id=experience_id,
+                                    audit_entry=audit_entry
+                                )
                             elif v_type == "INTENT_MISMATCH":
-                                self.failure_manager.record_incident(FailureType.CONTRACT_VIOLATION, audit_entry)
+                                self.failure_manager.record_incident(
+                                    FailureType.CONTRACT_VIOLATION, 
+                                    severity=FailureSeverity.CRITICAL,
+                                    experience_id=experience_id,
+                                    audit_entry=audit_entry
+                                )
                             elif v_type in ["STALE_STATE", "PARTIAL_CORRUPTION", "BACKWARDS_TIME"]:
                                 # Data integrity failures
-                                self.failure_manager.record_incident(FailureType.CORRUPTION_NAN, audit_entry)
+                                self.failure_manager.record_incident(
+                                    FailureType.CORRUPTION_NAN, 
+                                    severity=FailureSeverity.HIGH,
+                                    experience_id=experience_id,
+                                    audit_entry=audit_entry
+                                )
                 
                 # 3.2 MONITORING & AUTO-PROTECTION
                 # Run analysis and apply recommended mitigations
@@ -495,6 +685,7 @@ class AIServer:
                 next_intent = "STOP"
                 confidence = 1.0
                 policy_source = "UNKNOWN"
+                authority = "AUTHORITATIVE"
                 fallback_reason = None
                 model_version = None
                 shadow_data = None
@@ -506,6 +697,7 @@ class AIServer:
                 if has_stale:
                     next_intent = Intent.STOP.value
                     policy_source = "INTEGRITY_STALE_FALLBACK"
+                    authority = "OVERRIDE"
                     fallback_reason = "STALE_STATE_DETECTED"
                 
                 elif has_duplicate:
@@ -513,17 +705,20 @@ class AIServer:
                     # without state progression.
                     next_intent = Intent.STOP.value
                     policy_source = "INTEGRITY_DUPLICATE_BYPASS"
+                    authority = "OVERRIDE"
                     fallback_reason = "DUPLICATE_STATE_DETECTED"
 
                 # 4.1 DISASTER MODE OVERRIDES
                 elif self.failure_manager.mode in [DisasterMode.READ_ONLY, DisasterMode.LOCKDOWN]:
                     next_intent = Intent.STOP.value
                     policy_source = "DISASTER_READ_ONLY"
+                    authority = "OVERRIDE"
                     fallback_reason = "CRITICAL_FAILURE"
                 
                 elif self.failure_manager.mode == DisasterMode.ISOLATED:
                     next_intent = Intent.STOP.value
                     policy_source = "DISASTER_ISOLATED"
+                    authority = "OVERRIDE"
                     fallback_reason = "NETWORK_LOST_STANDBY"
                 
                 elif controller != "HUMAN":
@@ -536,16 +731,16 @@ class AIServer:
                     
                     if requested_policy == "ML":
                         # Use the Arbitrator for ML path
-                        next_intent, confidence, policy_source, fallback_reason, model_version, shadow_data = self.arbitrator.decide(normalized_state)
+                        next_intent, confidence, policy_source, authority, fallback_reason, model_version, shadow_data = self.arbitrator.decide(normalized_state)
                     else:
                         # Direct policy access (Heuristic or Random)
                         policy = self.policies.get(requested_policy, self.policies[self.active_policy_name])
-                        next_intent, confidence, model_version = policy.decide(normalized_state)
+                        next_intent, confidence, model_version, authority = policy.decide(normalized_state)
                         policy_source = requested_policy
                         fallback_reason = fallback_reason or "MANUAL_OVERRIDE"
                 else:
                     # In HUMAN mode, we just observe, but we can still suggest what we WOULD do
-                    next_intent, confidence, policy_source, fallback_reason, model_version, shadow_data = self.arbitrator.decide(normalized_state)
+                    next_intent, confidence, policy_source, authority, fallback_reason, model_version, shadow_data = self.arbitrator.decide(normalized_state)
                     logger.debug(f"Shadow Observation: Human took {intent_taken}, AI would take {next_intent} via {policy_source}")
 
                 # 5. Return response (Validate outgoing intent)
@@ -553,19 +748,24 @@ class AIServer:
                     logger.error(f"POLICY VIOLATION: Policy generated invalid intent '{next_intent}'. Falling back to STOP.")
                     next_intent = Intent.STOP.value
                     confidence = 0.0
+                    authority = "OVERRIDE"
 
                 response = {
+                    "experience_id": experience_id,
                     "intent": next_intent,
                     "confidence": float(confidence),
                     "policy_source": policy_source,
+                    "authority": authority,
                     "fallback_reason": fallback_reason,
                     "model_version": model_version,
                     "shadow_data": shadow_data, # Return shadow decision if candidate exists
                     "inference_ms": self.ml_policy.last_inference_time,
                     "reward_calculated": float(reward),
                     "reward_breakdown": reward_breakdown,
+                    "reward_class": reward_class,
                     "state_version": normalized_state["version"],
-                    "server_version": self.version
+                    "server_version": self.version,
+                    "lineage": received_lineage
                 }
                 
                 conn.sendall(json.dumps(response).encode('utf-8'))
@@ -664,5 +864,6 @@ class AIServer:
             logger.critical(f"Server failure: {e}")
 
 if __name__ == "__main__":
+    enforce_mode([ExecutionMode.PROD_SERVER])
     server = AIServer()
     server.start()

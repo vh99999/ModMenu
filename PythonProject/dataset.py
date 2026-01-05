@@ -7,6 +7,7 @@ from enum import Enum
 
 from intent_space import Intent
 from state_parser import StateParser
+from execution_mode import ExecutionMode, enforce_mode
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +29,7 @@ class DatasetPipeline:
         """
         Processes a list of experiences: filters, vectorizes, and attaches metadata.
         """
+        enforce_mode([ExecutionMode.PROD_SERVER, ExecutionMode.OFFLINE_TRAINING])
         processed = []
         for exp in experiences:
             try:
@@ -41,6 +43,7 @@ class DatasetPipeline:
                 
                 # 3. Create Record
                 record = {
+                    "experience_id": exp.get("experience_id"),
                     "features": state_vec,
                     "label": intent_idx,
                     "metadata": {
@@ -49,7 +52,8 @@ class DatasetPipeline:
                         "controller": exp.get("controller"),
                         "state_version": exp.get("state_version"),
                         "episode_id": exp.get("episode_id", 0),
-                        "audit_hash": cls._calculate_hash(exp)
+                        "audit_hash": cls._calculate_hash(exp),
+                        "lineage": exp.get("lineage")
                     }
                 }
                 processed.append(record)
@@ -62,11 +66,22 @@ class DatasetPipeline:
     def _validate_experience(cls, exp: Dict[str, Any]) -> bool:
         """Enforces hard blockers for training data."""
         # Check mandatory fields
-        required = ["state", "intent", "reward", "controller"]
+        required = ["experience_id", "state", "intent", "reward", "controller", "lineage"]
         for field in required:
             if field not in exp:
+                logger.warning(f"DATASET REJECT: Missing mandatory field '{field}'")
                 return False
         
+        # Check lineage permissions
+        lineage = exp["lineage"]
+        if not lineage.get("learning_allowed"):
+            logger.warning(f"DATASET REJECT: Learning NOT ALLOWED for experience {exp.get('experience_id')}")
+            return False
+
+        if lineage.get("trust_boundary") == "EXTERNAL_UNTRUSTED":
+            logger.warning(f"DATASET REJECT: Experience {exp.get('experience_id')} is from EXTERNAL_UNTRUSTED boundary")
+            return False
+
         # Check for stale data (Protocol 4: no more than 3 versions old)
         # Note: using CURRENT_VERSION - 2 allows CURRENT_VERSION, CURRENT_VERSION-1, CURRENT_VERSION-2.
         if exp.get("state_version", 0) < StateParser.CURRENT_VERSION - 2:

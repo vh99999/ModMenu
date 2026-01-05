@@ -1,0 +1,10 @@
+{
+  "incident_id": "d0de43da-e0d8-46b0-803a-e4545c6c12d9",
+  "experience_id": "SYSTEM",
+  "timestamp": 1767643062.2636263,
+  "failure_type": "CONTRACT_VIOLATION",
+  "severity": "CRITICAL",
+  "details": "TEST CRITICAL",
+  "audit_hash": null,
+  "state_snapshot": null
+}

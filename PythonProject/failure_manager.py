@@ -33,6 +33,17 @@ class FailureType(str, Enum):
     CRASH_RECOVERY = "CRASH_RECOVERY"
     HUMAN_ERROR = "HUMAN_ERROR"
     OPERATOR_ACTION = "OPERATOR_ACTION"
+    DATA_LINEAGE_VIOLATION = "DATA_LINEAGE_VIOLATION"
+    LEARNING_GATE_BLOCK = "LEARNING_GATE_BLOCK"
+    LEARNING_READINESS_VIOLATION = "LEARNING_READINESS_VIOLATION"
+    LEARNING_FREEZE_BREACH = "LEARNING_FREEZE_BREACH"
+
+class FailureSeverity(str, Enum):
+    INFO = "INFO"
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
 
 class FailureManager:
     """
@@ -56,19 +67,31 @@ class FailureManager:
 
     def record_incident(self, 
                         failure_type: FailureType, 
+                        severity: FailureSeverity = FailureSeverity.MEDIUM,
+                        experience_id: Optional[str] = None,
                         audit_entry: Optional[Dict[str, Any]] = None,
                         details: Optional[str] = None):
         """
         Records a failure incident and generates a report.
         """
         incident_id = str(uuid.uuid4())
+        
+        # Automatic LOCKDOWN on CRITICAL severity
+        if severity == FailureSeverity.CRITICAL:
+            logger.critical(f"CRITICAL INCIDENT DETECTED: {failure_type}. Triggering system LOCKDOWN.")
+            self.set_mode(DisasterMode.LOCKDOWN)
+
         report = {
             "incident_id": incident_id,
+            "experience_id": experience_id or (audit_entry.get("experience_id") if audit_entry else "SYSTEM"),
             "timestamp": time.time(),
-            "failure_type": failure_type.value,
+            "type": failure_type.value,
+            "severity": severity.value,
             "details": details,
-            "audit_hash": audit_entry.get("state_hash") if audit_entry else None,
-            "state_snapshot": audit_entry.get("java_result") if audit_entry else None
+            "metadata": {
+                "audit_hash": audit_entry.get("state_hash") if audit_entry else None,
+                "state_snapshot": audit_entry.get("java_result") if audit_entry else None
+            }
         }
         
         self.incidents.append(report)
@@ -92,7 +115,9 @@ class FailureManager:
                 logger.error(f"FAILURE_MANAGER: Failed to persist incident report: {e}")
 
         # Automatic Containment Logic
-        self._trigger_containment(failure_type)
+        # LOCKDOWN takes precedence over all other modes
+        if self.mode != DisasterMode.LOCKDOWN:
+            self._trigger_containment(failure_type)
 
     def _trigger_containment(self, failure_type: FailureType):
         """
@@ -116,5 +141,5 @@ class FailureManager:
         return {
             "mode": self.mode.value,
             "incident_count": len(self.incidents),
-            "last_failure": self.incidents[-1]["failure_type"] if self.incidents else None
+            "last_failure": self.incidents[-1]["type"] if self.incidents else None
         }

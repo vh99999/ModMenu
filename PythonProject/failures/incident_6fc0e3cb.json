@@ -1,0 +1,12 @@
+{
+  "incident_id": "6fc0e3cb-0612-4fa8-8492-1c0c4adff47f",
+  "experience_id": "SYSTEM",
+  "timestamp": 1767643792.8475604,
+  "type": "CONTRACT_VIOLATION",
+  "severity": "MEDIUM",
+  "details": "Protocol Violation: Illegal authority 'UNKNOWN'",
+  "metadata": {
+    "audit_hash": null,
+    "state_snapshot": null
+  }
+}

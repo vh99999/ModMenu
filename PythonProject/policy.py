@@ -18,10 +18,11 @@ class Policy(ABC):
     """
     
     @abstractmethod
-    def decide(self, state: Dict[str, Any]) -> Tuple[str, float, Optional[str]]:
+    def decide(self, state: Dict[str, Any]) -> Tuple[str, float, Optional[str], str]:
         """
         Returns a selected Intent string, its associated confidence [0.0, 1.0],
-        and an optional version/provenance identifier.
+        an optional version/provenance identifier, and the AUTHORITY level.
+        Authority: ADVISORY | AUTHORITATIVE | OVERRIDE
         """
         pass
 
@@ -43,7 +44,7 @@ class HeuristicCombatPolicy(Policy):
     """
     VERSION = "GOLDEN_HEURISTIC_v1.0.0"
 
-    def decide(self, state: Dict[str, Any]) -> Tuple[str, float, Optional[str]]:
+    def decide(self, state: Dict[str, Any]) -> Tuple[str, float, Optional[str], str]:
         # Extract semantic interpretations
         derived = state.get("derived", {})
         normalized = state.get("normalized", {})
@@ -56,30 +57,30 @@ class HeuristicCombatPolicy(Policy):
         # 1. Critical Self-preservation: If threatened and close, evade
         if is_threatened and distance_cat == "CLOSE":
             # High confidence because it's a critical safety rule
-            return Intent.EVADE.value, 0.95, self.VERSION
+            return Intent.EVADE.value, 0.95, self.VERSION, "OVERRIDE"
 
         # 2. Obstruction Handling: If trying to move but hitting something, jump
         if is_obstructed and distance_cat != "CLOSE":
-            return Intent.JUMP.value, 0.85, self.VERSION
+            return Intent.JUMP.value, 0.85, self.VERSION, "AUTHORITATIVE"
 
         # 3. Aggression: If close and have energy, attack
         if distance_cat == "CLOSE" and can_attack:
-            return Intent.PRIMARY_ATTACK.value, 0.8, self.VERSION
+            return Intent.PRIMARY_ATTACK.value, 0.8, self.VERSION, "AUTHORITATIVE"
 
         # 4. Engagement: If far, move closer
         if distance_cat == "FAR":
-            return Intent.MOVE.value, 0.75, self.VERSION
+            return Intent.MOVE.value, 0.75, self.VERSION, "AUTHORITATIVE"
 
         # 5. Tactical Positioning: If medium distance
         if distance_cat == "MEDIUM":
             # If we have lots of energy, maybe jump to reposition or close in
             if normalized.get("energy", 0.0) > 0.8:
-                return Intent.JUMP.value, 0.6, self.VERSION
+                return Intent.JUMP.value, 0.6, self.VERSION, "AUTHORITATIVE"
             # Otherwise hold and recover energy
-            return Intent.HOLD.value, 0.7, self.VERSION
+            return Intent.HOLD.value, 0.7, self.VERSION, "AUTHORITATIVE"
 
         # Default fallback: Stop
-        return Intent.STOP.value, 1.0, self.VERSION
+        return Intent.STOP.value, 1.0, self.VERSION, "AUTHORITATIVE"
 
 class RandomWeightedPolicy(Policy):
     """
@@ -103,7 +104,7 @@ class RandomWeightedPolicy(Policy):
 
     VERSION = "STOCHASTIC_RANDOM_v1.0.0"
 
-    def decide(self, state: Dict[str, Any]) -> Tuple[str, float, Optional[str]]:
+    def decide(self, state: Dict[str, Any]) -> Tuple[str, float, Optional[str], str]:
         """
         Returns a selected Intent and its associated confidence/probability.
         """
@@ -119,7 +120,7 @@ class RandomWeightedPolicy(Policy):
             # Confidence during exploration is 1/N but scaled by exploration rate
             # for more accurate statistical bookkeeping.
             confidence = 1.0 / len(intents)
-            return chosen_intent.value, confidence, self.VERSION
+            return chosen_intent.value, confidence, self.VERSION, "AUTHORITATIVE"
 
         # Weighted selection based on policy knowledge
         chosen_intent = random.choices(intents, weights=normalized_probs, k=1)[0]
@@ -127,7 +128,7 @@ class RandomWeightedPolicy(Policy):
         # Confidence is the probability assigned by the policy
         confidence = self.weights.get(chosen_intent, 0.0) / total_weight
         
-        return chosen_intent.value, float(confidence), self.VERSION
+        return chosen_intent.value, float(confidence), self.VERSION, "AUTHORITATIVE"
 
 class MLPolicy(LearnedPolicy):
     """
@@ -138,17 +139,22 @@ class MLPolicy(LearnedPolicy):
         self.manager = model_manager
         self.last_inference_time = 0.0
 
-    def decide(self, state: Dict[str, Any]) -> Tuple[str, float, Optional[str], Dict[str, float]]:
+    def decide(self, state: Dict[str, Any]) -> Tuple[str, float, Optional[str], Dict[str, float], str]:
         """Wraps decide_version for the active production model."""
         return self.decide_version(state, self.manager.active_model_version)
 
-    def decide_version(self, state: Dict[str, Any], version: Optional[str]) -> Tuple[str, float, Optional[str], Dict[str, float]]:
+    def decide_version(self, state: Dict[str, Any], version: Optional[str]) -> Tuple[str, float, Optional[str], Dict[str, float], str]:
         """
         Extracts features and queries a specific model for a suggestion.
         Includes safety envelope: timeout check and output validation.
         """
         start_time = time.monotonic()
         
+        # Determine authority based on model's lifecycle state
+        authority = "AUTHORITATIVE"
+        if version == self.manager.candidate_model_version:
+            authority = "ADVISORY"
+
         try:
             # 1. Extract feature vector (Strictly as per DATASET_PROTOCOL)
             normalized = state.get("normalized", {})
@@ -161,12 +167,12 @@ class MLPolicy(LearnedPolicy):
             # 3.1 Canonical Check
             if not Intent.has_value(intent_str):
                 logger.error(f"ML POLICY FAILURE: Model {version} suggested non-canonical intent: {intent_str}")
-                return Intent.STOP.value, 0.0, actual_version, {}
+                return Intent.STOP.value, 0.0, actual_version, {}, authority
             
             # 3.2 Confidence Sanity
             if not (0.0 <= confidence <= 1.0):
                 logger.error(f"ML POLICY FAILURE: Model {version} invalid confidence range: {confidence}")
-                return intent_str, 0.0, actual_version, probs
+                return intent_str, 0.0, actual_version, probs, authority
 
             # 3.3 BLIND SPOT DETECTION (OOD Features)
             # If health is extremely low, model might not have been trained here.
@@ -184,11 +190,11 @@ class MLPolicy(LearnedPolicy):
             if version == self.manager.active_model_version:
                 self.last_inference_time = inference_ms
             
-            return intent_str, float(confidence), actual_version, probs
+            return intent_str, float(confidence), actual_version, probs, authority
 
         except Exception as e:
             logger.error(f"ML POLICY CRITICAL: Inference failure for model {version}: {e}")
-            return Intent.STOP.value, 0.0, version, {}
+            return Intent.STOP.value, 0.0, version, {}, authority
 
     def update_weights(self, batch: List[Dict[str, Any]]) -> float:
         """
@@ -413,7 +419,7 @@ class PolicyArbitrator:
             logger.info("ARBITRATOR: ML Policy has been ENABLED.")
             self.ml_failure_cooldown = 0 # Reset cooldown on manual enable
 
-    def decide(self, state: Dict[str, Any]) -> Tuple[str, float, str, Optional[str], Optional[str], Optional[Dict[str, Any]]]:
+    def decide(self, state: Dict[str, Any]) -> Tuple[str, float, str, str, Optional[str], Optional[str], Optional[Dict[str, Any]]]:
         """
         Arbitration Flow (per ONLINE_ML_PROTOCOL):
         1. HEURISTIC VETO (Survival Guardian)
@@ -421,7 +427,7 @@ class PolicyArbitrator:
         3. HEURISTIC FALLBACK (Safe path)
         4. RANDOM FALLBACK (Entropy path)
         
-        Returns: (intent, confidence, source, fallback_reason, model_version, shadow_data)
+        Returns: (intent, confidence, source, authority, fallback_reason, model_version, shadow_data)
         """
         self.metrics["total_cycles"] += 1
         shadow_data = None
@@ -429,29 +435,30 @@ class PolicyArbitrator:
 
         # 0. Shadow Evaluation (Always run if candidate exists and ML is enabled)
         if self.ml_enabled and candidate_ver and self.ml_failure_cooldown == 0:
-            c_intent, c_conf, c_ver, c_probs = self.ml_policy.decide_version(state, candidate_ver)
+            c_intent, c_conf, c_ver, c_probs, c_auth = self.ml_policy.decide_version(state, candidate_ver)
             shadow_data = {
                 "version": c_ver,
                 "intent": c_intent,
-                "confidence": c_conf
+                "confidence": c_conf,
+                "authority": c_auth
             }
             self.metrics["candidate_calls"] += 1
         
         # 1. Safety Veto Check (Heuristics are the guardians)
-        h_intent, h_conf, h_ver = self.heuristic_policy.decide(state)
+        h_intent, h_conf, h_ver, h_auth = self.heuristic_policy.decide(state)
         
         # If Heuristic is VERY confident (Safety rule triggered), it vetoes ML
         if h_conf >= 0.9:
             # We still run ML in shadow mode if enabled for divergence tracking
             if self.ml_enabled and self.ml_failure_cooldown == 0:
                 self._run_shadow_ml(state, h_intent)
-            return h_intent, h_conf, "HEURISTIC_VETO", "SAFETY_RULE_TRIGGERED", h_ver, shadow_data
+            return h_intent, h_conf, "HEURISTIC_VETO", h_auth, "SAFETY_RULE_TRIGGERED", h_ver, shadow_data
 
         # 2. ML Suggestion
         # Soft Degrade Check: If in cooldown, bypass ML
         if self.ml_failure_cooldown > 0:
             self.ml_failure_cooldown -= 1
-            res = list(self._heuristic_fallback(h_intent, h_conf, h_ver, "SOFT_DEGRADE_FALLBACK", "ML_FAILURE_COOLDOWN"))
+            res = list(self._heuristic_fallback(h_intent, h_conf, h_ver, h_auth, "SOFT_DEGRADE_FALLBACK", "ML_FAILURE_COOLDOWN"))
             res.append(shadow_data)
             return tuple(res)
 
@@ -465,14 +472,14 @@ class PolicyArbitrator:
             target_version = candidate_ver if use_candidate else self.ml_policy.manager.active_model_version
             
             self.metrics["ml_calls"] += 1
-            ml_intent, ml_conf, ml_ver, ml_probs = self.ml_policy.decide_version(state, target_version)
+            ml_intent, ml_conf, ml_ver, ml_probs, ml_auth = self.ml_policy.decide_version(state, target_version)
             
             # 2.1 Timeout Handling
             if self.ml_policy.last_inference_time > 50.0:
                 self.metrics["ml_timeouts"] += 1
                 self.metrics["ml_failures"] += 1
                 self._trigger_soft_degrade("TIMEOUT")
-                res = list(self._heuristic_fallback(h_intent, h_conf, h_ver, "ML_TIMEOUT_FALLBACK", "TIMEOUT_EXCEEDED"))
+                res = list(self._heuristic_fallback(h_intent, h_conf, h_ver, h_auth, "ML_TIMEOUT_FALLBACK", "TIMEOUT_EXCEEDED"))
                 res.append(shadow_data)
                 return tuple(res)
 
@@ -480,7 +487,7 @@ class PolicyArbitrator:
             ml_entropy = self._calculate_entropy(ml_probs)
             if ml_entropy > 1.5: # Threshold for high uncertainty
                 logger.warning(f"ML UNCERTAINTY: High entropy ({ml_entropy:.3f}) detected for model {ml_ver}. Falling back.")
-                res = list(self._heuristic_fallback(h_intent, h_conf, h_ver, "ML_ENTROPY_FALLBACK", "HIGH_UNCERTAINTY"))
+                res = list(self._heuristic_fallback(h_intent, h_conf, h_ver, h_auth, "ML_ENTROPY_FALLBACK", "HIGH_UNCERTAINTY"))
                 res.append(shadow_data)
                 return tuple(res)
 
@@ -494,35 +501,35 @@ class PolicyArbitrator:
                 if ml_intent != h_intent and h_conf > 0.5:
                     self.metrics["ml_divergence_count"] += 1
                 
-                return ml_intent, ml_conf, f"{source_prefix}SUGGESTION", None, ml_ver, shadow_data
+                return ml_intent, ml_conf, f"{source_prefix}SUGGESTION", ml_auth, None, ml_ver, shadow_data
             
             # ML was certain enough but didn't meet threshold
             if ml_conf < 0.1: # Extreme uncertainty or rejection
                 self.metrics["ml_failures"] += 1
-                res = list(self._heuristic_fallback(h_intent, h_conf, h_ver, f"{source_prefix}REJECTION_FALLBACK", "LOW_CONFIDENCE"))
+                res = list(self._heuristic_fallback(h_intent, h_conf, h_ver, h_auth, f"{source_prefix}REJECTION_FALLBACK", "LOW_CONFIDENCE"))
                 res.append(shadow_data)
                 return tuple(res)
 
-            res = list(self._heuristic_fallback(h_intent, h_conf, h_ver, f"{source_prefix}LOW_CONFIDENCE_FALLBACK", "LOW_CONFIDENCE"))
+            res = list(self._heuristic_fallback(h_intent, h_conf, h_ver, h_auth, f"{source_prefix}LOW_CONFIDENCE_FALLBACK", "LOW_CONFIDENCE"))
             res.append(shadow_data)
             return tuple(res)
 
         # 3. Heuristic Fallback
-        res = list(self._heuristic_fallback(h_intent, h_conf, h_ver, "HEURISTIC_FALLBACK", "ML_DISABLED"))
+        res = list(self._heuristic_fallback(h_intent, h_conf, h_ver, h_auth, "HEURISTIC_FALLBACK", "ML_DISABLED"))
         res.append(shadow_data)
         return tuple(res)
 
-    def _heuristic_fallback(self, h_intent: str, h_conf: float, h_ver: str, source: str, reason: str) -> Tuple[str, float, str, str, str]:
+    def _heuristic_fallback(self, h_intent: str, h_conf: float, h_ver: str, h_auth: str, source: str, reason: str) -> Tuple[str, float, str, str, str, str]:
         if h_conf >= 0.5:
-            return h_intent, h_conf, source, reason, h_ver
+            return h_intent, h_conf, source, h_auth, reason, h_ver
         
         # 4. Random Fallback
-        r_intent, r_conf, r_ver = self.random_policy.decide({})
-        return r_intent, r_conf, "RANDOM_FALLBACK", f"{reason}_AND_HEURISTIC_UNCERTAIN", r_ver
+        r_intent, r_conf, r_ver, r_auth = self.random_policy.decide({})
+        return r_intent, r_conf, "RANDOM_FALLBACK", r_auth, f"{reason}_AND_HEURISTIC_UNCERTAIN", r_ver
 
     def _run_shadow_ml(self, state: Dict[str, Any], h_intent: str):
         """Runs ML without acting, for divergence and performance tracking."""
-        ml_intent, ml_conf, ml_ver, ml_probs = self.ml_policy.decide(state)
+        ml_intent, ml_conf, ml_ver, ml_probs, ml_auth = self.ml_policy.decide(state)
         if ml_intent != h_intent:
             self.metrics["ml_divergence_count"] += 1
 

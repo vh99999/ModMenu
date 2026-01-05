@@ -67,6 +67,11 @@ class StateParser:
             # 4. Normalization (To [0, 1] range)
             normalized = cls._normalize(raw_extracted)
             
+            # PROTOCOL VERIFICATION HOOK
+            for k, v in normalized.items():
+                if isinstance(v, (float, int)):
+                    assert math.isfinite(v), f"Protocol Violation: NaN/Inf detected in normalized field '{k}'"
+            
             # 5. Derivation (Interpretation happens ONLY here)
             derived = cls._derive(normalized)
 

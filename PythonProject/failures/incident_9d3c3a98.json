@@ -1,0 +1,12 @@
+{
+  "incident_id": "9d3c3a98-e67c-451f-8ca0-6ac94ad2dfb7",
+  "experience_id": "944f50cc-96da-4b99-bf4d-5a1f0a18ab97",
+  "timestamp": 1767643829.270325,
+  "type": "CORRUPTION_NAN",
+  "severity": "HIGH",
+  "details": "StateParser rejected state",
+  "metadata": {
+    "audit_hash": null,
+    "state_snapshot": null
+  }
+}

@@ -11,6 +11,7 @@ from intent_space import Intent, ExecutionStatus, FailureReason
 logger = logging.getLogger(__name__)
 
 class ViolationSeverity(str, Enum):
+    INFO = "INFO"
     LOW = "LOW"
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
@@ -27,6 +28,7 @@ class Auditor:
         self.quarantine: List[Dict[str, Any]] = []
 
     def record_cycle(self, 
+                     experience_id: str,
                      raw_state: Any,
                      state_version: int,
                      intent_issued: str,
@@ -41,10 +43,17 @@ class Auditor:
                      inference_ms: float = 0.0,
                      shadow_data: Optional[Dict[str, Any]] = None,
                      java_timestamp: Optional[float] = None,
-                     missing_fields: int = 0) -> Dict[str, Any]:
+                     missing_fields: int = 0,
+                     lineage: Optional[Dict[str, Any]] = None,
+                     authority: str = "UNKNOWN",
+                     reward_class: str = "DIAGNOSTIC") -> Dict[str, Any]:
         """
         Records a single cycle, runs validation, and returns the audit entry.
         """
+        # PROTOCOL VERIFICATION HOOK
+        assert experience_id, "Protocol Violation: experience_id missing in audit record"
+        assert authority in ["ADVISORY", "AUTHORITATIVE", "OVERRIDE"], f"Protocol Violation: Illegal authority '{authority}'"
+        
         try:
             state_str = json.dumps(raw_state, sort_keys=True)
             state_hash = hashlib.sha256(state_str.encode('utf-8')).hexdigest()
@@ -52,7 +61,17 @@ class Auditor:
             logger.error("AUDIT ERROR: Failed to serialize raw_state for hashing. Using fallback hash.")
             state_hash = hashlib.sha256(str(raw_state).encode('utf-8')).hexdigest()
 
+        # Enforce mandatory lineage metadata
+        if lineage is None:
+            lineage = {
+                "source": "UNKNOWN",
+                "trust_boundary": "EXTERNAL_UNTRUSTED",
+                "learning_allowed": False,
+                "decision_authority": "UNKNOWN"
+            }
+
         entry = {
+            "experience_id": experience_id,
             "timestamp": time.time(),
             "java_timestamp": java_timestamp,
             "state_hash": state_hash,
@@ -60,6 +79,7 @@ class Auditor:
             "intent_issued": intent_issued,
             "confidence": confidence,
             "policy_source": policy_source,
+            "authority": authority,
             "controller": controller,
             "fallback_reason": fallback_reason,
             "model_version": model_version,
@@ -68,7 +88,9 @@ class Auditor:
             "java_result": raw_java_result,
             "reward_total": reward_total,
             "reward_breakdown": reward_breakdown,
+            "reward_class": reward_class,
             "missing_fields": missing_fields,
+            "lineage": lineage,
             "violations": []
         }
 
@@ -186,6 +208,18 @@ class ViolationDetector:
                 "description": f"{entry['missing_fields']} fields missing/defaulted"
             })
 
+        # 0.5 DATA LINEAGE VALIDATION
+        lineage = entry.get("lineage", {})
+        required_lineage = ["source", "trust_boundary", "learning_allowed", "decision_authority"]
+        for field in required_lineage:
+            if field not in lineage or lineage[field] == "UNKNOWN":
+                violations.append({
+                    "type": "DATA_LINEAGE_VIOLATION",
+                    "severity": ViolationSeverity.HIGH,
+                    "field": field,
+                    "description": f"Mandatory lineage field '{field}' is missing or UNKNOWN"
+                })
+
         if not isinstance(res, dict):
             violations.append({
                 "type": "MALFORMED_PAYLOAD",
@@ -273,7 +307,7 @@ class DataQualityGate:
         for v in entry["violations"]:
             if v["severity"] == ViolationSeverity.CRITICAL:
                 return False
-            if v["type"] in ["MALFORMED_PAYLOAD", "MISSING_FIELD", "PARTIAL_CORRUPTION", "BACKWARDS_TIME", "STALE_STATE"]:
+            if v["type"] in ["MALFORMED_PAYLOAD", "MISSING_FIELD", "PARTIAL_CORRUPTION", "BACKWARDS_TIME", "STALE_STATE", "DATA_LINEAGE_VIOLATION"]:
                 return False
             # Deduplication: We don't train on duplicates
             if v["type"] == "DUPLICATE_STATE":
