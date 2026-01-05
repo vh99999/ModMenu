@@ -1,4 +1,4 @@
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Tuple
 import logging
 import math
 
@@ -62,7 +62,7 @@ class StateParser:
                 logger.warning(f"STATE WARNING: Newer version {version} detected. Forward compatibility mode active.")
 
             # 3. Extraction, Type Enforcement & Sanity (NaN/Inf)
-            raw_extracted = cls._extract_and_validate(raw_payload)
+            raw_extracted, missing_count = cls._extract_and_validate(raw_payload)
             
             # 4. Normalization (To [0, 1] range)
             normalized = cls._normalize(raw_extracted)
@@ -74,7 +74,8 @@ class StateParser:
                 "version": version,
                 "raw": raw_extracted,
                 "normalized": normalized,
-                "derived": derived
+                "derived": derived,
+                "missing_fields": missing_count
             }
 
         except Exception as e:
@@ -83,12 +84,29 @@ class StateParser:
             return None
 
     @classmethod
-    def _extract_and_validate(cls, data: Dict[str, Any]) -> Dict[str, Any]:
+    def get_feature_vector(cls, normalized_state: Dict[str, Any]) -> List[float]:
+        """
+        Converts a normalized state dictionary into a fixed-order feature vector
+        suitable for ML inference and training.
+        
+        Order: health, energy, target_distance, is_colliding
+        """
+        return [
+            float(normalized_state.get("health", 0.0)),
+            float(normalized_state.get("energy", 0.0)),
+            float(normalized_state.get("target_distance", 0.0)),
+            float(1.0 if normalized_state.get("is_colliding") else 0.0)
+        ]
+
+    @classmethod
+    def _extract_and_validate(cls, data: Dict[str, Any]) -> Tuple[Dict[str, Any], int]:
         """
         Extracts fields from the raw data, enforces types, 
         checks for NaN/Inf, and applies defaults.
+        Returns (validated_data, missing_field_count)
         """
         validated = {}
+        missing_count = 0
         for field, (f_type, f_default, f_min, f_max) in cls.SCHEMA.items():
             val = data.get(field)
             
@@ -96,6 +114,7 @@ class StateParser:
             if val is None:
                 logger.warning(f"STATE WARNING: Field '{field}' missing. Using default: {f_default}")
                 validated[field] = f_default
+                missing_count += 1
                 continue
 
             # 3.2 Type Enforcement & Sanity (NaN/Inf)
@@ -114,8 +133,23 @@ class StateParser:
                         validated[field] = clamped
                 
                 elif f_type == bool:
-                    # Generic truthy check for boolean observations
-                    validated[field] = bool(val)
+                    # STRICT Boolean Parsing
+                    if isinstance(val, bool):
+                        validated[field] = val
+                    elif isinstance(val, str):
+                        low_val = val.lower()
+                        if low_val in ["true", "1", "yes", "on"]:
+                            validated[field] = True
+                        elif low_val in ["false", "0", "no", "off"]:
+                            validated[field] = False
+                        else:
+                            logger.warning(f"STATE WARNING: Field '{field}' has ambiguous string value '{val}'. Using default: {f_default}")
+                            validated[field] = f_default
+                    elif isinstance(val, (int, float)):
+                        validated[field] = bool(val)
+                    else:
+                        logger.warning(f"STATE WARNING: Field '{field}' invalid boolean type {type(val)}. Using default: {f_default}")
+                        validated[field] = f_default
                 
                 elif f_type == int:
                     i_val = int(val)
@@ -127,10 +161,11 @@ class StateParser:
                     validated[field] = val
 
             except (ValueError, TypeError):
-                logger.warning(f"STATE WARNING: Field '{field}' invalid type {type(val)}. Using default: {f_default}")
+                logger.warning(f"STATE WARNING: Field '{field}' invalid value or type {type(val)}. Using default: {f_default}")
                 validated[field] = f_default
+                missing_count += 1
         
-        return validated
+        return validated, missing_count
 
     @classmethod
     def _normalize(cls, raw: Dict[str, Any]) -> Dict[str, Any]:

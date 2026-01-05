@@ -25,7 +25,9 @@ class MemoryBuffer:
              reward: float, 
              reward_breakdown: Dict[str, float],
              controller: str,
-             episode_id: int = 0) -> None:
+             episode_id: int = 0,
+             fallback_reason: Optional[str] = None,
+             model_version: Optional[str] = None) -> None:
         """
         Adds a new experience to the buffer.
         
@@ -40,6 +42,8 @@ class MemoryBuffer:
         - controller: Origin of action (HUMAN, HEURISTIC, AI)
         - state_version: Version of the state parser used
         - episode_id: Unique identifier for the current life/session
+        - fallback_reason: Reason for policy fallback (if any)
+        - model_version: Full fingerprint of the model used
         """
         experience = {
             "timestamp": time.time(),
@@ -51,7 +55,9 @@ class MemoryBuffer:
             "reward_breakdown": reward_breakdown,
             "controller": controller,
             "state_version": state.get("version", 0),
-            "episode_id": episode_id
+            "episode_id": episode_id,
+            "fallback_reason": fallback_reason,
+            "model_version": model_version
         }
         self.buffer.append(experience)
 

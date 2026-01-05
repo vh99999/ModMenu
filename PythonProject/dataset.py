@@ -36,7 +36,7 @@ class DatasetPipeline:
                     continue
                 
                 # 2. Vectorization
-                state_vec = cls._vectorize_state(exp["state"]["normalized"])
+                state_vec = StateParser.get_feature_vector(exp["state"]["normalized"])
                 intent_idx = cls.INTENT_TO_IDX[exp["intent"]]
                 
                 # 3. Create Record
@@ -67,6 +67,12 @@ class DatasetPipeline:
             if field not in exp:
                 return False
         
+        # Check for stale data (Protocol 4: no more than 3 versions old)
+        # Note: using CURRENT_VERSION - 2 allows CURRENT_VERSION, CURRENT_VERSION-1, CURRENT_VERSION-2.
+        if exp.get("state_version", 0) < StateParser.CURRENT_VERSION - 2:
+            logger.warning(f"DATASET REJECT: Stale state version {exp.get('state_version')}")
+            return False
+
         # Check intent validity
         if exp["intent"] not in cls.INTENT_TO_IDX:
             logger.warning(f"DATASET REJECT: Invalid intent '{exp['intent']}'")
@@ -85,18 +91,6 @@ class DatasetPipeline:
                 return False
         
         return True
-
-    @classmethod
-    def _vectorize_state(cls, normalized: Dict[str, Any]) -> List[float]:
-        """Converts normalized state dict into a fixed-order feature vector."""
-        # Order must be stable: health, energy, target_distance, is_colliding
-        # Matching DATASET_PROTOCOL.md Section 2.A
-        return [
-            float(normalized.get("health", 0.0)),
-            float(normalized.get("energy", 0.0)),
-            float(normalized.get("target_distance", 0.0)),
-            float(1.0 if normalized.get("is_colliding") else 0.0)
-        ]
 
     @classmethod
     def _calculate_hash(cls, exp: Dict[str, Any]) -> str:

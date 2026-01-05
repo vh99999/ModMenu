@@ -21,25 +21,40 @@ import net.minecraft.world.phys.HitResult;
 public class AIStateCollector {
     private final Minecraft mc;
 
+    private static final int STATE_VERSION = 1;
+
     public AIStateCollector(Minecraft mc) {
         this.mc = mc;
     }
 
+    /**
+     * Collects raw Minecraft state.
+     * MUST strictly adhere to the StateParser schema in Python.
+     */
     public JsonObject collect(Player player) {
         JsonObject state = new JsonObject();
         
-        // Raw values only. No normalization, no semantics.
-        // Python StateParser will handle interpretation.
-        state.addProperty("health", player.getHealth());
-        state.addProperty("health_max", player.getMaxHealth());
+        // 1. Metadata
+        state.addProperty("state_version", STATE_VERSION);
+
+        // 2. Raw Primitives (Validated for NaN/Inf)
+        state.addProperty("health", sanitize(player.getHealth()));
+        state.addProperty("health_max", sanitize(player.getMaxHealth()));
         state.addProperty("food_level", player.getFoodData().getFoodLevel());
         state.addProperty("horizontal_collision", player.horizontalCollision);
         
         Entity target = getTarget();
         state.addProperty("target_id", target != null ? target.getId() : -1);
-        state.addProperty("target_distance", target != null ? player.distanceTo(target) : -1.0);
+        state.addProperty("target_distance", target != null ? sanitize(player.distanceTo(target)) : 1000.0); // 1000.0 is the default in Python schema
 
         return state;
+    }
+
+    private float sanitize(float value) {
+        if (Float.isNaN(value) || Float.isInfinite(value)) {
+            return 0.0f;
+        }
+        return value;
     }
 
     private Entity getTarget() {

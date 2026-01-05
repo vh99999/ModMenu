@@ -44,9 +44,10 @@ class RewardCalculator:
                 logger.error("REWARD FAILURE: Input result is not a dictionary.")
                 return 0.0, {"error_invalid_input": 0.0}
 
-            outcomes = result.get("outcomes", {})
-            if not outcomes:
-                logger.warning("REWARD WARNING: Missing outcomes in result. Using defaults.")
+            outcomes = result.get("outcomes")
+            if not isinstance(outcomes, dict):
+                logger.warning("REWARD WARNING: Missing or invalid 'outcomes' in result. Using defaults.")
+                outcomes = {}
 
             # 2. Extract & Sanitize (NaN/Inf Immunity + Non-negativity)
             def sanitize(val: Any, default: float = 0.0) -> float:

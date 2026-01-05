@@ -29,8 +29,8 @@ public class IntentExecutor {
      * @return Structured result of the execution attempt.
      */
     public ExecutionResult execute(Player player, IntentType intent) {
-        if (player == null) return ExecutionResult.failure(FailureReason.UNKNOWN_STATE, "PLAYER_NULL");
-        if (intent == null) return ExecutionResult.failure(FailureReason.UNKNOWN_STATE, "INTENT_NULL");
+        if (player == null) return ExecutionResult.failure(FailureReason.UNKNOWN, "PLAYER_NULL");
+        if (intent == null) return ExecutionResult.failure(FailureReason.UNKNOWN, "INTENT_NULL");
 
         try {
             return switch (intent) {
@@ -44,7 +44,7 @@ public class IntentExecutor {
             };
         } catch (Exception e) {
             releaseAllInputs(); // Safety: release all inputs on failure
-            return ExecutionResult.failure(FailureReason.UNKNOWN_STATE, "EXECUTION_EXCEPTION");
+            return ExecutionResult.failure(FailureReason.UNKNOWN, "EXECUTION_EXCEPTION");
         }
     }
 

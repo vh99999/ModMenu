@@ -3,16 +3,21 @@ import json
 import logging
 import threading
 import time
+import math
+import os
+import uuid
 from typing import Dict, Any, Tuple, Optional
 
 from state_parser import StateParser
 from reward import RewardCalculator
-from policy import RandomWeightedPolicy, HeuristicCombatPolicy, Policy
+from policy import RandomWeightedPolicy, HeuristicCombatPolicy, Policy, MLPolicy, ModelManager, PolicyArbitrator
 from memory import MemoryBuffer
 from trainer import Trainer
 from intent_space import Intent, IntentValidator
 from audit import Auditor
 from dataset import DatasetPipeline
+from monitor import Monitor
+from failure_manager import FailureManager, DisasterMode, FailureType
 
 # Configure logging to be more descriptive
 logging.basicConfig(
@@ -34,20 +39,69 @@ class AIServer:
     def __init__(self, host: str = '127.0.0.1', port: int = 5001):
         self.host = host
         self.port = port
-        self.version = "1.2.0"
+        self.version = "1.5.0" # HUMAN GUARDRAILS ACTIVE
         
-        # Core Components
-        self.policies: Dict[str, Policy] = {
-            "RANDOM": RandomWeightedPolicy(),
-            "HEURISTIC": HeuristicCombatPolicy()
+        # Core Components: ML & Lifecycle
+        self.model_manager = ModelManager()
+        
+        # Human Guardrails
+        self.pending_confirmations: Dict[str, Dict[str, Any]] = {}
+        
+        # Initial Governance Registration
+        initial_metadata = {
+            "version": "M-MockModel-D20260105-H00000000-R1.0.0-C00000000",
+            "model_id": "MockModel",
+            "training_date": "20260105",
+            "dataset_hash": "0" * 64,
+            "reward_ver": "1.0.0",
+            "code_hash": "0" * 64
         }
-        self.active_policy_name = "HEURISTIC"
+        self.model_manager.register_model(initial_metadata)
+        self.model_manager.activate_model(initial_metadata["version"])
+        
+        self.ml_policy = MLPolicy(self.model_manager)
+        self.heuristic_policy = HeuristicCombatPolicy()
+        self.random_policy = RandomWeightedPolicy()
+        
+        self.arbitrator = PolicyArbitrator(
+            ml_policy=self.ml_policy,
+            heuristic_policy=self.heuristic_policy,
+            random_policy=self.random_policy
+        )
+        
+        self.policies: Dict[str, Policy] = {
+            "RANDOM": self.random_policy,
+            "HEURISTIC": self.heuristic_policy,
+            "ML": self.ml_policy
+        }
+        self.active_policy_name = "ML"
         
         self.memory = MemoryBuffer(capacity=5000)
-        self.trainer = Trainer(self.policies["RANDOM"]) # Trainer can be updated to point to a LearnedPolicy later
+        self.trainer = Trainer(self.ml_policy)
         self.parser = StateParser()
         self.reward_calc = RewardCalculator()
         self.auditor = Auditor()
+        self.monitor = Monitor(self.auditor)
+        self.failure_manager = FailureManager()
+        
+        # Crash Recovery Detection
+        self.crash_flag_path = "active_decision.tmp"
+        if os.path.exists(self.crash_flag_path):
+            logger.error("SYSTEM CRITICAL: Recovery from ungraceful shutdown detected.")
+            self.failure_manager.record_incident(FailureType.CRASH_RECOVERY, details="RECOVERY_FROM_CRASH")
+            try:
+                os.remove(self.crash_flag_path)
+            except OSError:
+                pass
+        
+        # Temporal Baseline
+        self.wall_clock_baseline = time.time()
+        self.monotonic_baseline = time.monotonic()
+        
+        # Network Watchdog
+        self.last_request_time = time.time()
+        self.watchdog_thread = threading.Thread(target=self._network_watchdog, daemon=True)
+        self.watchdog_thread.start()
         
         self.episode_id = int(time.time()) # Use timestamp as base for episode IDs
 
@@ -56,6 +110,24 @@ class AIServer:
         Processes a single request-response cycle.
         Stateless per-request: does not rely on persistent client connections.
         """
+        self.last_request_time = time.time()
+        # 0. Detect Clock Jump
+        current_wall = time.time()
+        current_mono = time.monotonic()
+        
+        wall_delta = current_wall - self.wall_clock_baseline
+        mono_delta = current_mono - self.monotonic_baseline
+        
+        # If wall clock drifted more than 1s away from monotonic delta, something is wrong
+        if abs(wall_delta - mono_delta) > 1.0:
+            logger.error(f"SYSTEM FAILURE: Clock jump detected! Wall delta: {wall_delta:.3f}, Mono delta: {mono_delta:.3f}")
+            self.failure_manager.record_incident(FailureType.CLOCK_JUMP, details=f"Wall: {current_wall}, Mono: {current_mono}")
+            # Reset baseline to current to prevent persistent alerts
+            self.wall_clock_baseline = current_wall
+            self.monotonic_baseline = current_mono
+            # Invalidate episode to prevent temporal contamination
+            self.episode_id += 1
+
         try:
             with conn:
                 conn.settimeout(5.0)
@@ -67,11 +139,19 @@ class AIServer:
                     request = json.loads(data.decode('utf-8'))
                 except json.JSONDecodeError:
                     logger.warning(f"Malformed JSON received from {addr}")
+                    self.failure_manager.record_incident(FailureType.MALFORMED_JSON, details=f"From {addr}")
                     self._send_error(conn, "Invalid JSON format")
                     return
 
-                # 0. Handle Heartbeat / Healthcheck
+                # 0. Handle Heartbeat / Healthcheck / Killswitch
                 if request.get("type") == "HEARTBEAT":
+                    # Handshake: Clear ISOLATED mode if present
+                    if self.failure_manager.mode == DisasterMode.ISOLATED:
+                        logger.info("NETWORK RECOVERY: Heartbeat received. Resuming from ISOLATED mode.")
+                        self.failure_manager.set_mode(DisasterMode.NORMAL)
+                    
+                    self.last_request_time = time.time() # Refresh watchdog
+                    
                     # Calculate dataset metrics if we have data
                     dataset_metrics = {}
                     if len(self.memory) > 0:
@@ -83,8 +163,171 @@ class AIServer:
                         "version": self.version,
                         "timestamp": time.time(),
                         "active_policy": self.active_policy_name,
+                        "ml_enabled": self.arbitrator.ml_enabled,
+                        "active_model": self.model_manager.active_model_version,
+                        "candidate_model": self.model_manager.candidate_model_version,
+                        "canary_ratio": self.arbitrator.canary_ratio,
+                        "model_registry": list(self.model_manager.registry.keys()),
+                        "monitoring": self.monitor.analyze(),
+                        "online_ml_metrics": self.arbitrator.get_online_metrics(),
                         "audit_metrics": self.auditor.calculate_drift_metrics(),
-                        "dataset_metrics": dataset_metrics
+                        "dataset_metrics": dataset_metrics,
+                        "failure_status": self.failure_manager.get_status()
+                    }).encode('utf-8'))
+                    return
+                
+                # GLOBAL LOCKDOWN CHECK: API calls that modify state are blocked in LOCKDOWN
+                if self.failure_manager.mode == DisasterMode.LOCKDOWN:
+                    is_state_update = "state" in request
+                    is_allowed_mgmt = request.get("type") in ["UNRELEASE_LOCKDOWN", "EMERGENCY_LOCKDOWN", "HEARTBEAT"]
+                    if not (is_state_update or is_allowed_mgmt):
+                        self._send_error(conn, "System in LOCKDOWN. Action denied.")
+                        return
+
+                if request.get("type") == "SET_ML_ENABLED":
+                    operator_id = request.get("operator_id", "UNKNOWN")
+                    enabled = bool(request.get("enabled", True))
+                    self.arbitrator.set_ml_enabled(enabled)
+                    logger.info(f"ML ENABLED set to {enabled} by {operator_id} ({addr})")
+                    conn.sendall(json.dumps({
+                        "status": "SUCCESS", 
+                        "ml_enabled": enabled,
+                        "operator_id": operator_id,
+                        "timestamp": time.time()
+                    }).encode('utf-8'))
+                    return
+
+                if request.get("type") == "SET_CANDIDATE_MODEL":
+                    version = request.get("version")
+                    success = self.model_manager.set_candidate_model(version)
+                    conn.sendall(json.dumps({
+                        "status": "SUCCESS" if success else "FAILURE",
+                        "candidate_model": self.model_manager.candidate_model_version,
+                        "timestamp": time.time()
+                    }).encode('utf-8'))
+                    return
+
+                if request.get("type") == "SET_CANARY_RATIO":
+                    ratio = float(request.get("ratio", 0.0))
+                    bypass = bool(request.get("bypass_safety_cap", False))
+                    
+                    if ratio > 0.1 and not bypass:
+                        self._send_error(conn, "Canary ratio exceeds 10% safety cap. Use 'bypass_safety_cap: true' to override.")
+                        return
+                    
+                    self.arbitrator.set_canary_ratio(ratio)
+                    conn.sendall(json.dumps({
+                        "status": "SUCCESS",
+                        "canary_ratio": self.arbitrator.canary_ratio,
+                        "timestamp": time.time()
+                    }).encode('utf-8'))
+                    return
+
+                if request.get("type") == "PROMOTE_CANDIDATE":
+                    if not self._require_confirmation(conn, request, "PROMOTE_CANDIDATE"):
+                        return
+                    
+                    # SHADOW GATE CHECK
+                    stats = self.monitor.get_shadow_stats()
+                    if stats["sample_size"] < 1000:
+                        self._send_error(conn, f"Promotion failed: Insufficient shadow samples ({stats['sample_size']}/1000)")
+                        return
+                    
+                    if stats["survival_rate"] < stats["prod_survival_rate"] * 0.95:
+                        self._send_error(conn, f"Promotion failed: Survival regression detected. Shadow: {stats['survival_rate']:.3f}, Prod: {stats['prod_survival_rate']:.3f}")
+                        return
+
+                    success = self.model_manager.promote_candidate()
+                    conn.sendall(json.dumps({
+                        "status": "SUCCESS" if success else "FAILURE",
+                        "active_model": self.model_manager.active_model_version,
+                        "timestamp": time.time()
+                    }).encode('utf-8'))
+                    return
+
+                if request.get("type") == "REGISTER_MODEL":
+                    metadata = request.get("metadata", {})
+                    success = self.model_manager.register_model(metadata)
+                    conn.sendall(json.dumps({
+                        "status": "SUCCESS" if success else "FAILURE",
+                        "timestamp": time.time()
+                    }).encode('utf-8'))
+                    return
+
+                if request.get("type") == "ACTIVATE_MODEL":
+                    if not self._require_confirmation(conn, request, "ACTIVATE_MODEL"):
+                        return
+                    version = request.get("version")
+                    success = self.model_manager.activate_model(version)
+                    conn.sendall(json.dumps({
+                        "status": "SUCCESS" if success else "FAILURE",
+                        "active_model": self.model_manager.active_model_version,
+                        "timestamp": time.time()
+                    }).encode('utf-8'))
+                    return
+
+                if request.get("type") == "ROLLBACK_MODEL":
+                    if not self._require_confirmation(conn, request, "ROLLBACK_MODEL"):
+                        return
+                    success = self.model_manager.rollback()
+                    conn.sendall(json.dumps({
+                        "status": "SUCCESS" if success else "FAILURE",
+                        "active_model": self.model_manager.active_model_version,
+                        "timestamp": time.time()
+                    }).encode('utf-8'))
+                    return
+
+                if request.get("type") == "SET_DISASTER_MODE":
+                    mode_str = request.get("mode", "NORMAL")
+                    if mode_str == "NORMAL" and self.failure_manager.mode == DisasterMode.LOCKDOWN:
+                        self._send_error(conn, "System in LOCKDOWN. Use 'UNRELEASE_LOCKDOWN' command to exit.")
+                        return
+
+                    try:
+                        mode = DisasterMode(mode_str)
+                        self.failure_manager.set_mode(mode)
+                        conn.sendall(json.dumps({
+                            "status": "SUCCESS",
+                            "mode": self.failure_manager.mode.value,
+                            "timestamp": time.time()
+                        }).encode('utf-8'))
+                    except ValueError:
+                        self._send_error(conn, f"Invalid mode: {mode_str}")
+                    return
+
+                if request.get("type") == "EMERGENCY_LOCKDOWN":
+                    operator_id = request.get("operator_id", "UNKNOWN")
+                    self.failure_manager.set_mode(DisasterMode.LOCKDOWN)
+                    logger.critical(f"PANIC BUTTON: EMERGENCY LOCKDOWN triggered by {operator_id}")
+                    conn.sendall(json.dumps({
+                        "status": "SUCCESS",
+                        "mode": "LOCKDOWN",
+                        "operator_id": operator_id,
+                        "timestamp": time.time()
+                    }).encode('utf-8'))
+                    return
+
+                if request.get("type") == "UNRELEASE_LOCKDOWN":
+                    if not self._require_confirmation(conn, request, "UNRELEASE_LOCKDOWN"):
+                        return
+                    self.failure_manager.set_mode(DisasterMode.NORMAL)
+                    logger.info(f"LOCKDOWN RELEASED by {request.get('operator_id', 'UNKNOWN')}")
+                    conn.sendall(json.dumps({
+                        "status": "SUCCESS",
+                        "mode": "NORMAL",
+                        "timestamp": time.time()
+                    }).encode('utf-8'))
+                    return
+
+                if request.get("type") == "RESET_FAILURE_STATUS":
+                    if not self._require_confirmation(conn, request, "RESET_FAILURE_STATUS"):
+                        return
+                    self.failure_manager.set_mode(DisasterMode.NORMAL)
+                    self.failure_manager.incidents = []
+                    conn.sendall(json.dumps({
+                        "status": "SUCCESS",
+                        "mode": self.failure_manager.mode.value,
+                        "timestamp": time.time()
                     }).encode('utf-8'))
                     return
 
@@ -98,13 +341,45 @@ class AIServer:
                 normalized_state = self.parser.parse(raw_state)
                 
                 if normalized_state is None:
+                    # Detect version conflict or generic corruption
+                    version = 0
+                    if isinstance(raw_state, dict):
+                        version = raw_state.get("state_version", 0)
+                    
+                    if version != 0 and version not in self.parser.SUPPORTED_VERSIONS:
+                        self.failure_manager.record_incident(FailureType.VERSION_CONFLICT, details=f"Version {version} unsupported")
+                    else:
+                        self.failure_manager.record_incident(FailureType.CORRUPTION_NAN, details="StateParser rejected state")
+                    
                     self._send_error(conn, "Malformed state data (Parser rejected)")
                     return
 
+                # 2.1 EXTRA INTEGRITY CHECKS (Timestamp extraction)
+                def safe_float(val, default=0.0):
+                    try:
+                        f = float(val)
+                        return f if math.isfinite(f) else default
+                    except (ValueError, TypeError):
+                        return default
+
+                java_timestamp = None
+                if isinstance(raw_state, dict):
+                    java_timestamp = raw_state.get("timestamp")
+                    if java_timestamp is not None:
+                        java_timestamp = safe_float(java_timestamp)
+
                 # 3. Process experience (Shadow Learning)
                 intent_taken = request.get("intent_taken")
-                controller = request.get("controller", "AI").upper()
-                last_confidence = request.get("last_confidence", 0.0)
+                controller = request.get("controller")
+                if not isinstance(controller, str):
+                    controller = "AI"
+                controller = controller.upper()
+
+                last_confidence = safe_float(request.get("last_confidence"))
+                last_fallback_reason = request.get("last_fallback_reason")
+                last_model_version = request.get("last_model_version")
+                last_inference_ms = safe_float(request.get("last_inference_ms"))
+                last_shadow_data = request.get("shadow_data")
 
                 # STRICT VALIDATION: Java Result Contract
                 raw_result = request.get("result", {})
@@ -134,49 +409,144 @@ class AIServer:
                     controller=controller,
                     raw_java_result=raw_result,
                     reward_total=reward,
-                    reward_breakdown=reward_breakdown
+                    reward_breakdown=reward_breakdown,
+                    fallback_reason=last_fallback_reason,
+                    model_version=last_model_version,
+                    inference_ms=last_inference_ms,
+                    shadow_data=last_shadow_data,
+                    java_timestamp=java_timestamp,
+                    missing_fields=normalized_state.get("missing_fields", 0)
                 )
 
                 # Store in memory and train if we have a valid experience and it passes QUALITY GATES
-                if intent_taken and self.auditor.check_quality_gate(audit_entry):
-                    logger.debug(f"Experience: intent={intent_taken}, controller={controller}, reward={reward:.2f}")
-                    self.memory.push(
-                        state=normalized_state,
-                        intent=intent_taken,
-                        confidence=last_confidence,
-                        result=result,
-                        reward=reward,
-                        reward_breakdown=reward_breakdown,
-                        controller=controller,
-                        episode_id=self.episode_id
-                    )
-                    
-                    # Trainer handles IL (HUMAN) vs RL (AI/HEURISTIC)
-                    experience_for_trainer = {
-                        "state": normalized_state,
-                        "intent": intent_taken,
-                        "reward": reward,
-                        "controller": controller
-                    }
-                    self.trainer.train_on_experience(experience_for_trainer)
+                # Also check for FREEZE, READ_ONLY_DISK, and LOCKDOWN modes
+                if intent_taken and self.failure_manager.mode not in [DisasterMode.FREEZE, DisasterMode.READ_ONLY_DISK, DisasterMode.LOCKDOWN]:
+                    if self.auditor.check_quality_gate(audit_entry):
+                        logger.debug(f"Experience: intent={intent_taken}, controller={controller}, reward={reward:.2f}")
+                        self.memory.push(
+                            state=normalized_state,
+                            intent=intent_taken,
+                            confidence=last_confidence,
+                            result=result,
+                            reward=reward,
+                            reward_breakdown=reward_breakdown,
+                            controller=controller,
+                            episode_id=self.episode_id,
+                            fallback_reason=last_fallback_reason,
+                            model_version=last_model_version
+                        )
+                        
+                        # Trainer handles IL (HUMAN) vs RL (AI/HEURISTIC)
+                        experience_for_trainer = {
+                            "state": normalized_state,
+                            "intent": intent_taken,
+                            "reward": reward,
+                            "controller": controller
+                        }
+                        self.trainer.train_on_experience(experience_for_trainer)
+                    else:
+                        # Report incidents for critical audit violations
+                        for violation in audit_entry.get("violations", []):
+                            v_type = violation["type"]
+                            if v_type in ["REWARD_BOUNDS_VIOLATION", "REWARD_DOMINANCE_VIOLATION"]:
+                                self.failure_manager.record_incident(FailureType.REWARD_INVARIANT, audit_entry)
+                            elif v_type in ["CONTRACT_VIOLATION", "MALFORMED_PAYLOAD", "MISSING_FIELD", "UNKNOWN_ENUM"]:
+                                self.failure_manager.record_incident(FailureType.CONTRACT_VIOLATION, audit_entry)
+                            elif v_type == "INTENT_MISMATCH":
+                                self.failure_manager.record_incident(FailureType.CONTRACT_VIOLATION, audit_entry)
+                            elif v_type in ["STALE_STATE", "PARTIAL_CORRUPTION", "BACKWARDS_TIME"]:
+                                # Data integrity failures
+                                self.failure_manager.record_incident(FailureType.CORRUPTION_NAN, audit_entry)
+                
+                # 3.2 MONITORING & AUTO-PROTECTION
+                # Run analysis and apply recommended mitigations
+                health_status = self.monitor.analyze()
+                mitigation = health_status.get("recommended_mitigation")
+                if mitigation and mitigation != "NONE":
+                    self.arbitrator.apply_mitigation(mitigation)
+                
+                # Report incidents for critical alerts
+                for alert in health_status.get("alerts", []):
+                    if alert["level"] == "CRITICAL":
+                        mapping = {
+                            "SURVIVAL_CRASH": FailureType.CONFIDENCE_COLLAPSE,
+                            "CONTRACT_BREACH": FailureType.CONTRACT_VIOLATION,
+                            "LATENCY_SPIKE": FailureType.TIMEOUT,
+                            "INTENT_COLLAPSE": FailureType.CONFIDENCE_COLLAPSE
+                        }
+                        f_type = mapping.get(alert["type"], FailureType.CONTRACT_VIOLATION)
+                        self.failure_manager.record_incident(f_type, details=f"Monitor Alert: {alert}")
 
-                # 3.2 Episode Management: If dead, next experience belongs to a new episode
+                # 3.3 Episode Management: If dead, next experience belongs to a new episode
                 if result["outcomes"].get("is_alive") is False:
                     logger.info(f"Episode {self.episode_id} ended (Death detected). Incrementing ID.")
                     self.episode_id += 1
 
                 # 4. Decide next intent
+                # Set crash flag before starting heavy computation
+                if self.failure_manager.mode != DisasterMode.READ_ONLY_DISK:
+                    try:
+                        with open(self.crash_flag_path, 'w') as f:
+                            f.write(str(time.time()))
+                    except OSError:
+                        # If we can't write, it might be DISK_FULL
+                        pass
+
                 next_intent = "STOP"
                 confidence = 1.0
+                policy_source = "UNKNOWN"
+                fallback_reason = None
+                model_version = None
+                shadow_data = None
 
-                if controller != "HUMAN":
+                # 4.0 INTEGRITY OVERRIDES (Inference Safety)
+                has_duplicate = any(v["type"] == "DUPLICATE_STATE" for v in audit_entry["violations"])
+                has_stale = any(v["type"] == "STALE_STATE" for v in audit_entry["violations"])
+
+                if has_stale:
+                    next_intent = Intent.STOP.value
+                    policy_source = "INTEGRITY_STALE_FALLBACK"
+                    fallback_reason = "STALE_STATE_DETECTED"
+                
+                elif has_duplicate:
+                    # For duplicates, we return STOP to avoid repeating potentially harmful actions 
+                    # without state progression.
+                    next_intent = Intent.STOP.value
+                    policy_source = "INTEGRITY_DUPLICATE_BYPASS"
+                    fallback_reason = "DUPLICATE_STATE_DETECTED"
+
+                # 4.1 DISASTER MODE OVERRIDES
+                elif self.failure_manager.mode in [DisasterMode.READ_ONLY, DisasterMode.LOCKDOWN]:
+                    next_intent = Intent.STOP.value
+                    policy_source = "DISASTER_READ_ONLY"
+                    fallback_reason = "CRITICAL_FAILURE"
+                
+                elif self.failure_manager.mode == DisasterMode.ISOLATED:
+                    next_intent = Intent.STOP.value
+                    policy_source = "DISASTER_ISOLATED"
+                    fallback_reason = "NETWORK_LOST_STANDBY"
+                
+                elif controller != "HUMAN":
                     requested_policy = request.get("policy_override", self.active_policy_name)
-                    policy = self.policies.get(requested_policy, self.policies[self.active_policy_name])
-                    next_intent, confidence = policy.decide(normalized_state)
+                    
+                    # SAFE_MODE: Force Heuristic
+                    if self.failure_manager.mode == DisasterMode.SAFE_MODE:
+                        requested_policy = "HEURISTIC"
+                        fallback_reason = "DISASTER_SAFE_MODE"
+                    
+                    if requested_policy == "ML":
+                        # Use the Arbitrator for ML path
+                        next_intent, confidence, policy_source, fallback_reason, model_version, shadow_data = self.arbitrator.decide(normalized_state)
+                    else:
+                        # Direct policy access (Heuristic or Random)
+                        policy = self.policies.get(requested_policy, self.policies[self.active_policy_name])
+                        next_intent, confidence, model_version = policy.decide(normalized_state)
+                        policy_source = requested_policy
+                        fallback_reason = fallback_reason or "MANUAL_OVERRIDE"
                 else:
                     # In HUMAN mode, we just observe, but we can still suggest what we WOULD do
-                    suggested_intent, suggested_conf = self.policies[self.active_policy_name].decide(normalized_state)
-                    logger.debug(f"Shadow Observation: Human took {intent_taken}, AI would take {suggested_intent}")
+                    next_intent, confidence, policy_source, fallback_reason, model_version, shadow_data = self.arbitrator.decide(normalized_state)
+                    logger.debug(f"Shadow Observation: Human took {intent_taken}, AI would take {next_intent} via {policy_source}")
 
                 # 5. Return response (Validate outgoing intent)
                 if not Intent.has_value(next_intent):
@@ -187,6 +557,11 @@ class AIServer:
                 response = {
                     "intent": next_intent,
                     "confidence": float(confidence),
+                    "policy_source": policy_source,
+                    "fallback_reason": fallback_reason,
+                    "model_version": model_version,
+                    "shadow_data": shadow_data, # Return shadow decision if candidate exists
+                    "inference_ms": self.ml_policy.last_inference_time,
                     "reward_calculated": float(reward),
                     "reward_breakdown": reward_breakdown,
                     "state_version": normalized_state["version"],
@@ -194,11 +569,19 @@ class AIServer:
                 }
                 
                 conn.sendall(json.dumps(response).encode('utf-8'))
+                
+                # Success! Clear crash flag
+                try:
+                    if os.path.exists(self.crash_flag_path):
+                        os.remove(self.crash_flag_path)
+                except OSError:
+                    pass
 
         except socket.timeout:
             logger.debug(f"Connection timeout for {addr}")
         except Exception as e:
             logger.error(f"Unexpected error handling client {addr}: {e}", exc_info=True)
+            self.failure_manager.record_incident(FailureType.CONTRACT_VIOLATION, details=str(e))
             self._send_error(conn, "Internal Server Error")
 
     def _send_error(self, conn: socket.socket, message: str) -> None:
@@ -208,6 +591,54 @@ class AIServer:
             conn.sendall(json.dumps(response).encode('utf-8'))
         except Exception:
             pass
+
+    def _require_confirmation(self, conn: socket.socket, request: Dict[str, Any], action_name: str) -> bool:
+        """
+        Implements two-step confirmation for sensitive commands.
+        Returns True if confirmed, False if a token was issued.
+        """
+        token = request.get("confirmation_token")
+        operator_id = request.get("operator_id", "UNKNOWN_OPERATOR")
+        
+        if token and token in self.pending_confirmations:
+            pending = self.pending_confirmations.pop(token)
+            if pending["action"] == action_name:
+                logger.info(f"CONFIRMED: Action '{action_name}' confirmed by {operator_id}")
+                return True
+        
+        # Issue new token
+        new_token = str(uuid.uuid4())
+        self.pending_confirmations[new_token] = {
+            "action": action_name,
+            "operator_id": operator_id,
+            "timestamp": time.time()
+        }
+        
+        # Clean up old tokens (TTL 5 minutes)
+        now = time.time()
+        self.pending_confirmations = {k: v for k, v in self.pending_confirmations.items() if now - v["timestamp"] < 300}
+        
+        conn.sendall(json.dumps({
+            "status": "REQUIRED_CONFIRMATION",
+            "message": f"Action '{action_name}' requires confirmation.",
+            "confirmation_token": new_token,
+            "operator_id": operator_id
+        }).encode('utf-8'))
+        return False
+
+    def _network_watchdog(self):
+        """Monitor connection health."""
+        while True:
+            time.sleep(5)
+            idle_time = time.time() - self.last_request_time
+            if idle_time > 30 and self.failure_manager.mode == DisasterMode.NORMAL:
+                logger.warning(f"NETWORK WATCHDOG: No requests for {idle_time:.1f}s. System potentially isolated.")
+                # We don't force ISOLATED mode yet, as it could just be a quiet period in game.
+                # But we could log it.
+                
+            if idle_time > 60 and self.failure_manager.mode != DisasterMode.ISOLATED:
+                logger.error("NETWORK WATCHDOG: Network drop suspected. Entering ISOLATED mode.")
+                self.failure_manager.record_incident(FailureType.NETWORK_DROP, details=f"Idle for {idle_time:.1f}s")
 
     def start(self) -> None:
         """

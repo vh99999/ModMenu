@@ -9,7 +9,7 @@ def test_request(payload):
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.connect((HOST, PORT))
         s.sendall(json.dumps(payload).encode('utf-8'))
-        data = s.recv(1024)
+        data = s.recv(16384)
         return json.loads(data.decode('utf-8'))
 
 if __name__ == "__main__":
@@ -50,6 +50,32 @@ if __name__ == "__main__":
     response = test_request(payload_ai)
     print("Response:", json.dumps(response, indent=2))
     # Should expect EVADE because health < 0.5 and distance < 3.0
+    
+    # 1b. Simulate AI in control with ML policy (Arbitrator path)
+    payload_ml = {
+        "state": {
+            "health": 0.8,
+            "target_distance": 500.0,
+            "is_colliding": False,
+            "energy": 0.8
+        },
+        "intent_taken": "MOVE",
+        "last_confidence": 0.7,
+        "controller": "AI",
+        "result": {
+            "status": "SUCCESS",
+            "failure_reason": "NONE",
+            "outcomes": {
+                "damage_dealt": 0.0,
+                "damage_received": 0.0,
+                "is_alive": True,
+                "action_wasted": False
+            }
+        }
+    }
+    print("\nSending AI-controlled request (ML/Arbitrator)...")
+    response = test_request(payload_ml)
+    print("Response:", json.dumps(response, indent=2))
     
     # 2. Simulate HUMAN in control (Shadow Learning)
     payload_human = {

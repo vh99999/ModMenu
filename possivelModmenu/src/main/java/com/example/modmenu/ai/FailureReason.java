@@ -6,5 +6,5 @@ public enum FailureReason {
     BLOCKED,
     INVALID_STATE,
     RESOURCE_EXHAUSTED,
-    UNKNOWN_STATE
+    UNKNOWN
 }

@@ -1,0 +1,305 @@
+ERRO: o processo "python.exe" não foi encontrado.
+2026-01-05 14:51:54,954 [INFO] policy: GOVERNANCE: Model version M-MockModel-D20260105-H00000000-R1.0.0-C00000000 registered successfully.
+2026-01-05 14:51:54,954 [INFO] policy: GOVERNANCE_EVENT: Model activated as PRODUCTION. OLD: None -> NEW: M-MockModel-D20260105-H00000000-R1.0.0-C00000000
+2026-01-05 14:51:54,956 [INFO] AIServer: Generic AI Server established at 127.0.0.1:5001
+2026-01-05 14:51:56,967 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:56,967 [WARNING] policy: ML BLIND SPOT: OOD features detected (health=0.0050). Forcing 0.0 confidence.
+2026-01-05 14:51:56,967 [WARNING] policy: ML UNCERTAINTY: High entropy (1.878) detected for model M-MockModel-D20260105-H00000000-R1.0.0-C00000000. Falling back.
+.2026-01-05 14:51:56,970 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:56,970 [INFO] AIServer: Episode 1767635514 ended (Death detected). Incrementing ID.
+2026-01-05 14:51:56,970 [WARNING] policy: ML UNCERTAINTY: High entropy (1.878) detected for model M-MockModel-D20260105-H00000000-R1.0.0-C00000000. Falling back.
+2026-01-05 14:51:56,971 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:56,972 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: bca4faf1
+2026-01-05 14:51:56,972 [ERROR] audit: DRIFT ERROR: High violation rate: 0.3333
+2026-01-05 14:51:56,972 [WARNING] policy: ARBITRATOR: ML Policy has been DISABLED via kill-switch.
+2026-01-05 14:51:56,972 [CRITICAL] policy: ARBITRATOR: HARD DISABLE triggered by Monitor.
+2026-01-05 14:51:56,973 [WARNING] failure_manager: FAILURE_EVENT: System entering SAFE_MODE mode.
+2026-01-05 14:51:56,974 [WARNING] failure_manager: FAILURE_EVENT: System entering READ_ONLY mode.
+2026-01-05 14:51:56,974 [INFO] AIServer: Episode 1767635515 ended (Death detected). Incrementing ID.
+2026-01-05 14:51:56,975 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:56,975 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: bca4faf1
+2026-01-05 14:51:56,976 [ERROR] audit: DRIFT ERROR: High violation rate: 0.5000
+2026-01-05 14:51:56,979 [INFO] AIServer: Episode 1767635516 ended (Death detected). Incrementing ID.
+2026-01-05 14:51:56,981 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:56,982 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: bca4faf1
+2026-01-05 14:51:56,982 [ERROR] audit: DRIFT ERROR: High violation rate: 0.6000
+2026-01-05 14:51:56,986 [INFO] AIServer: Episode 1767635517 ended (Death detected). Incrementing ID.
+2026-01-05 14:51:56,987 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:56,987 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: bca4faf1
+2026-01-05 14:51:56,987 [ERROR] audit: DRIFT ERROR: High violation rate: 0.6667
+2026-01-05 14:51:56,988 [INFO] AIServer: Episode 1767635518 ended (Death detected). Incrementing ID.
+2026-01-05 14:51:56,991 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:56,991 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: bca4faf1
+2026-01-05 14:51:56,991 [ERROR] audit: DRIFT ERROR: High violation rate: 0.7143
+2026-01-05 14:51:56,994 [INFO] AIServer: Episode 1767635519 ended (Death detected). Incrementing ID.
+2026-01-05 14:51:56,996 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:56,996 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: bca4faf1
+2026-01-05 14:51:56,996 [ERROR] audit: DRIFT ERROR: High violation rate: 0.7500
+2026-01-05 14:51:57,002 [INFO] AIServer: Episode 1767635520 ended (Death detected). Incrementing ID.
+2026-01-05 14:51:57,003 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,003 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: bca4faf1
+2026-01-05 14:51:57,003 [ERROR] audit: DRIFT ERROR: High violation rate: 0.7778
+2026-01-05 14:51:57,007 [INFO] AIServer: Episode 1767635521 ended (Death detected). Incrementing ID.
+2026-01-05 14:51:57,011 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,011 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: bca4faf1
+2026-01-05 14:51:57,011 [ERROR] audit: DRIFT ERROR: High violation rate: 0.8000
+2026-01-05 14:51:57,019 [INFO] AIServer: Episode 1767635522 ended (Death detected). Incrementing ID.
+2026-01-05 14:51:57,020 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,020 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: bca4faf1
+2026-01-05 14:51:57,021 [ERROR] audit: DRIFT ERROR: High violation rate: 0.8182
+2026-01-05 14:51:57,025 [INFO] AIServer: Episode 1767635523 ended (Death detected). Incrementing ID.
+2026-01-05 14:51:57,031 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,032 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: bca4faf1
+2026-01-05 14:51:57,032 [ERROR] audit: DRIFT ERROR: High violation rate: 0.8333
+2026-01-05 14:51:57,036 [INFO] AIServer: Episode 1767635524 ended (Death detected). Incrementing ID.
+2026-01-05 14:51:57,038 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,038 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: bca4faf1
+2026-01-05 14:51:57,038 [ERROR] audit: DRIFT ERROR: High violation rate: 0.8462
+2026-01-05 14:51:57,041 [INFO] AIServer: Episode 1767635525 ended (Death detected). Incrementing ID.
+2026-01-05 14:51:57,050 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,052 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: bca4faf1
+2026-01-05 14:51:57,052 [ERROR] audit: DRIFT ERROR: High violation rate: 0.8571
+2026-01-05 14:51:57,054 [INFO] AIServer: Episode 1767635526 ended (Death detected). Incrementing ID.
+2026-01-05 14:51:57,055 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,055 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: bca4faf1
+2026-01-05 14:51:57,055 [ERROR] audit: DRIFT ERROR: High violation rate: 0.8667
+2026-01-05 14:51:57,061 [INFO] AIServer: Episode 1767635527 ended (Death detected). Incrementing ID.
+2026-01-05 14:51:57,064 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,065 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: bca4faf1
+2026-01-05 14:51:57,065 [ERROR] audit: DRIFT ERROR: High violation rate: 0.8750
+2026-01-05 14:51:57,068 [INFO] AIServer: Episode 1767635528 ended (Death detected). Incrementing ID.
+2026-01-05 14:51:57,070 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,070 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: bca4faf1
+2026-01-05 14:51:57,070 [ERROR] audit: DRIFT ERROR: High violation rate: 0.8824
+2026-01-05 14:51:57,072 [INFO] AIServer: Episode 1767635529 ended (Death detected). Incrementing ID.
+2026-01-05 14:51:57,073 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,073 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: bca4faf1
+2026-01-05 14:51:57,073 [ERROR] audit: DRIFT ERROR: High violation rate: 0.8889
+2026-01-05 14:51:57,075 [INFO] AIServer: Episode 1767635530 ended (Death detected). Incrementing ID.
+2026-01-05 14:51:57,079 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,079 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: bca4faf1
+2026-01-05 14:51:57,080 [ERROR] audit: DRIFT ERROR: High violation rate: 0.8947
+2026-01-05 14:51:57,085 [INFO] AIServer: Episode 1767635531 ended (Death detected). Incrementing ID.
+2026-01-05 14:51:57,086 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,087 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: bca4faf1
+2026-01-05 14:51:57,087 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9000
+2026-01-05 14:51:57,089 [INFO] AIServer: Episode 1767635532 ended (Death detected). Incrementing ID.
+2026-01-05 14:51:57,089 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,089 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: bca4faf1
+2026-01-05 14:51:57,090 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9048
+2026-01-05 14:51:57,092 [INFO] AIServer: Episode 1767635533 ended (Death detected). Incrementing ID.
+2026-01-05 14:51:57,096 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,096 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: bca4faf1
+2026-01-05 14:51:57,097 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9091
+2026-01-05 14:51:57,104 [INFO] AIServer: Episode 1767635534 ended (Death detected). Incrementing ID.
+2026-01-05 14:51:57,105 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,105 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: bca4faf1
+2026-01-05 14:51:57,105 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9130
+2026-01-05 14:51:57,139 [INFO] AIServer: Episode 1767635535 ended (Death detected). Incrementing ID.
+2026-01-05 14:51:57,140 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,141 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: bca4faf1
+2026-01-05 14:51:57,141 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9167
+2026-01-05 14:51:57,142 [INFO] AIServer: Episode 1767635536 ended (Death detected). Incrementing ID.
+2026-01-05 14:51:57,144 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,144 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: bca4faf1
+2026-01-05 14:51:57,145 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9200
+2026-01-05 14:51:57,154 [INFO] AIServer: Episode 1767635537 ended (Death detected). Incrementing ID.
+2026-01-05 14:51:57,155 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,155 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: bca4faf1
+2026-01-05 14:51:57,156 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9231
+2026-01-05 14:51:57,159 [INFO] AIServer: Episode 1767635538 ended (Death detected). Incrementing ID.
+2026-01-05 14:51:57,161 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,162 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: bca4faf1
+2026-01-05 14:51:57,162 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9259
+2026-01-05 14:51:57,170 [INFO] AIServer: Episode 1767635539 ended (Death detected). Incrementing ID.
+2026-01-05 14:51:57,172 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,172 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: bca4faf1
+2026-01-05 14:51:57,172 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9286
+2026-01-05 14:51:57,174 [INFO] AIServer: Episode 1767635540 ended (Death detected). Incrementing ID.
+2026-01-05 14:51:57,176 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,177 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: bca4faf1
+2026-01-05 14:51:57,177 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9310
+2026-01-05 14:51:57,183 [INFO] AIServer: Episode 1767635541 ended (Death detected). Incrementing ID.
+2026-01-05 14:51:57,185 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,185 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: bca4faf1
+2026-01-05 14:51:57,185 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9333
+2026-01-05 14:51:57,189 [INFO] AIServer: Episode 1767635542 ended (Death detected). Incrementing ID.
+2026-01-05 14:51:57,190 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,190 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: bca4faf1
+2026-01-05 14:51:57,190 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9355
+2026-01-05 14:51:57,194 [INFO] AIServer: Episode 1767635543 ended (Death detected). Incrementing ID.
+2026-01-05 14:51:57,196 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9355
+2026-01-05 14:51:57,196 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9355
+.2026-01-05 14:51:57,199 [WARNING] failure_manager: FAILURE_EVENT: System entering NORMAL mode.
+2026-01-05 14:51:57,201 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,202 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9062
+2026-01-05 14:51:57,204 [WARNING] failure_manager: FAILURE_EVENT: System entering SAFE_MODE mode.
+2026-01-05 14:51:57,205 [WARNING] failure_manager: FAILURE_EVENT: System entering READ_ONLY mode.
+2026-01-05 14:51:57,206 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,207 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,207 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9091
+2026-01-05 14:51:57,217 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,218 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,219 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9118
+2026-01-05 14:51:57,221 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,221 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,221 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9143
+2026-01-05 14:51:57,224 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,224 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,224 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9167
+2026-01-05 14:51:57,232 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,232 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,233 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9189
+2026-01-05 14:51:57,238 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,238 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,239 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9211
+2026-01-05 14:51:57,242 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,242 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,242 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9231
+2026-01-05 14:51:57,248 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,250 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,251 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9250
+2026-01-05 14:51:57,255 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,255 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,256 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9268
+2026-01-05 14:51:57,260 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,261 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,262 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9286
+2026-01-05 14:51:57,267 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,268 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,268 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9302
+2026-01-05 14:51:57,272 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,272 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,272 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9318
+2026-01-05 14:51:57,275 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,275 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,276 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9333
+2026-01-05 14:51:57,282 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,283 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,284 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9348
+2026-01-05 14:51:57,287 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,287 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,288 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9362
+2026-01-05 14:51:57,295 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,295 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,295 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9375
+2026-01-05 14:51:57,302 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,302 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,303 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9388
+2026-01-05 14:51:57,306 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,307 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,307 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9400
+2026-01-05 14:51:57,314 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,314 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,315 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9412
+2026-01-05 14:51:57,323 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,323 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,323 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9423
+2026-01-05 14:51:57,336 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,336 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,337 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9434
+2026-01-05 14:51:57,341 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,341 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,341 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9444
+2026-01-05 14:51:57,350 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,350 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,350 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9455
+2026-01-05 14:51:57,354 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,354 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,355 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9464
+2026-01-05 14:51:57,357 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,357 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,357 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9474
+2026-01-05 14:51:57,364 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,365 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,365 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9483
+2026-01-05 14:51:57,370 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,370 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,370 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9492
+2026-01-05 14:51:57,373 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,373 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,373 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9500
+2026-01-05 14:51:57,376 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,377 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,377 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9508
+2026-01-05 14:51:57,382 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,383 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,383 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9516
+2026-01-05 14:51:57,386 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,386 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,386 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9524
+2026-01-05 14:51:57,388 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,388 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,389 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9531
+2026-01-05 14:51:57,390 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,391 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,391 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9538
+2026-01-05 14:51:57,392 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,393 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,393 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9545
+2026-01-05 14:51:57,397 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,397 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,399 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9552
+2026-01-05 14:51:57,402 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,402 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,402 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9559
+2026-01-05 14:51:57,405 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,406 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,407 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9565
+2026-01-05 14:51:57,410 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,410 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,411 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9571
+2026-01-05 14:51:57,415 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,416 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,416 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9577
+2026-01-05 14:51:57,420 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,421 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,421 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9583
+2026-01-05 14:51:57,424 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,424 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,424 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9589
+2026-01-05 14:51:57,429 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,430 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,430 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9595
+2026-01-05 14:51:57,437 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,437 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,437 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9600
+2026-01-05 14:51:57,440 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,440 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,440 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9605
+2026-01-05 14:51:57,442 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,442 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,442 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9610
+2026-01-05 14:51:57,449 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,449 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,449 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9615
+2026-01-05 14:51:57,454 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,455 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,455 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9620
+2026-01-05 14:51:57,457 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,457 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,458 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9625
+2026-01-05 14:51:57,462 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,463 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,463 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9630
+2026-01-05 14:51:57,470 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,470 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,471 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9634
+2026-01-05 14:51:57,474 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,474 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,474 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9639
+2026-01-05 14:51:57,478 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,479 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,479 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9643
+2026-01-05 14:51:57,486 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,486 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,487 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9647
+2026-01-05 14:51:57,489 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
+2026-01-05 14:51:57,489 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 30725d73
+2026-01-05 14:51:57,489 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9651
+2026-01-05 14:51:57,496 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9651
+2026-01-05 14:51:57,496 [ERROR] audit: DRIFT ERROR: High violation rate: 0.9651
+.
+----------------------------------------------------------------------
+Ran 3 tests in 2.544s
+OK

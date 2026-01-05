@@ -35,29 +35,45 @@ class Auditor:
                      controller: str,
                      raw_java_result: Any,
                      reward_total: float,
-                     reward_breakdown: Dict[str, float]) -> Dict[str, Any]:
+                     reward_breakdown: Dict[str, float],
+                     fallback_reason: Optional[str] = None,
+                     model_version: Optional[str] = None,
+                     inference_ms: float = 0.0,
+                     shadow_data: Optional[Dict[str, Any]] = None,
+                     java_timestamp: Optional[float] = None,
+                     missing_fields: int = 0) -> Dict[str, Any]:
         """
         Records a single cycle, runs validation, and returns the audit entry.
         """
-        state_str = json.dumps(raw_state, sort_keys=True)
-        state_hash = hashlib.sha256(state_str.encode('utf-8')).hexdigest()
+        try:
+            state_str = json.dumps(raw_state, sort_keys=True)
+            state_hash = hashlib.sha256(state_str.encode('utf-8')).hexdigest()
+        except (TypeError, ValueError, OverflowError):
+            logger.error("AUDIT ERROR: Failed to serialize raw_state for hashing. Using fallback hash.")
+            state_hash = hashlib.sha256(str(raw_state).encode('utf-8')).hexdigest()
 
         entry = {
             "timestamp": time.time(),
+            "java_timestamp": java_timestamp,
             "state_hash": state_hash,
             "state_version": state_version,
             "intent_issued": intent_issued,
             "confidence": confidence,
             "policy_source": policy_source,
             "controller": controller,
+            "fallback_reason": fallback_reason,
+            "model_version": model_version,
+            "inference_ms": inference_ms,
+            "shadow_data": shadow_data, # Record evolution shadow decisions
             "java_result": raw_java_result,
             "reward_total": reward_total,
             "reward_breakdown": reward_breakdown,
+            "missing_fields": missing_fields,
             "violations": []
         }
 
         # 1. Detect Contract Violations
-        violations = ViolationDetector.detect(entry)
+        violations = ViolationDetector.detect(entry, self.history)
         entry["violations"] = violations
 
         # 2. Add to history for drift detection
@@ -127,10 +143,49 @@ class ViolationDetector:
     STRICT contract violation detection.
     """
     @staticmethod
-    def detect(entry: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def detect(entry: Dict[str, Any], history: deque = None) -> List[Dict[str, Any]]:
         violations = []
         res = entry["java_result"]
         
+        # 0. INTEGRITY CHECKS (New)
+        # 0.1 Deduplication
+        if history and len(history) > 0:
+            last_entry = history[-1]
+            if entry["state_hash"] == last_entry["state_hash"]:
+                violations.append({
+                    "type": "DUPLICATE_STATE",
+                    "severity": ViolationSeverity.LOW,
+                    "description": "State hash matches immediately preceding cycle"
+                })
+
+        # 0.2 Time-To-Live (TTL)
+        if entry["java_timestamp"] is not None:
+            age = entry["timestamp"] - entry["java_timestamp"]
+            if age > 0.1: # 100ms threshold
+                violations.append({
+                    "type": "STALE_STATE",
+                    "severity": ViolationSeverity.MEDIUM,
+                    "description": f"State is {age*1000:.1f}ms old (Limit: 100ms)"
+                })
+            
+            # 0.3 Monotonicity
+            if history and len(history) > 0:
+                last_jt = history[-1].get("java_timestamp")
+                if last_jt and entry["java_timestamp"] < last_jt:
+                    violations.append({
+                        "type": "BACKWARDS_TIME",
+                        "severity": ViolationSeverity.HIGH,
+                        "description": "Java timestamp moved backwards"
+                    })
+
+        # 0.4 Partial Corruption
+        if entry["missing_fields"] > 2: # More than 50% of 4 core fields (health, energy, dist, colliding)
+            violations.append({
+                "type": "PARTIAL_CORRUPTION",
+                "severity": ViolationSeverity.HIGH,
+                "description": f"{entry['missing_fields']} fields missing/defaulted"
+            })
+
         if not isinstance(res, dict):
             violations.append({
                 "type": "MALFORMED_PAYLOAD",
@@ -218,7 +273,10 @@ class DataQualityGate:
         for v in entry["violations"]:
             if v["severity"] == ViolationSeverity.CRITICAL:
                 return False
-            if v["type"] in ["MALFORMED_PAYLOAD", "MISSING_FIELD"]:
+            if v["type"] in ["MALFORMED_PAYLOAD", "MISSING_FIELD", "PARTIAL_CORRUPTION", "BACKWARDS_TIME", "STALE_STATE"]:
+                return False
+            # Deduplication: We don't train on duplicates
+            if v["type"] == "DUPLICATE_STATE":
                 return False
 
         # 2. Missing Reward Breakdown

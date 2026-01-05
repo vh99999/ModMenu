@@ -27,6 +27,8 @@ public class AIClient {
     private static final int CONNECT_TIMEOUT_MS = 1000;
     private static final int READ_TIMEOUT_MS = 1000;
 
+    private static final int PROTOCOL_VERSION = 1;
+
     public AIClient(String host, int port) {
         this.host = host;
         this.port = port;
@@ -39,7 +41,7 @@ public class AIClient {
     public boolean sendHeartbeat() {
         JsonObject heartbeat = new JsonObject();
         heartbeat.addProperty("type", "HEARTBEAT");
-        heartbeat.addProperty("protocol_version", 1);
+        heartbeat.addProperty("protocol_version", PROTOCOL_VERSION);
 
         try (Socket socket = new Socket()) {
             socket.connect(new InetSocketAddress(host, port), CONNECT_TIMEOUT_MS);
@@ -54,6 +56,11 @@ public class AIClient {
                 String response = reader.readLine();
                 if (response != null) {
                     JsonObject jsonResponse = gson.fromJson(response, JsonObject.class);
+                    // Explicit validation of response structure
+                    if (!jsonResponse.has("status")) {
+                        LOGGER.error("[CONTRACT_VIOLATION] Heartbeat response missing 'status'");
+                        return false;
+                    }
                     return "OK".equals(jsonResponse.get("status").getAsString());
                 }
             }
@@ -69,6 +76,9 @@ public class AIClient {
      * @return A Response object containing the intent or error information.
      */
     public Response getNextIntent(JsonObject payload) {
+        // Enforce protocol version in all outgoing requests
+        payload.addProperty("protocol_version", PROTOCOL_VERSION);
+
         try (Socket socket = new Socket()) {
             socket.connect(new InetSocketAddress(host, port), CONNECT_TIMEOUT_MS);
             socket.setSoTimeout(READ_TIMEOUT_MS);
@@ -83,26 +93,45 @@ public class AIClient {
 
                 // Read intent response
                 String response = reader.readLine();
-                if (response != null) {
-                    JsonObject jsonResponse = gson.fromJson(response, JsonObject.class);
-                    if (jsonResponse.has("intent")) {
-                        try {
-                            IntentType intent = IntentType.valueOf(jsonResponse.get("intent").getAsString().toUpperCase());
-                            return new Response(intent, null);
-                        } catch (IllegalArgumentException e) {
-                            String unknownIntent = jsonResponse.get("intent").getAsString();
-                            LOGGER.error("Received unknown intent from Python: {}", unknownIntent);
-                            return new Response(null, "UNKNOWN_INTENT: " + unknownIntent);
-                        }
-                    }
-                    return new Response(null, "MALFORMED_RESPONSE");
+                if (response == null) {
+                    return new Response(null, 0.0, "EMPTY_RESPONSE");
+                }
+
+                JsonObject jsonResponse;
+                try {
+                    jsonResponse = gson.fromJson(response, JsonObject.class);
+                } catch (com.google.gson.JsonSyntaxException e) {
+                    return new Response(null, 0.0, "INVALID_JSON_RESPONSE");
+                }
+                
+                // 1. Check for explicit error fields from Python
+                if (jsonResponse.has("status") && "ERROR".equals(jsonResponse.get("status").getAsString())) {
+                    String error = jsonResponse.has("error") ? jsonResponse.get("error").getAsString() : "Unknown Python error";
+                    return new Response(null, 0.0, "SERVER_ERROR: " + error);
+                }
+
+                // 2. Validate successful response schema
+                if (!jsonResponse.has("intent")) {
+                    return new Response(null, 0.0, "MALFORMED_RESPONSE: Missing 'intent'");
+                }
+
+                try {
+                    String intentStr = jsonResponse.get("intent").getAsString();
+                    IntentType intent = IntentType.valueOf(intentStr.toUpperCase());
+                    
+                    double confidence = jsonResponse.has("confidence") ? jsonResponse.get("confidence").getAsDouble() : 1.0;
+
+                    return new Response(intent, confidence, null);
+                } catch (IllegalArgumentException e) {
+                    String unknownIntent = jsonResponse.get("intent").getAsString();
+                    LOGGER.error("[CONTRACT_VIOLATION] Received unknown intent from Python: {}", unknownIntent);
+                    return new Response(null, 0.0, "UNKNOWN_INTENT: " + unknownIntent);
                 }
             }
         } catch (IOException e) {
             LOGGER.debug("AI Server communication failure: {}", e.getMessage());
-            return new Response(null, "COMMUNICATION_FAILURE: " + e.getMessage());
+            return new Response(null, 0.0, "COMMUNICATION_FAILURE: " + e.getMessage());
         }
-        return new Response(null, "EMPTY_RESPONSE");
     }
 
     /**
@@ -110,10 +139,12 @@ public class AIClient {
      */
     public static class Response {
         public final IntentType intent;
+        public final double confidence;
         public final String errorMessage;
 
-        public Response(IntentType intent, String errorMessage) {
+        public Response(IntentType intent, double confidence, String errorMessage) {
             this.intent = intent;
+            this.confidence = confidence;
             this.errorMessage = errorMessage;
         }
 

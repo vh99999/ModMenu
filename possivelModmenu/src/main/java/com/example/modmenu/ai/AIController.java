@@ -39,6 +39,7 @@ public class AIController {
     private final AtomicBoolean isProcessing = new AtomicBoolean(false);
     
     private IntentType lastIntentTaken = IntentType.STOP;
+    private double lastConfidence = 1.0;
     private ExecutionResult lastExecutionResult = ExecutionResult.success();
 
     // Result tracking state
@@ -89,11 +90,11 @@ public class AIController {
 
         // 4. Orchestrate (Send report / Request next intent)
         // We report what was ACTUALLY taken in the previous cycle
-        orchestrate(state, lastIntentTaken, mode, result);
-
-        // Reset accumulators
-        damageDealtAcc = 0;
-        damageReceivedAcc = 0;
+        if (orchestrate(state, lastIntentTaken, mode, result)) {
+            // Reset accumulators ONLY if orchestration accepted the payload
+            damageDealtAcc = 0;
+            damageReceivedAcc = 0;
+        }
 
         // 5. Execution Selection
         if (mode == ControlMode.AI) {
@@ -113,6 +114,7 @@ public class AIController {
             // Shadow Learning: Observe and report human intent.
             // MUST NOT execute anything or interfere with human inputs.
             lastIntentTaken = humanIntent;
+            lastConfidence = 1.0; // Factual observation
             lastExecutionResult = ExecutionResult.success();
         } else {
             // Other modes (e.g. HEURISTIC or DISABLED)
@@ -156,43 +158,45 @@ public class AIController {
     /**
      * Main orchestration entry point. 
      * Handles both active AI control and passive Shadow Learning.
+     * @return true if the cycle was accepted for processing, false if busy.
      */
-    public void orchestrate(JsonObject state, IntentType intentTaken, ControlMode controller, JsonObject result) {
-        if (mode == ControlMode.DISABLED) return;
+    public boolean orchestrate(JsonObject state, IntentType intentTaken, ControlMode controller, JsonObject result) {
+        if (mode == ControlMode.DISABLED) return false;
 
         // Shadow learning requirement: Even when human is in control, we must send data.
-        if (isProcessing.get()) {
-            return;
+        if (!isProcessing.compareAndSet(false, true)) {
+            return false;
         }
 
         JsonObject payload = new JsonObject();
-        payload.addProperty("protocol_version", 1);
+        // protocol_version is added by AIClient
         payload.add("state", state);
         payload.addProperty("intent_taken", intentTaken != null ? intentTaken.name() : "STOP");
         payload.addProperty("controller", controller.name());
         payload.add("result", result);
-        payload.addProperty("last_confidence", 1.0); 
+        payload.addProperty("last_confidence", lastConfidence); 
 
-        isProcessing.set(true);
         executor.submit(() -> {
             try {
                 AIClient.Response response = client.getNextIntent(payload);
                 
                 if (response.isSuccess()) {
                     LOGGER.info("[INTENT_RECEIVED] Raw: {}", response.intent);
+                    lastConfidence = response.confidence;
                     if (mode == ControlMode.AI) {
                         intentQueue.add(response.intent);
                     }
                 } else {
                     // Fail-safe requirement: Trigger explicit fallback intent
                     LOGGER.warn("[CONTRACT_DEVIATION] AI Server error: {}. Using explicit fallback: {}", response.errorMessage, FALLBACK_INTENT);
+                    lastConfidence = 0.0;
                     if (mode == ControlMode.AI) {
                         intentQueue.add(FALLBACK_INTENT);
-                        // Report the fallback intent back to Python as intent_taken in next cycle
                     }
                 }
             } catch (Exception e) {
                 LOGGER.error("Orchestration error: {}", e.getMessage());
+                lastConfidence = 0.0;
                 if (mode == ControlMode.AI) {
                     intentQueue.add(FALLBACK_INTENT);
                 }
@@ -200,6 +204,7 @@ public class AIController {
                 isProcessing.set(false);
             }
         });
+        return true;
     }
 
     public IntentType pollIntent() {
