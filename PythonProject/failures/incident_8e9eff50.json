@@ -1,0 +1,12 @@
+{
+  "incident_id": "8e9eff50-c23a-4bd4-af3c-b5b410fcf4bd",
+  "experience_id": "0ea2d5af-fd3e-41de-8c2f-38cd68bc7ecf",
+  "timestamp": 1767648345.8375196,
+  "type": "CONTRACT_VIOLATION",
+  "severity": "HIGH",
+  "details": null,
+  "metadata": {
+    "audit_hash": "41452a471dadb2bd9a8eea8a2bc65489bb0aa6485fc6ddbd7a2cb630eebd0ae3",
+    "state_snapshot": {}
+  }
+}

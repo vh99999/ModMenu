@@ -208,6 +208,7 @@ class AIServer:
                     conn.sendall(json.dumps({
                         "status": "OK",
                         "version": self.version,
+                        "learning_state": LEARNING_STATE,
                         "timestamp": time.time(),
                         "experience_id": experience_id,
                         "active_policy": self.active_policy_name,
@@ -398,6 +399,9 @@ class AIServer:
                         return
                     self.failure_manager.set_mode(DisasterMode.NORMAL)
                     self.failure_manager.incidents = []
+                    self.auditor.history.clear()
+                    self.monitor.consecutive_reward_degradations = 0
+                    self.monitor.ml_policy_disabled = False # Clear any monitor kill-switch
                     conn.sendall(json.dumps({
                         "status": "SUCCESS",
                         "mode": self.failure_manager.mode.value,
@@ -755,6 +759,7 @@ class AIServer:
                     "intent": next_intent,
                     "confidence": float(confidence),
                     "policy_source": policy_source,
+                    "learning_state": LEARNING_STATE, # Explicitly FROZEN
                     "authority": authority,
                     "fallback_reason": fallback_reason,
                     "model_version": model_version,

@@ -75,6 +75,7 @@ class Auditor:
             "timestamp": time.time(),
             "java_timestamp": java_timestamp,
             "state_hash": state_hash,
+            "raw_state": raw_state, # Preserving raw sensor values as received
             "state_version": state_version,
             "intent_issued": intent_issued,
             "confidence": confidence,
@@ -130,21 +131,43 @@ class Auditor:
         total_conf = 0.0
         total_reward = 0.0
         violation_count = 0
+        
+        # Granular Metrics
+        duplicates = 0
+        stales = 0
+        missing_fields_total = 0
+        fallbacks = 0
 
         for entry in self.history:
             intent = entry["intent_issued"]
             intent_counts[intent] = intent_counts.get(intent, 0) + 1
             total_conf += entry["confidence"]
             total_reward += entry["reward_total"]
+            
+            v_types = [v["type"] for v in entry.get("violations", [])]
             if entry["violations"]:
                 violation_count += 1
+            
+            if "DUPLICATE_STATE" in v_types:
+                duplicates += 1
+            if "STALE_STATE" in v_types:
+                stales += 1
+            
+            missing_fields_total += entry.get("missing_fields", 0)
+            
+            if entry.get("fallback_reason") and entry.get("fallback_reason") != "NONE":
+                fallbacks += 1
 
         metrics = {
             "window_size": count,
             "intent_frequencies": {k: v / count for k, v in intent_counts.items()},
             "avg_confidence": total_conf / count,
             "avg_reward": total_reward / count,
-            "violation_rate": violation_count / count
+            "violation_rate": violation_count / count,
+            "duplicate_rate": duplicates / count,
+            "stale_rate": stales / count,
+            "avg_missing_fields": missing_fields_total / count,
+            "fallback_rate": fallbacks / count
         }
 
         # Check for collapses
@@ -199,6 +222,18 @@ class ViolationDetector:
                         "severity": ViolationSeverity.HIGH,
                         "description": "Java timestamp moved backwards"
                     })
+                
+                # 0.4 Tick-rate Mismatch (New)
+                if last_jt:
+                    dt = entry["java_timestamp"] - last_jt
+                    # Expected 50ms (0.05s). Allow 20ms-500ms range for "normal" jitter.
+                    # If it's outside this, or exactly 0 (without being a duplicate), it's weird.
+                    if (dt < 0.01 or dt > 1.0) and entry["state_hash"] != last_entry["state_hash"]:
+                        violations.append({
+                            "type": "TICK_RATE_MISMATCH",
+                            "severity": ViolationSeverity.MEDIUM,
+                            "description": f"Abnormal tick interval: {dt*1000:.1f}ms"
+                        })
 
         # 0.4 Partial Corruption
         if entry["missing_fields"] > 2: # More than 50% of 4 core fields (health, energy, dist, colliding)

@@ -1,0 +1,12 @@
+{
+  "incident_id": "4b59073d-da19-4474-8b9c-0e64bb5c45b6",
+  "experience_id": "SYSTEM",
+  "timestamp": 1767648366.0796654,
+  "type": "CRASH_RECOVERY",
+  "severity": "MEDIUM",
+  "details": "RECOVERY_FROM_CRASH",
+  "metadata": {
+    "audit_hash": null,
+    "state_snapshot": null
+  }
+}

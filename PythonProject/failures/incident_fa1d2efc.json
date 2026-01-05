@@ -1,0 +1,12 @@
+{
+  "incident_id": "fa1d2efc-cf78-4a84-9254-4f16b3d8684f",
+  "experience_id": "SYSTEM",
+  "timestamp": 1767648367.169052,
+  "type": "CONTRACT_VIOLATION",
+  "severity": "MEDIUM",
+  "details": "Monitor Alert: {'type': 'INTEGRITY_BREACH', 'level': <AlertLevel.CRITICAL: 'CRITICAL'>, 'description': 'High rate of data integrity violations detected'}",
+  "metadata": {
+    "audit_hash": null,
+    "state_snapshot": null
+  }
+}
