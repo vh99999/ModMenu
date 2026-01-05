@@ -18,7 +18,9 @@ if __name__ == "__main__":
     # 0. Test Heartbeat
     print("\nSending HEARTBEAT request...")
     response = test_request({"type": "HEARTBEAT"})
-    print("Response:", json.dumps(response, indent=2))
+    print("Response Status:", response.get("status"))
+    print("Audit Metrics:", json.dumps(response.get("audit_metrics"), indent=2))
+    print("Dataset Metrics:", json.dumps(response.get("dataset_metrics"), indent=2))
 
     # 1. Simulate AI in control with HEURISTIC policy
     payload_ai = {
@@ -33,10 +35,14 @@ if __name__ == "__main__":
         "controller": "AI",
         "policy_override": "HEURISTIC",
         "result": {
-            "damage_dealt": 0.0,
-            "damage_received": 0.1,
-            "is_alive": True,
-            "action_wasted": False
+            "status": "SUCCESS",
+            "failure_reason": "NONE",
+            "outcomes": {
+                "damage_dealt": 0.0,
+                "damage_received": 0.1,
+                "is_alive": True,
+                "action_wasted": False
+            }
         }
     }
     
@@ -56,10 +62,14 @@ if __name__ == "__main__":
         "intent_taken": "PRIMARY_ATTACK",
         "controller": "HUMAN",
         "result": {
-            "damage_dealt": 5.0,
-            "damage_received": 0.0,
-            "is_alive": True,
-            "action_wasted": False
+            "status": "SUCCESS",
+            "failure_reason": "NONE",
+            "outcomes": {
+                "damage_dealt": 5.0,
+                "damage_received": 0.0,
+                "is_alive": True,
+                "action_wasted": False
+            }
         }
     }
     

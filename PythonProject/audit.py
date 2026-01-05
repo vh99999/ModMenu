@@ -189,6 +189,23 @@ class ViolationDetector:
                     "description": "partial_execution set but no safety flags are True"
                 })
 
+        # 5. Reward Invariants Verification
+        reward = entry["reward_total"]
+        if not (-2.0 <= reward <= 2.0):
+            violations.append({
+                "type": "REWARD_BOUNDS_VIOLATION",
+                "severity": ViolationSeverity.CRITICAL,
+                "value": reward
+            })
+
+        outcomes = res.get("outcomes", {})
+        if outcomes.get("is_alive") is False and reward > -1.0:
+            violations.append({
+                "type": "REWARD_DOMINANCE_VIOLATION",
+                "severity": ViolationSeverity.CRITICAL,
+                "description": "is_alive is false but reward > -1.0"
+            })
+
         return violations
 
 class DataQualityGate:

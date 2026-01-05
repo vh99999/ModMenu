@@ -12,6 +12,7 @@ from memory import MemoryBuffer
 from trainer import Trainer
 from intent_space import Intent, IntentValidator
 from audit import Auditor
+from dataset import DatasetPipeline
 
 # Configure logging to be more descriptive
 logging.basicConfig(
@@ -47,6 +48,8 @@ class AIServer:
         self.parser = StateParser()
         self.reward_calc = RewardCalculator()
         self.auditor = Auditor()
+        
+        self.episode_id = int(time.time()) # Use timestamp as base for episode IDs
 
     def handle_client(self, conn: socket.socket, addr: Tuple[str, int]) -> None:
         """
@@ -69,12 +72,19 @@ class AIServer:
 
                 # 0. Handle Heartbeat / Healthcheck
                 if request.get("type") == "HEARTBEAT":
+                    # Calculate dataset metrics if we have data
+                    dataset_metrics = {}
+                    if len(self.memory) > 0:
+                        processed = DatasetPipeline.process_experiences(list(self.memory.buffer))
+                        dataset_metrics = DatasetPipeline.get_metrics(processed)
+
                     conn.sendall(json.dumps({
                         "status": "OK",
                         "version": self.version,
                         "timestamp": time.time(),
                         "active_policy": self.active_policy_name,
-                        "audit_metrics": self.auditor.calculate_drift_metrics()
+                        "audit_metrics": self.auditor.calculate_drift_metrics(),
+                        "dataset_metrics": dataset_metrics
                     }).encode('utf-8'))
                     return
 
@@ -137,7 +147,8 @@ class AIServer:
                         result=result,
                         reward=reward,
                         reward_breakdown=reward_breakdown,
-                        controller=controller
+                        controller=controller,
+                        episode_id=self.episode_id
                     )
                     
                     # Trainer handles IL (HUMAN) vs RL (AI/HEURISTIC)
@@ -148,6 +159,11 @@ class AIServer:
                         "controller": controller
                     }
                     self.trainer.train_on_experience(experience_for_trainer)
+
+                # 3.2 Episode Management: If dead, next experience belongs to a new episode
+                if result["outcomes"].get("is_alive") is False:
+                    logger.info(f"Episode {self.episode_id} ended (Death detected). Incrementing ID.")
+                    self.episode_id += 1
 
                 # 4. Decide next intent
                 next_intent = "STOP"

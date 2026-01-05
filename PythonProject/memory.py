@@ -24,7 +24,8 @@ class MemoryBuffer:
              result: Dict[str, Any], 
              reward: float, 
              reward_breakdown: Dict[str, float],
-             controller: str) -> None:
+             controller: str,
+             episode_id: int = 0) -> None:
         """
         Adds a new experience to the buffer.
         
@@ -38,6 +39,7 @@ class MemoryBuffer:
         - reward_breakdown: Component rewards
         - controller: Origin of action (HUMAN, HEURISTIC, AI)
         - state_version: Version of the state parser used
+        - episode_id: Unique identifier for the current life/session
         """
         experience = {
             "timestamp": time.time(),
@@ -48,7 +50,8 @@ class MemoryBuffer:
             "reward": float(reward),
             "reward_breakdown": reward_breakdown,
             "controller": controller,
-            "state_version": state.get("version", 0)
+            "state_version": state.get("version", 0),
+            "episode_id": episode_id
         }
         self.buffer.append(experience)
 
