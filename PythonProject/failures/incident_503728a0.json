@@ -1,0 +1,18 @@
+{
+  "incident_id": "503728a0-431c-4006-ada7-f16e439cdc12",
+  "experience_id": "c5a28abe-7b13-4575-9b39-c11419a26dda",
+  "timestamp": 1767652336.9062178,
+  "type": "HOSTILE_PAYLOAD",
+  "severity": "CRITICAL",
+  "details": "Hostile field: bypass_gates",
+  "metadata": {
+    "audit_hash": "2a2d97619a1083d5b87d5c78cbfb2a5665492deb39cd636598d54d5ff523fd80",
+    "state_snapshot": {
+      "status": "SUCCESS",
+      "failure_reason": "NONE",
+      "outcomes": {
+        "is_alive": true
+      }
+    }
+  }
+}

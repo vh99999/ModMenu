@@ -46,7 +46,8 @@ class Auditor:
                      missing_fields: int = 0,
                      lineage: Optional[Dict[str, Any]] = None,
                      authority: str = "UNKNOWN",
-                     reward_class: str = "DIAGNOSTIC") -> Dict[str, Any]:
+                     reward_class: str = "DIAGNOSTIC",
+                     full_payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """
         Records a single cycle, runs validation, and returns the audit entry.
         """
@@ -92,6 +93,7 @@ class Auditor:
             "reward_class": reward_class,
             "missing_fields": missing_fields,
             "lineage": lineage,
+            "full_payload": full_payload,
             "violations": []
         }
 
@@ -253,6 +255,28 @@ class ViolationDetector:
                     "severity": ViolationSeverity.HIGH,
                     "field": field,
                     "description": f"Mandatory lineage field '{field}' is missing or UNKNOWN"
+                })
+
+        # 0.6 HOSTILE PAYLOAD DETECTION
+        payload = entry.get("full_payload")
+        if payload:
+            hostile_fields = ["allow_learning_if", "force_learning", "suppress_incidents", "bypass_gates"]
+            for field in hostile_fields:
+                if field in payload:
+                    violations.append({
+                        "type": "HOSTILE_PAYLOAD",
+                        "severity": ViolationSeverity.CRITICAL,
+                        "field": field,
+                        "description": f"Hostile field detected in experience payload: {field}"
+                    })
+            
+            # Check for policy_override not matching expected management flow
+            # (In experience payloads, we allow policy_override but it should be audited)
+            if payload.get("policy_override") and payload.get("controller") == "AI":
+                violations.append({
+                    "type": "POLICY_INTERFERENCE",
+                    "severity": ViolationSeverity.HIGH,
+                    "description": "Experience payload attempted to override policy for AI controller"
                 })
 
         if not isinstance(res, dict):

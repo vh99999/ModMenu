@@ -37,6 +37,10 @@ class FailureType(str, Enum):
     LEARNING_GATE_BLOCK = "LEARNING_GATE_BLOCK"
     LEARNING_READINESS_VIOLATION = "LEARNING_READINESS_VIOLATION"
     LEARNING_FREEZE_BREACH = "LEARNING_FREEZE_BREACH"
+    STALE_STATE = "STALE_STATE"
+    TIME_INTEGRITY_VIOLATION = "TIME_INTEGRITY_VIOLATION"
+    FLOOD_DETECTION = "FLOOD_DETECTION"
+    HOSTILE_PAYLOAD = "HOSTILE_PAYLOAD"
 
 class FailureSeverity(str, Enum):
     INFO = "INFO"
@@ -52,10 +56,11 @@ class FailureManager:
     Handles disaster modes, incident response, and recovery workflows.
     FOLLOWS FAILURE_PROTOCOL.md.
     """
-    def __init__(self, log_dir: str = "failures"):
+    def __init__(self, log_dir: str = "failures", max_memory_incidents: int = 1000):
         self.mode = DisasterMode.NORMAL
         self.log_dir = log_dir
         self.incidents: List[Dict[str, Any]] = []
+        self.max_memory_incidents = max_memory_incidents
         
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
@@ -96,6 +101,17 @@ class FailureManager:
         
         self.incidents.append(report)
         
+        # Incident rotation: Keep bounded memory but preserve CRITICAL incidents
+        if len(self.incidents) > self.max_memory_incidents:
+            # Try to remove oldest non-critical incident
+            for i in range(len(self.incidents)):
+                if self.incidents[i].get("severity") != FailureSeverity.CRITICAL:
+                    self.incidents.pop(i)
+                    break
+            else:
+                # If all are critical, we have to pop the oldest one
+                self.incidents.pop(0)
+        
         if self.mode == DisasterMode.READ_ONLY_DISK:
             logger.warning(f"FAILURE_MANAGER: Suppressing report write for {incident_id[:8]} (READ_ONLY_DISK mode).")
             return
@@ -134,8 +150,20 @@ class FailureManager:
             self.set_mode(DisasterMode.READ_ONLY_DISK)
         elif failure_type == FailureType.CLOCK_JUMP:
             self.set_mode(DisasterMode.TEMPORAL_LOCK)
+        elif failure_type == FailureType.TIME_INTEGRITY_VIOLATION:
+            self.set_mode(DisasterMode.TEMPORAL_LOCK)
+        elif failure_type == FailureType.STALE_STATE:
+            if self.mode == DisasterMode.NORMAL:
+                self.set_mode(DisasterMode.SAFE_MODE)
         elif failure_type == FailureType.NETWORK_DROP:
             self.set_mode(DisasterMode.ISOLATED)
+        elif failure_type == FailureType.FLOOD_DETECTION:
+            # Under flood, we stay in SAFE_MODE to reduce compute/risk
+            if self.mode == DisasterMode.NORMAL:
+                self.set_mode(DisasterMode.SAFE_MODE)
+        elif failure_type == FailureType.HOSTILE_PAYLOAD:
+            # Rejection usually happens at parser, but if it reaches here, READ_ONLY
+            self.set_mode(DisasterMode.READ_ONLY)
 
     def get_status(self) -> Dict[str, Any]:
         return {

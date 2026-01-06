@@ -1,0 +1,18 @@
+{
+  "incident_id": "0fcfc09a-2b8e-4459-be36-2fc0084977bc",
+  "experience_id": "bbf81a64-f7cd-4a7c-bc38-956f307000b7",
+  "timestamp": 1767652338.1817095,
+  "type": "STALE_STATE",
+  "severity": "HIGH",
+  "details": null,
+  "metadata": {
+    "audit_hash": "0fa226a8f0f9d886a25c19d9a530b38358b298a34d2206063e292be373acd48c",
+    "state_snapshot": {
+      "status": "SUCCESS",
+      "failure_reason": "NONE",
+      "outcomes": {
+        "is_alive": true
+      }
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "incident_id": "04dde0cf-bc1c-4191-931a-83219928e6c3",
+  "experience_id": "8281b147-6782-4530-a9dd-71c22423af7e",
+  "timestamp": 1767722481.4443812,
+  "type": "LEARNING_GATE_BLOCK",
+  "severity": "MEDIUM",
+  "details": "Gate: Trust Boundary Gate, Reason: Invalid trust boundary: INTERNAL_VERIFIED",
+  "metadata": {
+    "audit_hash": null,
+    "state_snapshot": null
+  }
+}

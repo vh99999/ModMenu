@@ -1,0 +1,12 @@
+{
+  "incident_id": "349f68eb-44e0-427d-af5a-9a238fe4d79b",
+  "experience_id": "SYSTEM",
+  "timestamp": 1767652330.978854,
+  "type": "CONTRACT_VIOLATION",
+  "severity": "MEDIUM",
+  "details": "deque mutated during iteration",
+  "metadata": {
+    "audit_hash": null,
+    "state_snapshot": null
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "incident_id": "0a12057c-32e5-407b-93a2-65516aeee62a",
+  "experience_id": "SYSTEM",
+  "timestamp": 1767722563.8945942,
+  "type": "CONFIDENCE_COLLAPSE",
+  "severity": "CRITICAL",
+  "details": "Critical 1",
+  "metadata": {
+    "audit_hash": null,
+    "state_snapshot": null
+  }
+}

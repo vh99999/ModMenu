@@ -1,0 +1,12 @@
+{
+  "incident_id": "85230053-58fe-44a0-b969-b2fbeb00c759",
+  "experience_id": "SYSTEM",
+  "timestamp": 1767652366.3962486,
+  "type": "CONTRACT_VIOLATION",
+  "severity": "MEDIUM",
+  "details": "Monitor Alert: {'type': 'CONTRACT_BREACH', 'level': <AlertLevel.CRITICAL: 'CRITICAL'>, 'value': 0.9833333333333333, 'threshold': 0.1}",
+  "metadata": {
+    "audit_hash": null,
+    "state_snapshot": null
+  }
+}

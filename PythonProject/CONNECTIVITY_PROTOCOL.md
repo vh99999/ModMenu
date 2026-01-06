@@ -19,7 +19,7 @@ Every decision response MUST include:
 - `learning_state`: Always set to `FROZEN`.
 
 ## 4. NOISE & INTEGRITY HANDLING
-The system is hardened against real-world network and sensor noise:
+The system is hardened against real-world network and sensor noise as detailed in `RESILIENCE_PROTOCOL.md`:
 - **Missing Fields**: Handled via explicit default injection in `StateParser`.
 - **NaN / Non-numeric**: Clamped or defaulted to prevent propagation.
 - **Tick-rate Mismatch**: Detected and logged as `TICK_RATE_MISMATCH` if intervals are abnormal.

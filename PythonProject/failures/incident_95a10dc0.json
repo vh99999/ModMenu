@@ -1,0 +1,12 @@
+{
+  "incident_id": "95a10dc0-10e4-4428-b3a8-0e49d4621ba1",
+  "experience_id": "SYSTEM",
+  "timestamp": 1767722548.7214472,
+  "type": "TIMEOUT",
+  "severity": "LOW",
+  "details": null,
+  "metadata": {
+    "audit_hash": null,
+    "state_snapshot": null
+  }
+}

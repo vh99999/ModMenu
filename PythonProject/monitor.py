@@ -1,9 +1,15 @@
 import logging
 import time
+import os
 from typing import Dict, Any, List, Optional
 from enum import Enum
 from audit import Auditor, ViolationSeverity
 from intent_space import Intent
+
+try:
+    import psutil
+except ImportError:
+    psutil = None
 
 logger = logging.getLogger(__name__)
 
@@ -26,11 +32,15 @@ class Monitor:
     to protect the system from unsafe behavior.
     """
     
-    def __init__(self, auditor: Auditor):
+    def __init__(self, auditor: Auditor, failure_manager=None):
         self.auditor = auditor
+        self.failure_manager = failure_manager
         self.alerts: List[Dict[str, Any]] = []
         self.last_mitigation = MitigationType.NONE
         self.consecutive_reward_degradations = 0
+        self.start_time = time.time()
+        self.resource_history = [] # Bounded history of resource metrics
+        self.MAX_RESOURCE_HISTORY = 1000
 
     def analyze(self) -> Dict[str, Any]:
         """
@@ -43,8 +53,18 @@ class Monitor:
         # 1. Calculate Core Metrics
         metrics = self._calculate_metrics()
         
+        # 1.1 Collect and track resource metrics
+        resource_metrics = self._collect_resource_metrics()
+        metrics.update(resource_metrics)
+        self.resource_history.append(resource_metrics)
+        if len(self.resource_history) > self.MAX_RESOURCE_HISTORY:
+            self.resource_history.pop(0)
+
         # 2. Check Thresholds & Generate Alerts
         current_alerts = self._check_thresholds(metrics)
+        
+        # 2.1 Check for resource anomalies
+        current_alerts.extend(self._check_resource_anomalies(resource_metrics))
         
         # 3. Add ML Behavior specific alerts
         current_alerts.extend(self._check_ml_behavior(metrics))
@@ -96,6 +116,96 @@ class Monitor:
             "prod_avg_reward": prod_reward,
             "latency_99th": 35.0 # Mocked below 50ms limit
         }
+
+    def _collect_resource_metrics(self) -> Dict[str, Any]:
+        """
+        Gathers memory, latency, and incident metrics.
+        """
+        metrics = {
+            "uptime": time.time() - self.start_time,
+            "incident_rate": 0.0,
+            "memory_usage_mb": 0.0,
+            "fallback_usage_rate": 0.0,
+            "avg_latency_ms": 0.0
+        }
+
+        # 1. Incident Rate (per hour)
+        if self.failure_manager:
+            status = self.failure_manager.get_status()
+            count = status.get("incident_count", 0)
+            if metrics["uptime"] > 0:
+                metrics["incident_rate"] = (count / metrics["uptime"]) * 3600
+
+        # 2. Memory Usage (RSS if psutil available, else estimated)
+        if psutil:
+            try:
+                process = psutil.Process(os.getpid())
+                metrics["memory_usage_mb"] = process.memory_info().rss / (1024 * 1024)
+            except Exception:
+                pass
+        
+        # 3. Fallback usage and Latency from auditor history
+        history = self.auditor.history
+        if history:
+            window = list(history)[-100:] # Last 100 cycles
+            fallbacks = [1 if e.get("policy_source") in ["ML_TIMEOUT_FALLBACK", "ML_REJECTION_FALLBACK", "SOFT_DEGRADE_FALLBACK"] else 0 for e in window]
+            metrics["fallback_usage_rate"] = sum(fallbacks) / len(window)
+            metrics["avg_latency_ms"] = sum(e.get("inference_ms", 0) for e in window) / len(window)
+
+        return metrics
+
+    def _check_resource_anomalies(self, metrics: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        Detects unbounded growth or dangerous trends in resources.
+        """
+        alerts = []
+        
+        # Thresholds
+        MEM_LIMIT_MB = 1024 # 1GB
+        INCIDENT_RATE_LIMIT = 10 # per hour
+        LATENCY_LIMIT_MS = 100 # average over window
+        FALLBACK_LIMIT = 0.5 # 50% fallbacks
+
+        if metrics["memory_usage_mb"] > MEM_LIMIT_MB:
+            alerts.append({
+                "level": AlertLevel.CRITICAL,
+                "type": "MEMORY_EXHAUSTION",
+                "message": f"Memory usage ({metrics['memory_usage_mb']:.1f} MB) exceeds limit ({MEM_LIMIT_MB} MB)"
+            })
+
+        if metrics["incident_rate"] > INCIDENT_RATE_LIMIT:
+            alerts.append({
+                "level": AlertLevel.WARNING,
+                "type": "HIGH_INCIDENT_RATE",
+                "message": f"Incident rate ({metrics['incident_rate']:.2f}/hr) is too high"
+            })
+
+        if metrics["avg_latency_ms"] > LATENCY_LIMIT_MS:
+            alerts.append({
+                "level": AlertLevel.WARNING,
+                "type": "LATENCY_DEGRADATION",
+                "message": f"Average latency ({metrics['avg_latency_ms']:.1f} ms) exceeds threshold"
+            })
+
+        if metrics["fallback_usage_rate"] > FALLBACK_LIMIT:
+            alerts.append({
+                "level": AlertLevel.CRITICAL,
+                "type": "UNSTABLE_INFERENCE",
+                "message": f"Fallback rate ({metrics['fallback_usage_rate']*100:.1f}%) is critical"
+            })
+
+        # Trend detection (Memory leak)
+        if len(self.resource_history) >= 10:
+            recent = [m["memory_usage_mb"] for m in self.resource_history[-10:]]
+            if all(recent[i] < recent[i+1] for i in range(len(recent)-1)):
+                if recent[-1] - recent[0] > 50: # Growing more than 50MB in last 10 samples
+                    alerts.append({
+                        "level": AlertLevel.WARNING,
+                        "type": "MEMORY_LEAK_TREND",
+                        "message": "Continuous memory growth detected over last 10 monitoring cycles"
+                    })
+
+        return alerts
 
     def _calculate_metrics(self) -> Dict[str, Any]:
         history = self.auditor.history

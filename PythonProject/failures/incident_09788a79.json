@@ -1,0 +1,12 @@
+{
+  "incident_id": "09788a79-6697-42ef-a7bf-a0e2419f3b3f",
+  "experience_id": "ba9b0fae-f2c8-45d0-8ed4-8d9f1e4ece1f",
+  "timestamp": 1767722513.6175463,
+  "type": "LEARNING_GATE_BLOCK",
+  "severity": "HIGH",
+  "details": "Gate: Governance Gate, Reason: Invalid policy authority: None",
+  "metadata": {
+    "audit_hash": null,
+    "state_snapshot": null
+  }
+}

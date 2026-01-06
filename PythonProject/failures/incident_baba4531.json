@@ -1,0 +1,12 @@
+{
+  "incident_id": "baba4531-714e-4233-9509-65904ece6d3a",
+  "experience_id": "SYSTEM",
+  "timestamp": 1767652367.808507,
+  "type": "CONTRACT_VIOLATION",
+  "severity": "MEDIUM",
+  "details": "Monitor Alert: {'type': 'CONTRACT_BREACH', 'level': <AlertLevel.CRITICAL: 'CRITICAL'>, 'value': 0.9955156950672646, 'threshold': 0.1}",
+  "metadata": {
+    "audit_hash": null,
+    "state_snapshot": null
+  }
+}

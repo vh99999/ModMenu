@@ -1,0 +1,18 @@
+{
+  "incident_id": "84f1b1eb-8248-46d1-a58d-ebd691ac41ae",
+  "experience_id": "7d27c345-d376-4312-a64e-3f32d65e70de",
+  "timestamp": 1767652370.373504,
+  "type": "TIME_INTEGRITY_VIOLATION",
+  "severity": "HIGH",
+  "details": null,
+  "metadata": {
+    "audit_hash": "61d241bd193f319de9b042030cd83c4f7c674b8368c92b132d1909db25f79a0b",
+    "state_snapshot": {
+      "status": "SUCCESS",
+      "failure_reason": "NONE",
+      "outcomes": {
+        "is_alive": true
+      }
+    }
+  }
+}

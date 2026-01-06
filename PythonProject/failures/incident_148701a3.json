@@ -1,0 +1,12 @@
+{
+  "incident_id": "148701a3-0f2b-4f94-bf64-a6f351607dde",
+  "experience_id": "4303deca-0717-44a9-bf6e-6cbab032303a",
+  "timestamp": 1767652458.1608763,
+  "type": "MALFORMED_JSON",
+  "severity": "HIGH",
+  "details": "From ('127.0.0.1', 60451)",
+  "metadata": {
+    "audit_hash": null,
+    "state_snapshot": null
+  }
+}

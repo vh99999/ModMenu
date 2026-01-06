@@ -6,6 +6,7 @@ import time
 import math
 import os
 import uuid
+from collections import deque
 from typing import Dict, Any, Tuple, Optional
 
 from state_parser import StateParser
@@ -17,6 +18,7 @@ from intent_space import Intent, IntentValidator
 from audit import Auditor
 from dataset import DatasetPipeline
 from monitor import Monitor
+from drift_verifier import DriftVerifier
 from failure_manager import FailureManager, DisasterMode, FailureType, FailureSeverity
 from execution_mode import ExecutionMode, enforce_mode
 from learning_gates import LearningGateSystem, LearningGateResult
@@ -84,8 +86,9 @@ class AIServer:
         self.parser = StateParser()
         self.reward_calc = RewardCalculator()
         self.auditor = Auditor()
-        self.monitor = Monitor(self.auditor)
         self.failure_manager = FailureManager()
+        self.monitor = Monitor(self.auditor, self.failure_manager)
+        self.drift_verifier = DriftVerifier()
         self.learning_gate_system = LearningGateSystem()
         self.readiness_analyzer = LearningReadinessAnalyzer(self.failure_manager)
         self.last_readiness_report = {}
@@ -104,6 +107,11 @@ class AIServer:
         self.wall_clock_baseline = time.time()
         self.monotonic_baseline = time.monotonic()
         
+        # Flood Protection
+        self.request_history = deque()
+        self.flood_lock = threading.Lock()
+        self.FLOOD_THRESHOLD = 500 # messages per second
+        
         # Network Watchdog
         self.last_request_time = time.time()
         self.watchdog_thread = threading.Thread(target=self._network_watchdog, daemon=True)
@@ -120,6 +128,17 @@ class AIServer:
         
         # 1. GENERATE GLOBAL EXPERIENCE ID
         experience_id = str(uuid.uuid4())
+
+        # 0. Flood Check
+        is_flood, rate = self._check_flood()
+        if is_flood:
+            # We don't drop the request, but we record the incident and stay safe
+            self.failure_manager.record_incident(
+                FailureType.FLOOD_DETECTION,
+                severity=FailureSeverity.HIGH,
+                experience_id=experience_id,
+                details=f"Rate: {rate} req/s (Limit: {self.FLOOD_THRESHOLD})"
+            )
 
         # 0. Learning Freeze Integrity Check
         if LEARNING_STATE != "FROZEN":
@@ -526,7 +545,8 @@ class AIServer:
                     missing_fields=normalized_state.get("missing_fields", 0),
                     lineage=received_lineage,
                     authority=received_authority,
-                    reward_class=reward_class
+                    reward_class=reward_class,
+                    full_payload=request
                 )
 
                 # Store in memory and train if we have a valid experience and it passes QUALITY GATES
@@ -643,7 +663,36 @@ class AIServer:
                                     experience_id=experience_id,
                                     audit_entry=audit_entry
                                 )
-                            elif v_type in ["STALE_STATE", "PARTIAL_CORRUPTION", "BACKWARDS_TIME"]:
+                            elif v_type == "HOSTILE_PAYLOAD":
+                                self.failure_manager.record_incident(
+                                    FailureType.HOSTILE_PAYLOAD, 
+                                    severity=FailureSeverity.CRITICAL,
+                                    experience_id=experience_id,
+                                    audit_entry=audit_entry,
+                                    details=f"Hostile field: {violation.get('field')}"
+                                )
+                            elif v_type == "POLICY_INTERFERENCE":
+                                self.failure_manager.record_incident(
+                                    FailureType.CONTRACT_VIOLATION, 
+                                    severity=FailureSeverity.HIGH,
+                                    experience_id=experience_id,
+                                    audit_entry=audit_entry
+                                )
+                            elif v_type == "STALE_STATE":
+                                self.failure_manager.record_incident(
+                                    FailureType.STALE_STATE, 
+                                    severity=FailureSeverity.HIGH,
+                                    experience_id=experience_id,
+                                    audit_entry=audit_entry
+                                )
+                            elif v_type == "BACKWARDS_TIME":
+                                self.failure_manager.record_incident(
+                                    FailureType.TIME_INTEGRITY_VIOLATION, 
+                                    severity=FailureSeverity.HIGH,
+                                    experience_id=experience_id,
+                                    audit_entry=audit_entry
+                                )
+                            elif v_type == "PARTIAL_CORRUPTION":
                                 # Data integrity failures
                                 self.failure_manager.record_incident(
                                     FailureType.CORRUPTION_NAN, 
@@ -666,7 +715,8 @@ class AIServer:
                             "SURVIVAL_CRASH": FailureType.CONFIDENCE_COLLAPSE,
                             "CONTRACT_BREACH": FailureType.CONTRACT_VIOLATION,
                             "LATENCY_SPIKE": FailureType.TIMEOUT,
-                            "INTENT_COLLAPSE": FailureType.CONFIDENCE_COLLAPSE
+                            "INTENT_COLLAPSE": FailureType.CONFIDENCE_COLLAPSE,
+                            "INTEGRITY_BREACH": FailureType.TIME_INTEGRITY_VIOLATION
                         }
                         f_type = mapping.get(alert["type"], FailureType.CONTRACT_VIOLATION)
                         self.failure_manager.record_incident(f_type, details=f"Monitor Alert: {alert}")
@@ -742,6 +792,37 @@ class AIServer:
                         next_intent, confidence, model_version, authority = policy.decide(normalized_state)
                         policy_source = requested_policy
                         fallback_reason = fallback_reason or "MANUAL_OVERRIDE"
+
+                    # 4.2 Drift Detection Verification (Natural)
+                    current_state_hash = audit_entry.get("state_hash")
+                    is_drifted, drift_reason = self.drift_verifier.verify_drift(current_state_hash, {
+                        "intent": next_intent,
+                        "confidence": confidence,
+                        "policy_source": policy_source
+                    })
+                    if is_drifted:
+                        self.failure_manager.record_incident(
+                            FailureType.MODEL_DIVERGENCE,
+                            severity=FailureSeverity.CRITICAL,
+                            experience_id=experience_id,
+                            details=f"CRITICAL_DRIFT: {drift_reason}"
+                        )
+                        # Force LOCKDOWN on drift
+                        self.failure_manager.set_mode(DisasterMode.LOCKDOWN)
+                        next_intent = "STOP"
+                        policy_source = "CRITICAL_DRIFT_FALLBACK"
+
+                    # 4.3 Periodic Golden Registration (every 100 requests)
+                    if len(self.auditor.history) % 100 == 0:
+                        self.drift_verifier.register_golden(current_state_hash, raw_state, {
+                            "intent": next_intent,
+                            "confidence": confidence,
+                            "policy_source": policy_source
+                        })
+                        
+                    # 4.4 Explicit Drift Replay Audit
+                    if len(self.auditor.history) % 500 == 0:
+                        self._run_drift_audit()
                 else:
                     # In HUMAN mode, we just observe, but we can still suggest what we WOULD do
                     next_intent, confidence, policy_source, authority, fallback_reason, model_version, shadow_data = self.arbitrator.decide(normalized_state)
@@ -789,6 +870,41 @@ class AIServer:
             self.failure_manager.record_incident(FailureType.CONTRACT_VIOLATION, details=str(e))
             self._send_error(conn, "Internal Server Error")
 
+    def _run_drift_audit(self):
+        """
+        Explicitly replays golden states and verifies outputs.
+        """
+        logger.info("DRIFT_AUDIT: Starting explicit replay of golden states...")
+        drift_count = 0
+        for state_hash, golden in self.drift_verifier.golden_pairs.items():
+            raw_state = golden["input"]
+            normalized_state = self.parser.parse(raw_state)
+            if normalized_state is None:
+                continue
+                
+            # Re-run through arbitrator
+            next_intent, confidence, policy_source, _, _, _, _ = self.arbitrator.decide(normalized_state)
+            
+            is_drifted, reason = self.drift_verifier.verify_drift(state_hash, {
+                "intent": next_intent,
+                "confidence": confidence,
+                "policy_source": policy_source
+            })
+            
+            if is_drifted:
+                drift_count += 1
+                self.failure_manager.record_incident(
+                    FailureType.MODEL_DIVERGENCE,
+                    severity=FailureSeverity.CRITICAL,
+                    details=f"EXPLICIT_DRIFT_AUDIT FAILURE for {state_hash[:8]}: {reason}"
+                )
+        
+        if drift_count == 0:
+            logger.info(f"DRIFT_AUDIT: Success. {len(self.drift_verifier.golden_pairs)} states verified.")
+        else:
+            logger.critical(f"DRIFT_AUDIT: FAILED. {drift_count} drifted states detected.")
+            self.failure_manager.set_mode(DisasterMode.LOCKDOWN)
+
     def _send_error(self, conn: socket.socket, message: str) -> None:
         """Helper to send standard error responses."""
         try:
@@ -796,6 +912,19 @@ class AIServer:
             conn.sendall(json.dumps(response).encode('utf-8'))
         except Exception:
             pass
+
+    def _check_flood(self) -> Tuple[bool, int]:
+        now = time.time()
+        with self.flood_lock:
+            self.request_history.append(now)
+            # Remove timestamps older than 1 second
+            while self.request_history and self.request_history[0] < now - 1.0:
+                self.request_history.popleft()
+            
+            rate = len(self.request_history)
+            if rate > self.FLOOD_THRESHOLD:
+                return True, rate
+        return False, rate
 
     def _require_confirmation(self, conn: socket.socket, request: Dict[str, Any], action_name: str) -> bool:
         """

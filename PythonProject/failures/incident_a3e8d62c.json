@@ -1,0 +1,12 @@
+{
+  "incident_id": "a3e8d62c-74a0-4cdd-8fc6-9398c990f32e",
+  "experience_id": "bf18e56e-8777-4f9c-b839-9169fc6e5df8",
+  "timestamp": 1767652456.1152074,
+  "type": "FLOOD_DETECTION",
+  "severity": "HIGH",
+  "details": "Rate: 212 req/s (Limit: 20)",
+  "metadata": {
+    "audit_hash": null,
+    "state_snapshot": null
+  }
+}
