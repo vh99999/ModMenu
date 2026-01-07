@@ -18,13 +18,6 @@ public record ExecutionResult(
         json.addProperty("failure_reason", failureReason.name());
         json.addProperty("partial_execution", partialExecution);
         
-        // Safety flags (Java factual reporting)
-        JsonObject safetyFlags = new JsonObject();
-        safetyFlags.addProperty("is_blocked", failureReason == FailureReason.BLOCKED);
-        safetyFlags.addProperty("on_cooldown", failureReason == FailureReason.COOLDOWN);
-        safetyFlags.addProperty("invalid_environment", failureReason == FailureReason.INVALID_STATE);
-        json.add("safety_flags", safetyFlags);
-
         return json;
     }
 

@@ -11,6 +11,5 @@ public class ClientModEvents {
     @SubscribeEvent
     public static void onRegisterKeyMappings(RegisterKeyMappingsEvent event) {
         event.register(KeyMappings.OPEN_MENU_KEY);
-        event.register(KeyMappings.TOGGLE_AI_KEY);
     }
 }

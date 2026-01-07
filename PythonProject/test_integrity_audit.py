@@ -41,6 +41,9 @@ class TestIntegrityAudit(unittest.TestCase):
             "is_colliding": False, "timestamp": time.time(), "state_version": 1
         }
         
+        # 0. Switch to AI mode to allow inference and drift registration
+        self._send_request({"type": "CONTROL_MODE", "mode": "AI", "source": "GUI"})
+        
         # 1. Register golden state via the periodic mechanism (every 100 requests)
         # We'll just push 100 requests to trigger it
         for i in range(100):
@@ -54,7 +57,7 @@ class TestIntegrityAudit(unittest.TestCase):
         self.assertGreaterEqual(len(self.server.drift_verifier.golden_pairs), 1)
         
         # 3. Manually trigger drift by monkey-patching the policy (if we can)
-        # But wait, LEARNING_STATE is FROZEN and we shouldn't change behavior.
+        # But wait, LEARNING_STATE is SHADOW_ONLY and we shouldn't change ActivePolicy behavior.
         # To test detection, we can simulate a drift by manually adding a golden pair 
         # with a DIFFERENT expected output.
         
@@ -146,15 +149,30 @@ class TestIntegrityAudit(unittest.TestCase):
         # Let's check if we can see the latency_ms in metrics
         self.assertIn("avg_latency_ms", health["metrics"])
 
-    def test_learning_unreachable(self):
+    def test_active_policy_immutability(self):
         """
-        Prove that trainer is unreachable.
+        Requirement 1 & 4 (Phase 10B): Prove that ActivePolicy is immutable and 
+        mutation attempts trigger a fail-stop (crash).
         """
-        from trainer import Trainer
-        trainer = Trainer(None)
-        with self.assertRaises(AssertionError) as cm:
-            trainer.train_on_experience({})
-        self.assertEqual(str(cm.exception), "Trainer reached while learning is disabled")
+        from policy import MLPolicy
+        # We use a mock model manager
+        active_policy = MLPolicy(self.server.model_manager, role="ACTIVE")
+        
+        # Mutation attempts on ACTIVE policy should raise PermissionError
+        with self.assertRaises(PermissionError):
+            active_policy.update_weights([{"experience_id": "test", "reward": 1.0}])
+
+    def test_shadow_policy_learning_authorized(self):
+        """
+        Prove that ShadowPolicy can learn when authorized.
+        """
+        from policy import MLPolicy
+        shadow_policy = MLPolicy(self.server.model_manager, role="SHADOW")
+        initial_boost = shadow_policy.learned_boost
+        
+        # Update weights on SHADOW policy should succeed
+        shadow_policy.update_weights([{"experience_id": "test", "reward": 1.0}])
+        self.assertGreater(shadow_policy.learned_boost, initial_boost)
 
 if __name__ == '__main__':
     unittest.main()

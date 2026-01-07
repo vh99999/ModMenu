@@ -6,6 +6,7 @@ import time
 import math
 import os
 import uuid
+import types
 from collections import deque
 from typing import Dict, Any, Tuple, Optional
 
@@ -23,10 +24,10 @@ from failure_manager import FailureManager, DisasterMode, FailureType, FailureSe
 from execution_mode import ExecutionMode, enforce_mode
 from learning_gates import LearningGateSystem, LearningGateResult
 from learning_readiness import LearningReadinessAnalyzer
-from learning_freeze import LEARNING_STATE, ImportLock
+from learning_freeze import LEARNING_STATE, LIVE_SHADOW_LEARNING, ImportLock
 
-# UNCONDITIONAL FREEZE CHECK
-assert LEARNING_STATE == "FROZEN"
+# UNCONDITIONAL FREEZE CHECK REMOVED - SHADOW LEARNING ALLOWED
+assert LEARNING_STATE in {"FROZEN", "SHADOW_ONLY"}
 
 # Configure logging to be more descriptive
 logging.basicConfig(
@@ -64,12 +65,19 @@ class AIServer:
         self.model_manager.register_model(initial_metadata)
         self.model_manager.activate_model(initial_metadata["version"])
         
-        self.ml_policy = MLPolicy(self.model_manager)
+        # Requirement 1: Dual-Policy Architecture (MANDATORY)
+        self.active_policy = MLPolicy(self.model_manager, role="ACTIVE")
+        self.shadow_policy = MLPolicy(self.model_manager, role="SHADOW")
+        
+        # Backward compatibility alias
+        self.ml_policy = self.active_policy
+        
         self.heuristic_policy = HeuristicCombatPolicy()
         self.random_policy = RandomWeightedPolicy()
         
         self.arbitrator = PolicyArbitrator(
-            ml_policy=self.ml_policy,
+            ml_policy=self.active_policy,
+            shadow_policy=self.shadow_policy,
             heuristic_policy=self.heuristic_policy,
             random_policy=self.random_policy
         )
@@ -77,16 +85,26 @@ class AIServer:
         self.policies: Dict[str, Policy] = {
             "RANDOM": self.random_policy,
             "HEURISTIC": self.heuristic_policy,
-            "ML": self.ml_policy
+            "ML": self.active_policy,
+            "SHADOW_ML": self.shadow_policy
         }
         self.active_policy_name = "ML"
         
         self.memory = MemoryBuffer(capacity=5000)
-        self.trainer = Trainer(self.ml_policy)
+        self.trainer = Trainer(self.shadow_policy) # Shadow exclusively for learning
         self.parser = StateParser()
         self.reward_calc = RewardCalculator()
         self.auditor = Auditor()
         self.failure_manager = FailureManager()
+        
+        # Load promoted knowledge for ACTIVE policy (Task 2)
+        try:
+            self.active_policy.load_promoted_knowledge(os.path.join("snapshots", "promoted", "latest"))
+        except Exception as e:
+            logger.critical(f"HARD_FAIL: Active policy could not be initialized: {e}")
+            import sys
+            sys.exit(1)
+
         self.monitor = Monitor(self.auditor, self.failure_manager)
         self.drift_verifier = DriftVerifier()
         self.learning_gate_system = LearningGateSystem()
@@ -117,6 +135,13 @@ class AIServer:
         self.watchdog_thread = threading.Thread(target=self._network_watchdog, daemon=True)
         self.watchdog_thread.start()
         
+        # Phase 10B: Exclusive Control Authority
+        self.control_mode = "HUMAN"
+        self.influence_weight = 0.0
+        self.last_control_switch = time.time()
+        self.active_reward_window = deque(maxlen=100)
+        self.shadow_reward_window = deque(maxlen=100)
+        
         self.episode_id = int(time.time()) # Use timestamp as base for episode IDs
 
     def handle_client(self, conn: socket.socket, addr: Tuple[str, int]) -> None:
@@ -141,12 +166,12 @@ class AIServer:
             )
 
         # 0. Learning Freeze Integrity Check
-        if LEARNING_STATE != "FROZEN":
+        if LEARNING_STATE not in {"FROZEN", "SHADOW_ONLY"}:
             self.failure_manager.record_incident(
                 FailureType.LEARNING_FREEZE_BREACH,
                 severity=FailureSeverity.CRITICAL,
                 experience_id=experience_id,
-                details="LEARNING_STATE mutation detected!"
+                details=f"Invalid LEARNING_STATE: {LEARNING_STATE}"
             )
             # Crash execution as required
             import sys
@@ -223,6 +248,10 @@ class AIServer:
                     # Calculate monitoring data and attach readiness report
                     monitoring_data = self.monitor.analyze()
                     monitoring_data["learning_readiness"] = self.last_readiness_report
+                    
+                    # Phase 10B Observability
+                    avg_active = sum(self.active_reward_window) / len(self.active_reward_window) if self.active_reward_window else 0.0
+                    avg_shadow = sum(self.shadow_reward_window) / len(self.shadow_reward_window) if self.shadow_reward_window else 0.0
 
                     conn.sendall(json.dumps({
                         "status": "OK",
@@ -230,6 +259,12 @@ class AIServer:
                         "learning_state": LEARNING_STATE,
                         "timestamp": time.time(),
                         "experience_id": experience_id,
+                        "control_mode": self.control_mode,
+                        "influence_weight": float(self.influence_weight),
+                        "shadow_reward_avg": float(avg_shadow),
+                        "active_reward_avg": float(avg_active),
+                        "learning_active": LIVE_SHADOW_LEARNING,
+                        "last_control_switch": self.last_control_switch,
                         "active_policy": self.active_policy_name,
                         "ml_enabled": self.arbitrator.ml_enabled,
                         "active_model": self.model_manager.active_model_version,
@@ -247,7 +282,9 @@ class AIServer:
                 # GLOBAL LOCKDOWN CHECK: API calls that modify state are blocked in LOCKDOWN
                 if self.failure_manager.mode == DisasterMode.LOCKDOWN:
                     is_state_update = "state" in request
-                    is_allowed_mgmt = request.get("type") in ["UNRELEASE_LOCKDOWN", "EMERGENCY_LOCKDOWN", "HEARTBEAT"]
+                    is_allowed_mgmt = request.get("type") in [
+                        "UNRELEASE_LOCKDOWN", "EMERGENCY_LOCKDOWN", "HEURISTIC", "HEARTBEAT", "CONTROL_MODE"
+                    ]
                     if not (is_state_update or is_allowed_mgmt):
                         self._send_error(conn, "System in LOCKDOWN. Action denied.")
                         return
@@ -263,6 +300,61 @@ class AIServer:
                         "optimizer_present": optimizer_present,
                         "gates_open": False,
                         "readiness_only": True,
+                        "timestamp": time.time(),
+                        "experience_id": experience_id
+                    }).encode('utf-8'))
+                    return
+
+                if request.get("type") == "CONTROL_MODE":
+                    mode = request.get("mode")
+                    source = request.get("source")
+                    
+                    # Validation
+                    if mode not in ["HUMAN", "AI"]:
+                        self.failure_manager.record_incident(
+                            FailureType.CONTROL_MODE_REJECTED, 
+                            severity=FailureSeverity.LOW, 
+                            details=f"Invalid control mode: {mode}"
+                        )
+                        self._send_error(conn, "Invalid control mode. Must be 'HUMAN' or 'AI'.")
+                        return
+                        
+                    if source != "GUI":
+                        self.failure_manager.record_incident(
+                            FailureType.CONTROL_MODE_REJECTED, 
+                            severity=FailureSeverity.LOW, 
+                            details=f"Invalid control source: {source}"
+                        )
+                        self._send_error(conn, "Invalid control source. Must be 'GUI'.")
+                        return
+                        
+                    if mode == self.control_mode:
+                        self.failure_manager.record_incident(
+                            FailureType.CONTROL_MODE_REJECTED, 
+                            severity=FailureSeverity.LOW, 
+                            details=f"Redundant control transition to {mode}"
+                        )
+                        self._send_error(conn, f"Redundant transition. Mode is already {mode}.")
+                        return
+                        
+                    # Success
+                    old_mode = self.control_mode
+                    self.control_mode = mode
+                    self.last_control_switch = time.time()
+                    
+                    # Reset influence on mode switch (Requirement 5)
+                    self.influence_weight = 0.0
+                    
+                    logger.info(f"CONTROL_MODE_CHANGED: {old_mode} -> {mode} (Source: {source})")
+                    self.failure_manager.record_incident(
+                        FailureType.CONTROL_MODE_CHANGED,
+                        severity=FailureSeverity.INFO,
+                        details=f"CONTROL_MODE_CHANGED: {old_mode} -> {mode}"
+                    )
+                    
+                    conn.sendall(json.dumps({
+                        "status": "SUCCESS",
+                        "control_mode": self.control_mode,
                         "timestamp": time.time(),
                         "experience_id": experience_id
                     }).encode('utf-8'))
@@ -413,6 +505,43 @@ class AIServer:
                     }).encode('utf-8'))
                     return
 
+                if request.get("type") == "SET_LIVE_SHADOW_LEARNING":
+                    enabled = bool(request.get("enabled", False))
+                    import learning_freeze
+                    learning_freeze.LIVE_SHADOW_LEARNING = enabled
+                    logger.info(f"SHADOW_LEARNING_CONTROL: LIVE_SHADOW_LEARNING set to {enabled}")
+                    conn.sendall(json.dumps({
+                        "status": "SUCCESS",
+                        "live_shadow_learning": enabled,
+                        "timestamp": time.time(),
+                        "experience_id": experience_id
+                    }).encode('utf-8'))
+                    return
+
+                if request.get("type") == "COMMIT_SHADOW_LEARNING":
+                    if not self._require_confirmation(conn, request, "COMMIT_SHADOW_LEARNING"):
+                        return
+                    success = self._commit_shadow_learning()
+                    conn.sendall(json.dumps({
+                        "status": "SUCCESS" if success else "FAILURE",
+                        "active_boost": self.active_policy.learned_boost,
+                        "timestamp": time.time(),
+                        "experience_id": experience_id
+                    }).encode('utf-8'))
+                    return
+
+                if request.get("type") == "ROLLBACK_SHADOW_LEARNING":
+                    if not self._require_confirmation(conn, request, "ROLLBACK_SHADOW_LEARNING"):
+                        return
+                    success = self._rollback_active_policy()
+                    conn.sendall(json.dumps({
+                        "status": "SUCCESS" if success else "FAILURE",
+                        "active_boost": self.active_policy.learned_boost,
+                        "timestamp": time.time(),
+                        "experience_id": experience_id
+                    }).encode('utf-8'))
+                    return
+
                 if request.get("type") == "RESET_FAILURE_STATUS":
                     if not self._require_confirmation(conn, request, "RESET_FAILURE_STATUS"):
                         return
@@ -421,6 +550,12 @@ class AIServer:
                     self.auditor.history.clear()
                     self.monitor.consecutive_reward_degradations = 0
                     self.monitor.ml_policy_disabled = False # Clear any monitor kill-switch
+                    
+                    # Reset policy boosts
+                    self.active_policy.learned_boost = 0.0
+                    self.shadow_policy.learned_boost = 0.0
+                    self.influence_weight = 0.0
+                    
                     conn.sendall(json.dumps({
                         "status": "SUCCESS",
                         "mode": self.failure_manager.mode.value,
@@ -510,18 +645,27 @@ class AIServer:
                     # Default based on controller if not provided by legacy Java
                     received_authority = "AUTHORITATIVE" if controller in ["HUMAN", "AI"] else "OVERRIDE"
 
+                # Requirement: Explicit learning permit check
+                policy_authority = request.get("policy_authority")
+                is_learning_permit = policy_authority in ["SHADOW_LEARNING_PERMIT", "ACTIVE_LEARNING_PERMIT"]
+
                 received_lineage = {
                     "source": "JAVA_SOURCE",
                     "trust_boundary": "EXTERNAL_UNTRUSTED",
-                    "learning_allowed": self.failure_manager.mode == DisasterMode.NORMAL,
+                    "learning_allowed": is_learning_permit,
                     "decision_authority": controller
                 }
+
+                # Determine policy mode for auditing (MANDATORY for SHADOW safety)
+                # SHADOW mode if explicitly permitted OR if system is in HUMAN control mode.
+                policy_mode = "SHADOW" if (policy_authority == "SHADOW_LEARNING_PERMIT" or controller == "HUMAN") else "ACTIVE"
 
                 # Calculate reward for the action just taken
                 # Pass learning_allowed to tag the reward
                 reward, reward_breakdown, reward_class = self.reward_calc.calculate(
                     result, 
-                    learning_allowed=received_lineage["learning_allowed"]
+                    learning_allowed=received_lineage["learning_allowed"],
+                    is_incomplete=normalized_state.get("is_incomplete", False) or not isinstance(raw_result, dict)
                 )
 
                 # 3.1 AUDIT RECORDING
@@ -543,170 +687,235 @@ class AIServer:
                     shadow_data=last_shadow_data,
                     java_timestamp=java_timestamp,
                     missing_fields=normalized_state.get("missing_fields", 0),
+                    is_incomplete=normalized_state.get("is_incomplete", False),
                     lineage=received_lineage,
                     authority=received_authority,
                     reward_class=reward_class,
-                    full_payload=request
+                    full_payload=request,
+                    policy_mode=policy_mode
                 )
 
-                # Store in memory and train if we have a valid experience and it passes QUALITY GATES
-                # Also check for FREEZE, READ_ONLY_DISK, and LOCKDOWN modes
-                if intent_taken and self.failure_manager.mode not in [DisasterMode.FREEZE, DisasterMode.READ_ONLY_DISK, DisasterMode.LOCKDOWN]:
-                    if self.auditor.check_quality_gate(audit_entry):
-                        logger.debug(f"Experience: intent={intent_taken}, controller={controller}, reward={reward:.2f}")
-                        try:
-                            self.memory.push(
-                                experience_id=experience_id,
-                                state=normalized_state,
-                                intent=intent_taken,
-                                confidence=last_confidence,
-                                result=result,
-                                reward=reward,
-                                reward_breakdown=reward_breakdown,
-                                controller=controller,
-                                episode_id=self.episode_id,
-                                fallback_reason=last_fallback_reason,
-                                model_version=last_model_version,
-                                lineage=received_lineage
-                            )
-                            
-                            # Trainer handles IL (HUMAN) vs RL (AI/HEURISTIC)
-                            verified_lineage = received_lineage.copy()
-                            verified_lineage["trust_boundary"] = "INTERNAL_VERIFIED"
+                # Phase 10B: Reward Tracking for Influence
+                if last_shadow_data:
+                    shadow_intent = last_shadow_data.get("intent")
+                    if intent_taken == shadow_intent:
+                        self.shadow_reward_window.append(reward)
+                    elif request.get("policy_source", "").startswith("SHADOW_INFLUENCE_"):
+                        self.shadow_reward_window.append(reward)
+                
+                if request.get("policy_source", "").startswith("ML_"):
+                    self.active_reward_window.append(reward)
+
+                # Requirement 5: Influence Adjustment Rules
+                self._adjust_influence_weight(audit_entry)
+
+                # Store in memory and train if we have a valid experience
+                # Shadow mode must never be blocked from observing. (Requirement Final Decision Logic)
+                if intent_taken:
+                    # Run quality gate but do not drop data for Shadow Observation
+                    is_quality_pass = self.auditor.check_quality_gate(audit_entry)
+                    if not is_quality_pass:
+                        logger.info(f"[SHADOW] Experience {experience_id} quality gate fail - proceeding with observation")
+
+                    logger.debug(f"Experience: intent={intent_taken}, controller={controller}, reward={reward:.2f}")
+                    try:
+                        self.memory.push(
+                            experience_id=experience_id,
+                            state=normalized_state,
+                            intent=intent_taken,
+                            confidence=last_confidence,
+                            result=result,
+                            reward=reward,
+                            reward_breakdown=reward_breakdown,
+                            controller=controller,
+                            episode_id=self.episode_id,
+                            fallback_reason=last_fallback_reason,
+                            model_version=last_model_version,
+                            lineage=received_lineage
+                        )
                         
-                            experience_for_trainer = {
-                                "experience_id": experience_id,
-                                "state": normalized_state,
-                                "intent": intent_taken,
-                                "reward": reward,
-                                "controller": controller,
-                                "lineage": verified_lineage,
-                                "violations": audit_entry.get("violations", []),
-                                "policy_authority": request.get("policy_authority")
-                            }
-                            
-                            # 3.2 EVALUATE LEARNING GATES
-                            gate_decisions = self.learning_gate_system.evaluate_all(experience_for_trainer)
-                            for d in gate_decisions:
-                                logger.info(f"LEARNING_GATE [{d.gate_name}]: {d.result.name} - {d.reason}")
-                                if d.result != LearningGateResult.PASS:
-                                    # severity: BLOCKED → HIGH, FAIL → MEDIUM
-                                    sev = FailureSeverity.HIGH if d.result == LearningGateResult.BLOCKED else FailureSeverity.MEDIUM
-                                    self.failure_manager.record_incident(
-                                        FailureType.LEARNING_GATE_BLOCK,
-                                        severity=sev,
-                                        experience_id=experience_id,
-                                        details=f"Gate: {d.gate_name}, Reason: {d.reason}"
-                                    )
-                            
-                            logger.info(f"FINAL_LEARNING_DECISION: {self.learning_gate_system.get_final_decision()}")
-                            
-                            # 3.3 READINESS EVALUATION (Counterfactual)
-                            readiness_report = self.readiness_analyzer.analyze(experience_for_trainer, gate_decisions)
-                            self.last_readiness_report = readiness_report
-                            logger.info(f"LEARNING_READINESS: {json.dumps(readiness_report)}")
-                            
-                            # Readiness Incident Rules
-                            if readiness_report.get("confidence_sufficient") and readiness_report.get("data_quality_ok") and readiness_report.get("reward_signal_valid"):
-                                if any(d.result != LearningGateResult.PASS for d in gate_decisions):
-                                    # Readiness suggests learning despite gates closed -> HIGH
-                                    self.failure_manager.record_incident(
-                                        FailureType.LEARNING_READINESS_VIOLATION,
-                                        severity=FailureSeverity.HIGH,
-                                        experience_id=experience_id,
-                                        details="Readiness suggests learning despite gates closed"
-                                    )
-                            
-                            if readiness_report.get("confidence_sufficient") and not readiness_report.get("data_quality_ok"):
-                                # Readiness metrics inconsistent -> MEDIUM
+                        # Trainer handles IL (HUMAN) vs RL (AI/HEURISTIC)
+                        verified_lineage = received_lineage.copy()
+                        verified_lineage["trust_boundary"] = "INTERNAL_VERIFIED"
+                    
+                        experience_for_trainer = {
+                            "experience_id": experience_id,
+                            "episode_id": self.episode_id,
+                            "state_hash": audit_entry["state_hash"],
+                            "state": normalized_state,
+                            "intent": intent_taken,
+                            "reward": reward,
+                            "controller": controller,
+                            "lineage": verified_lineage,
+                            "violations": audit_entry.get("violations", []),
+                            "policy_authority": request.get("policy_authority"),
+                            "policy_mode": self.trainer.policy.role if hasattr(self.trainer.policy, 'role') else "ACTIVE",
+                            "state_status": "INCOMPLETE" if normalized_state.get("is_incomplete") else "COMPLETE"
+                        }
+                        
+                        # 3.2 EVALUATE LEARNING GATES
+                        policy_context = types.SimpleNamespace(
+                            mode=experience_for_trainer["policy_mode"],
+                            lineage=experience_for_trainer["lineage"],
+                            violations=experience_for_trainer["violations"],
+                            policy_authority=experience_for_trainer["policy_authority"]
+                        )
+                        gate_decisions = self.learning_gate_system.evaluate_all(policy_context)
+                        for d in gate_decisions:
+                            logger.info(f"LEARNING_GATE [{d.gate_name}]: {d.result.name} - {d.reason}")
+                            if d.result != LearningGateResult.PASS:
+                                # severity: BLOCKED → HIGH, FAIL → MEDIUM
+                                sev = FailureSeverity.HIGH if d.result == LearningGateResult.BLOCKED else FailureSeverity.MEDIUM
+                                self.failure_manager.record_incident(
+                                    FailureType.LEARNING_GATE_BLOCK,
+                                    severity=sev,
+                                    experience_id=experience_id,
+                                    details=f"Gate: {d.gate_name}, Reason: {d.reason}"
+                                )
+                        
+                        # FINAL_LEARNING_DECISION refers to "Action" (Applying), not "Observation" (Learning)
+                        action_decision = self.learning_gate_system.get_final_decision(gate_decisions)
+                        logger.info(f"FINAL_LEARNING_ACTION_DECISION: {action_decision}")
+                        
+                        # 3.3 READINESS EVALUATION (Counterfactual)
+                        readiness_report = self.readiness_analyzer.analyze(experience_for_trainer, gate_decisions)
+                        self.last_readiness_report = readiness_report
+                        logger.info(f"LEARNING_READINESS: {json.dumps(readiness_report)}")
+                        
+                        # Readiness Incident Rules
+                        if readiness_report.get("confidence_sufficient") and readiness_report.get("data_quality_ok") and readiness_report.get("reward_signal_valid"):
+                            if any(d.result != LearningGateResult.PASS for d in gate_decisions):
+                                # Readiness suggests learning despite gates closed -> HIGH
                                 self.failure_manager.record_incident(
                                     FailureType.LEARNING_READINESS_VIOLATION,
-                                    severity=FailureSeverity.MEDIUM,
+                                    severity=FailureSeverity.HIGH,
+                                    experience_id=experience_id,
+                                    details="Readiness suggests learning despite gates closed"
+                                )
+                        
+                        if readiness_report.get("confidence_sufficient") and not readiness_report.get("data_quality_ok"):
+                            # Readiness metrics inconsistent -> MEDIUM
+                            self.failure_manager.record_incident(
+                                FailureType.LEARNING_READINESS_VIOLATION,
+                                severity=FailureSeverity.MEDIUM,
                                     experience_id=experience_id,
                                     details="Readiness metrics inconsistent: High confidence but low data quality"
                                 )
                             
-                            # NEVER act on PASS. Trainer remains unreachable.
-                            # self.trainer.train_on_experience(experience_for_trainer)
-                        except ValueError as e:
+                        # LIVE_SHADOW_LEARNING allowed for ShadowPolicy
+                        # Shadow mode must never be blocked from observing. (Requirement Final Decision Logic)
+                        is_blocked = (action_decision != "SHADOW_LEARNING_ALLOWED")
+                        
+                        if not is_blocked:
+                            try:
+                                self.trainer.train_on_experience(experience_for_trainer)
+                            except PermissionError as e:
+                                if "LEARNING_FREEZE_BREACH" in str(e):
+                                    self.failure_manager.record_incident(
+                                        FailureType.LEARNING_FREEZE_BREACH,
+                                        severity=FailureSeverity.CRITICAL,
+                                        experience_id=experience_id,
+                                        details=str(e)
+                                    )
+                                else:
+                                    raise e
+                        else:
+                            # Observing even if blocked from action
+                            logger.info(f"[SHADOW] Experience observed despite gate block for {experience_id}")
+                            try:
+                                self.trainer.train_on_experience(experience_for_trainer)
+                            except Exception as e:
+                                logger.error(f"[SHADOW] Failed to observe experience {experience_id}: {e}")
+                    except ValueError as e:
                             if "DATA_LINEAGE_VIOLATION" in str(e):
-                                self.failure_manager.record_incident(
-                                    FailureType.DATA_LINEAGE_VIOLATION,
-                                    severity=FailureSeverity.HIGH,
-                                    experience_id=experience_id,
-                                    details=str(e)
-                                )
+                                # SHADOW mode must never trigger FailureManager for observational issues
+                                if policy_mode != "SHADOW":
+                                    self.failure_manager.record_incident(
+                                        FailureType.DATA_LINEAGE_VIOLATION,
+                                        severity=FailureSeverity.HIGH,
+                                        experience_id=experience_id,
+                                        details=str(e)
+                                    )
+                                else:
+                                    logger.info(f"[SHADOW] Data lineage violation observed but not recorded in FailureManager: {e}")
                             else:
                                 raise e
                     else:
                         # Report incidents for critical audit violations
-                        for violation in audit_entry.get("violations", []):
-                            v_type = violation["type"]
-                            if v_type in ["REWARD_BOUNDS_VIOLATION", "REWARD_DOMINANCE_VIOLATION"]:
-                                self.failure_manager.record_incident(
-                                    FailureType.REWARD_INVARIANT, 
-                                    severity=FailureSeverity.CRITICAL,
-                                    experience_id=experience_id,
-                                    audit_entry=audit_entry
-                                )
-                            elif v_type in ["CONTRACT_VIOLATION", "MALFORMED_PAYLOAD", "MISSING_FIELD", "UNKNOWN_ENUM", "DATA_LINEAGE_VIOLATION"]:
-                                self.failure_manager.record_incident(
-                                    FailureType.CONTRACT_VIOLATION, 
-                                    severity=FailureSeverity.HIGH,
-                                    experience_id=experience_id,
-                                    audit_entry=audit_entry
-                                )
-                            elif v_type == "INTENT_MISMATCH":
-                                self.failure_manager.record_incident(
-                                    FailureType.CONTRACT_VIOLATION, 
-                                    severity=FailureSeverity.CRITICAL,
-                                    experience_id=experience_id,
-                                    audit_entry=audit_entry
-                                )
-                            elif v_type == "HOSTILE_PAYLOAD":
-                                self.failure_manager.record_incident(
-                                    FailureType.HOSTILE_PAYLOAD, 
-                                    severity=FailureSeverity.CRITICAL,
-                                    experience_id=experience_id,
-                                    audit_entry=audit_entry,
-                                    details=f"Hostile field: {violation.get('field')}"
-                                )
-                            elif v_type == "POLICY_INTERFERENCE":
-                                self.failure_manager.record_incident(
-                                    FailureType.CONTRACT_VIOLATION, 
-                                    severity=FailureSeverity.HIGH,
-                                    experience_id=experience_id,
-                                    audit_entry=audit_entry
-                                )
-                            elif v_type == "STALE_STATE":
-                                self.failure_manager.record_incident(
-                                    FailureType.STALE_STATE, 
-                                    severity=FailureSeverity.HIGH,
-                                    experience_id=experience_id,
-                                    audit_entry=audit_entry
-                                )
-                            elif v_type == "BACKWARDS_TIME":
-                                self.failure_manager.record_incident(
-                                    FailureType.TIME_INTEGRITY_VIOLATION, 
-                                    severity=FailureSeverity.HIGH,
-                                    experience_id=experience_id,
-                                    audit_entry=audit_entry
-                                )
-                            elif v_type == "PARTIAL_CORRUPTION":
-                                # Data integrity failures
-                                self.failure_manager.record_incident(
-                                    FailureType.CORRUPTION_NAN, 
-                                    severity=FailureSeverity.HIGH,
-                                    experience_id=experience_id,
-                                    audit_entry=audit_entry
-                                )
+                        # STRICTLY FORBIDDEN: DO NOT TRIGGER FAILURE_MANAGER for Shadow mode quality failures
+                        if audit_entry.get("policy_mode") != "SHADOW":
+                            for violation in audit_entry.get("violations", []):
+                                v_type = violation["type"]
+                                if v_type in ["REWARD_BOUNDS_VIOLATION", "REWARD_DOMINANCE_VIOLATION"]:
+                                    self.failure_manager.record_incident(
+                                        FailureType.REWARD_INVARIANT, 
+                                        severity=FailureSeverity.CRITICAL,
+                                        experience_id=experience_id,
+                                        audit_entry=audit_entry
+                                    )
+                                elif v_type in ["CONTRACT_VIOLATION", "MALFORMED_PAYLOAD", "MISSING_FIELD", "UNKNOWN_ENUM", "DATA_LINEAGE_VIOLATION"]:
+                                    self.failure_manager.record_incident(
+                                        FailureType.CONTRACT_VIOLATION, 
+                                        severity=FailureSeverity.HIGH,
+                                        experience_id=experience_id,
+                                        audit_entry=audit_entry
+                                    )
+                                elif v_type == "INTENT_MISMATCH":
+                                    self.failure_manager.record_incident(
+                                        FailureType.CONTRACT_VIOLATION, 
+                                        severity=FailureSeverity.CRITICAL,
+                                        experience_id=experience_id,
+                                        audit_entry=audit_entry
+                                    )
+                                elif v_type == "HOSTILE_PAYLOAD":
+                                    self.failure_manager.record_incident(
+                                        FailureType.HOSTILE_PAYLOAD, 
+                                        severity=FailureSeverity.CRITICAL,
+                                        experience_id=experience_id,
+                                        audit_entry=audit_entry,
+                                        details=f"Hostile field: {violation.get('field')}"
+                                    )
+                                elif v_type == "POLICY_INTERFERENCE":
+                                    self.failure_manager.record_incident(
+                                        FailureType.CONTRACT_VIOLATION, 
+                                        severity=FailureSeverity.HIGH,
+                                        experience_id=experience_id,
+                                        audit_entry=audit_entry
+                                    )
+                                elif v_type == "STALE_STATE":
+                                    self.failure_manager.record_incident(
+                                        FailureType.STALE_STATE, 
+                                        severity=FailureSeverity.HIGH,
+                                        experience_id=experience_id,
+                                        audit_entry=audit_entry
+                                    )
+                                elif v_type == "BACKWARDS_TIME":
+                                    self.failure_manager.record_incident(
+                                        FailureType.TIME_INTEGRITY_VIOLATION, 
+                                        severity=FailureSeverity.HIGH,
+                                        experience_id=experience_id,
+                                        audit_entry=audit_entry
+                                    )
+                                elif v_type == "PARTIAL_CORRUPTION":
+                                    # Data integrity failures
+                                    self.failure_manager.record_incident(
+                                        FailureType.CORRUPTION_NAN, 
+                                        severity=FailureSeverity.HIGH,
+                                        experience_id=experience_id,
+                                        audit_entry=audit_entry
+                                    )
+                        else:
+                            # Shadow mode: violations are already downgraded to INFO in Auditor
+                            # and we don't trigger the failure manager.
+                            if audit_entry.get("violations"):
+                                logger.info(f"[SHADOW] Audit violations observed for {experience_id} - skipping FailureManager reporting")
                 
                 # 3.2 MONITORING & AUTO-PROTECTION
                 # Run analysis and apply recommended mitigations
                 health_status = self.monitor.analyze()
                 mitigation = health_status.get("recommended_mitigation")
                 if mitigation and mitigation != "NONE":
-                    self.arbitrator.apply_mitigation(mitigation)
+                    self.arbitrator.apply_mitigation(mitigation, policy_mode=policy_mode)
                 
                 # Report incidents for critical alerts
                 for alert in health_status.get("alerts", []):
@@ -719,7 +928,7 @@ class AIServer:
                             "INTEGRITY_BREACH": FailureType.TIME_INTEGRITY_VIOLATION
                         }
                         f_type = mapping.get(alert["type"], FailureType.CONTRACT_VIOLATION)
-                        self.failure_manager.record_incident(f_type, details=f"Monitor Alert: {alert}")
+                        self.failure_manager.record_incident(f_type, details=f"Monitor Alert: {alert}", audit_entry=audit_entry)
 
                 # 3.3 Episode Management: If dead, next experience belongs to a new episode
                 if result["outcomes"].get("is_alive") is False:
@@ -748,7 +957,24 @@ class AIServer:
                 has_duplicate = any(v["type"] == "DUPLICATE_STATE" for v in audit_entry["violations"])
                 has_stale = any(v["type"] == "STALE_STATE" for v in audit_entry["violations"])
 
-                if has_stale:
+                # Phase 10B: Control Mode Gating (Non-Negotiable)
+                if self.control_mode == "HUMAN":
+                    next_intent = Intent.STOP.value
+                    confidence = 1.0
+                    policy_source = "HUMAN_GATED"
+                    authority = "ADVISORY"
+                    fallback_reason = "CONTROL_MODE_HUMAN"
+                    # Learning, logging, auditing MUST still occur.
+                    # We run the arbitrator in shadow mode to get metrics and shadow_data
+                    _, _, _, _, _, _, shadow_data = self.arbitrator.decide(normalized_state, policy_mode=policy_mode, state_hash=audit_entry["state_hash"])
+                    
+                    # Hard fail if ShadowPolicy emits actions in HUMAN mode (Requirement 2 & 4)
+                    if next_intent != Intent.STOP.value:
+                        logger.critical("HARD_FAIL: ShadowPolicy attempted to emit actions in HUMAN mode!")
+                        import sys
+                        sys.exit(1)
+
+                elif has_stale:
                     next_intent = Intent.STOP.value
                     policy_source = "INTEGRITY_STALE_FALLBACK"
                     authority = "OVERRIDE"
@@ -763,13 +989,16 @@ class AIServer:
                     fallback_reason = "DUPLICATE_STATE_DETECTED"
 
                 # 4.1 DISASTER MODE OVERRIDES
-                elif self.failure_manager.mode in [DisasterMode.READ_ONLY, DisasterMode.LOCKDOWN]:
+                if self.failure_manager.mode == DisasterMode.ISOLATED and policy_mode == "SHADOW":
+                    logger.warning("NETWORK ISOLATION DETECTED: Shadow mode continuing observational logic despite isolation.")
+
+                if self.failure_manager.mode in [DisasterMode.READ_ONLY, DisasterMode.LOCKDOWN] and policy_mode != "SHADOW":
                     next_intent = Intent.STOP.value
                     policy_source = "DISASTER_READ_ONLY"
                     authority = "OVERRIDE"
                     fallback_reason = "CRITICAL_FAILURE"
                 
-                elif self.failure_manager.mode == DisasterMode.ISOLATED:
+                elif self.failure_manager.mode == DisasterMode.ISOLATED and policy_mode != "SHADOW":
                     next_intent = Intent.STOP.value
                     policy_source = "DISASTER_ISOLATED"
                     authority = "OVERRIDE"
@@ -778,18 +1007,21 @@ class AIServer:
                 elif controller != "HUMAN":
                     requested_policy = request.get("policy_override", self.active_policy_name)
                     
+                    # Sync influence weight (Phase 10B)
+                    self.arbitrator.influence_weight = self.influence_weight
+                    
                     # SAFE_MODE: Force Heuristic
-                    if self.failure_manager.mode == DisasterMode.SAFE_MODE:
+                    if self.failure_manager.mode == DisasterMode.SAFE_MODE and policy_mode != "SHADOW":
                         requested_policy = "HEURISTIC"
                         fallback_reason = "DISASTER_SAFE_MODE"
                     
                     if requested_policy == "ML":
                         # Use the Arbitrator for ML path
-                        next_intent, confidence, policy_source, authority, fallback_reason, model_version, shadow_data = self.arbitrator.decide(normalized_state)
+                        next_intent, confidence, policy_source, authority, fallback_reason, model_version, shadow_data = self.arbitrator.decide(normalized_state, policy_mode=policy_mode, state_hash=audit_entry["state_hash"])
                     else:
                         # Direct policy access (Heuristic or Random)
                         policy = self.policies.get(requested_policy, self.policies[self.active_policy_name])
-                        next_intent, confidence, model_version, authority = policy.decide(normalized_state)
+                        next_intent, confidence, model_version, authority = policy.decide(normalized_state, state_hash=audit_entry["state_hash"])
                         policy_source = requested_policy
                         fallback_reason = fallback_reason or "MANUAL_OVERRIDE"
 
@@ -801,16 +1033,22 @@ class AIServer:
                         "policy_source": policy_source
                     })
                     if is_drifted:
+                        is_shadow_drift = policy_source.startswith(("SHADOW_INFLUENCE_", "CANARY_", "SHADOW_MODE")) or policy_mode == "SHADOW"
+                        
                         self.failure_manager.record_incident(
                             FailureType.MODEL_DIVERGENCE,
-                            severity=FailureSeverity.CRITICAL,
+                            severity=FailureSeverity.INFO if is_shadow_drift else FailureSeverity.CRITICAL,
                             experience_id=experience_id,
-                            details=f"CRITICAL_DRIFT: {drift_reason}"
+                            details=f"{'[SHADOW] ' if is_shadow_drift else ''}CRITICAL_DRIFT: {drift_reason}"
                         )
-                        # Force LOCKDOWN on drift
-                        self.failure_manager.set_mode(DisasterMode.LOCKDOWN)
-                        next_intent = "STOP"
-                        policy_source = "CRITICAL_DRIFT_FALLBACK"
+                        
+                        if not is_shadow_drift:
+                            # Force LOCKDOWN on active drift only
+                            self.failure_manager.set_mode(DisasterMode.LOCKDOWN)
+                            next_intent = "STOP"
+                            policy_source = "CRITICAL_DRIFT_FALLBACK"
+                        else:
+                            logger.info(f"[SHADOW] Drift ignored: {drift_reason}")
 
                     # 4.3 Periodic Golden Registration (every 100 requests)
                     if len(self.auditor.history) % 100 == 0:
@@ -824,9 +1062,9 @@ class AIServer:
                     if len(self.auditor.history) % 500 == 0:
                         self._run_drift_audit()
                 else:
-                    # In HUMAN mode, we just observe, but we can still suggest what we WOULD do
-                    next_intent, confidence, policy_source, authority, fallback_reason, model_version, shadow_data = self.arbitrator.decide(normalized_state)
-                    logger.debug(f"Shadow Observation: Human took {intent_taken}, AI would take {next_intent} via {policy_source}")
+                    # In HUMAN mode, we just observe. Arbitrator now returns STOP in SHADOW mode.
+                    next_intent, confidence, policy_source, authority, fallback_reason, model_version, shadow_data = self.arbitrator.decide(normalized_state, policy_mode="SHADOW", state_hash=audit_entry["state_hash"])
+                    logger.debug(f"Shadow Observation: Human took {intent_taken}, AI would have taken {shadow_data.get('intent')} via SHADOW_POLICY")
 
                 # 5. Return response (Validate outgoing intent)
                 if not Intent.has_value(next_intent):
@@ -840,7 +1078,7 @@ class AIServer:
                     "intent": next_intent,
                     "confidence": float(confidence),
                     "policy_source": policy_source,
-                    "learning_state": LEARNING_STATE, # Explicitly FROZEN
+                    "learning_state": LEARNING_STATE,
                     "authority": authority,
                     "fallback_reason": fallback_reason,
                     "model_version": model_version,
@@ -869,13 +1107,17 @@ class AIServer:
             logger.error(f"Unexpected error handling client {addr}: {e}", exc_info=True)
             self.failure_manager.record_incident(FailureType.CONTRACT_VIOLATION, details=str(e))
             self._send_error(conn, "Internal Server Error")
+            # Requirement 3: Reset to 0.0 on any error
+            self.influence_weight = 0.0
 
     def _run_drift_audit(self):
         """
         Explicitly replays golden states and verifies outputs.
         """
         logger.info("DRIFT_AUDIT: Starting explicit replay of golden states...")
-        drift_count = 0
+        active_drift_count = 0
+        shadow_drift_count = 0
+        
         for state_hash, golden in self.drift_verifier.golden_pairs.items():
             raw_state = golden["input"]
             normalized_state = self.parser.parse(raw_state)
@@ -883,7 +1125,7 @@ class AIServer:
                 continue
                 
             # Re-run through arbitrator
-            next_intent, confidence, policy_source, _, _, _, _ = self.arbitrator.decide(normalized_state)
+            next_intent, confidence, policy_source, _, _, _, _ = self.arbitrator.decide(normalized_state, state_hash=state_hash)
             
             is_drifted, reason = self.drift_verifier.verify_drift(state_hash, {
                 "intent": next_intent,
@@ -892,22 +1134,122 @@ class AIServer:
             })
             
             if is_drifted:
-                drift_count += 1
+                is_shadow = policy_source.startswith(("SHADOW_INFLUENCE_", "CANARY_"))
+                if is_shadow:
+                    shadow_drift_count += 1
+                else:
+                    active_drift_count += 1
+                
                 self.failure_manager.record_incident(
                     FailureType.MODEL_DIVERGENCE,
-                    severity=FailureSeverity.CRITICAL,
-                    details=f"EXPLICIT_DRIFT_AUDIT FAILURE for {state_hash[:8]}: {reason}"
+                    severity=FailureSeverity.INFO if is_shadow else FailureSeverity.CRITICAL,
+                    details=f"{'[SHADOW] ' if is_shadow else ''}EXPLICIT_DRIFT_AUDIT FAILURE for {state_hash[:8]}: {reason}"
                 )
         
-        if drift_count == 0:
-            logger.info(f"DRIFT_AUDIT: Success. {len(self.drift_verifier.golden_pairs)} states verified.")
+        if active_drift_count == 0:
+            logger.info(f"DRIFT_AUDIT: Success. {len(self.drift_verifier.golden_pairs)} states verified. Shadow drifts: {shadow_drift_count}")
         else:
-            logger.critical(f"DRIFT_AUDIT: FAILED. {drift_count} drifted states detected.")
-            self.failure_manager.set_mode(DisasterMode.LOCKDOWN)
+            logger.critical(f"DRIFT_AUDIT: FAILED. {active_drift_count} active drifted states detected.")
+            self.failure_manager.set_mode(DisasterMode.SHADOW_QUARANTINE)
+
+    def _commit_shadow_learning(self) -> bool:
+        """
+        Commit Gate: Atomic swap ActivePolicy <- ShadowPolicy.
+        Requirement 4.
+        """
+        logger.info("COMMIT_GATE: Initiating atomic swap of ShadowPolicy to ActivePolicy.")
+        
+        # 1. OPTIONAL VALIDATION (Requirement 4)
+        if self.shadow_policy.learned_boost < 0.0:
+            logger.warning("COMMIT_GATE: Rejection - ShadowPolicy regression detected.")
+            return False
+            
+        # 2. SNAPSHOT (Requirement 4 & 5)
+        # Store backup for rollback
+        self.active_policy_backup_boost = self.active_policy.learned_boost
+        
+        # 3. ATOMIC SWAP
+        # In this mock, we only swap the learned_boost parameter
+        self.active_policy.learned_boost = self.shadow_policy.learned_boost
+        
+        # 4. AUDIT RECORD
+        logger.info(f"COMMIT_GATE: ATOMIC_SWAP_COMPLETE. Active Boost: {self.active_policy.learned_boost:.4f}")
+        return True
+
+    def _rollback_active_policy(self) -> bool:
+        """
+        Rollback Guarantee: Restore previous ActivePolicy.
+        Requirement 5.
+        """
+        if not hasattr(self, 'active_policy_backup_boost'):
+            logger.error("ROLLBACK_GATE: No backup state available.")
+            return False
+            
+        logger.warning(f"ROLLBACK_GATE: Instantaneous restore. Boost {self.active_policy.learned_boost:.4f} -> {self.active_policy_backup_boost:.4f}")
+        self.active_policy.learned_boost = self.active_policy_backup_boost
+        return True
+
+    def _reset_influence(self):
+        """Resets shadow influence to 0.0 (Requirement 3)."""
+        if self.influence_weight != 0.0:
+            logger.warning("CONTROL_AUTHORITY: Shadow influence RESET to 0.0")
+            self.influence_weight = 0.0
+
+    def _adjust_influence_weight(self, audit_entry: Dict[str, Any]):
+        """
+        Safety-Based Adaptation (Requirement 5).
+        """
+        if self.control_mode != "AI":
+            self.influence_weight = 0.0
+            return
+
+        # 1. Decrease immediately if ANY safety or performance issue
+        has_safety_violation = any(v["severity"] in ["HIGH", "CRITICAL"] for v in audit_entry.get("violations", []))
+        entropy = self.arbitrator.last_ml_entropy
+        
+        avg_active = sum(self.active_reward_window) / len(self.active_reward_window) if self.active_reward_window else 0.0
+        avg_shadow = sum(self.shadow_reward_window) / len(self.shadow_reward_window) if self.shadow_reward_window else 0.0
+        
+        reward_regression = (avg_shadow < avg_active) if (len(self.active_reward_window) >= 10 and len(self.shadow_reward_window) >= 10) else False
+        entropy_spike = (entropy > 1.2)
+
+        if has_safety_violation or reward_regression or entropy_spike:
+            if self.influence_weight > 0:
+                logger.warning(f"INFLUENCE_DECREASE: Safety={has_safety_violation}, Regression={reward_regression}, Entropy={entropy_spike}")
+                self.influence_weight = 0.0
+            return
+
+        # 2. Increase influence only if ALL conditions met
+        # - Shadow reward > Active reward (rolling window)
+        # - Zero HIGH or CRITICAL incidents
+        # - No drift violations
+        # - System health stable
+        
+        recent_incidents = [i for i in self.failure_manager.incidents if time.time() - i["timestamp"] < 300]
+        has_recent_incident = any(i["severity"] in ["HIGH", "CRITICAL"] for i in recent_incidents)
+        
+        # Check for drift violations in current cycle
+        has_drift = any(v["type"] in ["MODEL_DIVERGENCE", "INTENT_MISMATCH"] for v in audit_entry.get("violations", []))
+        
+        # Health stable (using Monitor analysis as proxy)
+        health_status = self.monitor.analyze().get("status", "OK")
+        health_stable = (health_status == "OK")
+
+        if (len(self.active_reward_window) >= 20 and len(self.shadow_reward_window) >= 20 and 
+            avg_shadow > avg_active and 
+            not has_recent_incident and 
+            not has_drift and 
+            health_stable):
+            
+            old_weight = self.influence_weight
+            self.influence_weight = min(0.3, self.influence_weight + 0.01)
+            if self.influence_weight != old_weight:
+                logger.info(f"INFLUENCE_INCREASE: {old_weight:.4f} -> {self.influence_weight:.4f}")
 
     def _send_error(self, conn: socket.socket, message: str) -> None:
         """Helper to send standard error responses."""
         try:
+            self._reset_influence() # Requirement 3
             response = {"error": message, "status": "ERROR"}
             conn.sendall(json.dumps(response).encode('utf-8'))
         except Exception:

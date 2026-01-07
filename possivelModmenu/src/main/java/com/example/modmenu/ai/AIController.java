@@ -21,20 +21,14 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 public class AIController {
     private static final Logger LOGGER = LogUtils.getLogger();
     
-    public enum ControlMode {
-        AI,        // AI is in active control
-        HUMAN,     // Human is in control, AI observes (Shadow Learning)
-        HEURISTIC, // Heuristic logic is in control (if implemented)
-        DISABLED   // AI system is completely off
-    }
-
+    private static volatile ControlMode controlMode = ControlMode.HUMAN;
+    
     private final AIClient client;
     private final ExecutorService executor;
     private final AIStateCollector stateCollector;
     private final IntentExecutor intentExecutor;
     private final HumanIntentDetector humanDetector;
     
-    private ControlMode mode = ControlMode.HUMAN;
     private final ConcurrentLinkedQueue<IntentType> intentQueue = new ConcurrentLinkedQueue<>();
     private final AtomicBoolean isProcessing = new AtomicBoolean(false);
     
@@ -51,10 +45,17 @@ public class AIController {
     private static final IntentType FALLBACK_INTENT = IntentType.STOP;
 
     public AIController(String host, int port) {
-        this.client = new AIClient(host, port);
-        this.stateCollector = new AIStateCollector(net.minecraft.client.Minecraft.getInstance());
-        this.intentExecutor = new IntentExecutor(net.minecraft.client.Minecraft.getInstance());
-        this.humanDetector = new HumanIntentDetector(net.minecraft.client.Minecraft.getInstance());
+        this(new AIClient(host, port), 
+             new AIStateCollector(net.minecraft.client.Minecraft.getInstance()),
+             new IntentExecutor(net.minecraft.client.Minecraft.getInstance()),
+             new HumanIntentDetector(net.minecraft.client.Minecraft.getInstance()));
+    }
+
+    public AIController(AIClient client, AIStateCollector stateCollector, IntentExecutor intentExecutor, HumanIntentDetector humanDetector) {
+        this.client = client;
+        this.stateCollector = stateCollector;
+        this.intentExecutor = intentExecutor;
+        this.humanDetector = humanDetector;
         
         this.executor = Executors.newSingleThreadExecutor(r -> {
             Thread thread = new Thread(r, "AI-Orchestrator-Thread");
@@ -67,61 +68,77 @@ public class AIController {
      * Orchestrates one full control cycle per tick.
      */
     public void onTick(net.minecraft.world.entity.player.Player player) {
-        if (mode == ControlMode.DISABLED) {
-            intentExecutor.releaseAllInputs();
-            return;
+        try {
+            if (controlMode == ControlMode.AI) {
+                blockHumanInput();
+                executeAIIntent(player);
+            } else {
+                blockAIIntent();
+                executeHumanInput(player);
+            }
+        } catch (Exception e) {
+            LOGGER.error("Exception in AI control path, reverting to HUMAN", e);
+            forceHumanMode();
         }
+    }
 
-        // 1. Detect Human Intent (Passive observation for shadow learning)
-        IntentType humanIntent = humanDetector.detect();
+    private void blockHumanInput() {
+        // Enforce exclusive authority: release all human-bound inputs
+        // This prevents human key presses from leaking into AI control
+        intentExecutor.releaseAllInputs();
+    }
 
-        // 2. Collect Results since last tick
+    private void executeAIIntent(net.minecraft.world.entity.player.Player player) {
+        // 1. Collect Outcomes since last tick
         updateResultTrackers(player);
         JsonObject result = lastExecutionResult.toJsonObject();
         JsonObject outcomes = new JsonObject();
         outcomes.addProperty("damage_dealt", damageDealtAcc);
         outcomes.addProperty("damage_received", damageReceivedAcc);
         outcomes.addProperty("is_alive", player.isAlive());
-        outcomes.addProperty("action_wasted", lastExecutionResult.status() == ExecutionStatus.FAILURE); 
         result.add("outcomes", outcomes);
 
-        // 3. Collect State (Sensor)
+        // 2. Collect State (Full snapshot)
         JsonObject state = stateCollector.collect(player);
 
-        // 4. Orchestrate (Send report / Request next intent)
-        // We report what was ACTUALLY taken in the previous cycle
-        if (orchestrate(state, lastIntentTaken, mode, result)) {
-            // Reset accumulators ONLY if orchestration accepted the payload
+        // 3. Orchestrate (Send state/intent/controller)
+        if (orchestrate(state, lastIntentTaken, controlMode, result)) {
             damageDealtAcc = 0;
             damageReceivedAcc = 0;
         }
 
-        // 5. Execution Selection
-        if (mode == ControlMode.AI) {
-            IntentType nextIntent = intentQueue.poll();
-            if (nextIntent != null) {
-                lastIntentTaken = nextIntent;
-            } else {
-                // Explicit fallback if queue is empty (e.g. timeout or server lag)
-                lastIntentTaken = FALLBACK_INTENT;
-            }
-            
-            LOGGER.info("[EXECUTION_ATTEMPT] Intent: {}", lastIntentTaken);
-            lastExecutionResult = intentExecutor.execute(player, lastIntentTaken);
-            LOGGER.info("[EXECUTION_RESULT] Status: {}, Reason: {}", lastExecutionResult.status(), lastExecutionResult.failureReason());
-            
-        } else if (mode == ControlMode.HUMAN) {
-            // Shadow Learning: Observe and report human intent.
-            // MUST NOT execute anything or interfere with human inputs.
-            lastIntentTaken = humanIntent;
-            lastConfidence = 1.0; // Factual observation
-            lastExecutionResult = ExecutionResult.success();
-        } else {
-            // Other modes (e.g. HEURISTIC or DISABLED)
-            intentExecutor.releaseAllInputs();
-            lastIntentTaken = FALLBACK_INTENT;
-            lastExecutionResult = ExecutionResult.success();
+        // 4. Execute AI Intent
+        IntentType nextIntent = intentQueue.poll();
+        lastIntentTaken = (nextIntent != null) ? nextIntent : FALLBACK_INTENT;
+        
+        lastExecutionResult = intentExecutor.execute(player, lastIntentTaken);
+    }
+
+    private void blockAIIntent() {
+        // No-op for now as Shadow Learning needs to report what happened
+    }
+
+    private void executeHumanInput(net.minecraft.world.entity.player.Player player) {
+        // Shadow Learning path
+        IntentType humanIntent = humanDetector.detect();
+        updateResultTrackers(player);
+        
+        JsonObject result = ExecutionResult.success().toJsonObject();
+        JsonObject outcomes = new JsonObject();
+        outcomes.addProperty("damage_dealt", damageDealtAcc);
+        outcomes.addProperty("damage_received", damageReceivedAcc);
+        outcomes.addProperty("is_alive", player.isAlive());
+        result.add("outcomes", outcomes);
+
+        JsonObject state = stateCollector.collect(player);
+        
+        if (orchestrate(state, humanIntent, controlMode, result)) {
+            damageDealtAcc = 0;
+            damageReceivedAcc = 0;
         }
+        
+        lastIntentTaken = humanIntent;
+        lastExecutionResult = ExecutionResult.success();
     }
 
     private void updateResultTrackers(net.minecraft.world.entity.player.Player player) {
@@ -130,76 +147,69 @@ public class AIController {
             damageReceivedAcc += (lastHealth - currentHealth);
         }
         lastHealth = currentHealth;
-        // Damage dealt tracking is complex in client-side without mixins; kept as placeholder.
     }
 
-    public void setMode(ControlMode mode) {
-        LOGGER.info("AI Control Mode changed to: {}", mode);
-        this.mode = mode;
+    public static void forceHumanMode() {
+        if (controlMode != ControlMode.HUMAN) {
+            LOGGER.warn("FORCE FAIL-SAFE: Reverting to HUMAN control mode.");
+            controlMode = ControlMode.HUMAN;
+        }
+    }
+
+    public void attemptModeToggle() {
+        controlMode = (controlMode == ControlMode.HUMAN) ? ControlMode.AI : ControlMode.HUMAN;
         intentQueue.clear();
-        intentExecutor.releaseAllInputs(); // Safety: release all inputs when changing mode
+        intentExecutor.releaseAllInputs();
+        LOGGER.info("Control mode toggled via GUI to: {}", controlMode);
     }
 
     public ControlMode getMode() {
-        return mode;
+        return controlMode;
     }
 
-    /**
-     * Legacy support for toggle key
-     */
-    public void setEnabled(boolean enabled) {
-        setMode(enabled ? ControlMode.AI : ControlMode.HUMAN);
-    }
-
-    public boolean isEnabled() {
-        return mode == ControlMode.AI;
+    public void setMode(ControlMode mode) {
+        controlMode = mode;
+        intentQueue.clear();
+        intentExecutor.releaseAllInputs();
     }
 
     /**
      * Main orchestration entry point. 
-     * Handles both active AI control and passive Shadow Learning.
-     * @return true if the cycle was accepted for processing, false if busy.
      */
     public boolean orchestrate(JsonObject state, IntentType intentTaken, ControlMode controller, JsonObject result) {
-        if (mode == ControlMode.DISABLED) return false;
-
-        // Shadow learning requirement: Even when human is in control, we must send data.
         if (!isProcessing.compareAndSet(false, true)) {
             return false;
         }
 
         JsonObject payload = new JsonObject();
-        // protocol_version is added by AIClient
         payload.add("state", state);
         payload.addProperty("intent_taken", intentTaken != null ? intentTaken.name() : "STOP");
         payload.addProperty("controller", controller.name());
         payload.add("result", result);
-        payload.addProperty("last_confidence", lastConfidence); 
 
         executor.submit(() -> {
             try {
                 AIClient.Response response = client.getNextIntent(payload);
                 
                 if (response.isSuccess()) {
-                    LOGGER.info("[INTENT_RECEIVED] Raw: {}", response.intent);
                     lastConfidence = response.confidence;
-                    if (mode == ControlMode.AI) {
+                    if (controlMode == ControlMode.AI) {
                         intentQueue.add(response.intent);
                     }
                 } else {
-                    // Fail-safe requirement: Trigger explicit fallback intent
                     LOGGER.warn("[CONTRACT_DEVIATION] AI Server error: {}. Using explicit fallback: {}", response.errorMessage, FALLBACK_INTENT);
                     lastConfidence = 0.0;
-                    if (mode == ControlMode.AI) {
+                    if (controlMode == ControlMode.AI) {
                         intentQueue.add(FALLBACK_INTENT);
+                    }
+                    if (response.errorMessage != null && (response.errorMessage.contains("COMMUNICATION_FAILURE") || response.errorMessage.contains("MALFORMED"))) {
+                        forceHumanMode();
                     }
                 }
             } catch (Exception e) {
                 LOGGER.error("Orchestration error: {}", e.getMessage());
                 lastConfidence = 0.0;
-                if (mode == ControlMode.AI) {
-                    intentQueue.add(FALLBACK_INTENT);
-                }
+                forceHumanMode();
             } finally {
                 isProcessing.set(false);
             }
@@ -207,12 +217,8 @@ public class AIController {
         return true;
     }
 
-    public IntentType pollIntent() {
-        return intentQueue.poll();
-    }
-
     public void shutdown() {
-        intentExecutor.releaseAllInputs(); // Safety: release all inputs on shutdown
+        intentExecutor.releaseAllInputs();
         executor.shutdownNow();
     }
 }

@@ -64,6 +64,9 @@ class StateParser:
             # 3. Extraction, Type Enforcement & Sanity (NaN/Inf)
             raw_extracted, missing_count = cls._extract_and_validate(raw_payload)
             
+            if missing_count > 0:
+                logger.warning(f"STATE WARNING: Incomplete state detected ({missing_count} fields defaulted). Parsing once and continuing.")
+
             # 4. Normalization (To [0, 1] range)
             normalized = cls._normalize(raw_extracted)
             
@@ -80,7 +83,8 @@ class StateParser:
                 "raw": raw_extracted,
                 "normalized": normalized,
                 "derived": derived,
-                "missing_fields": missing_count
+                "missing_fields": missing_count,
+                "is_incomplete": missing_count > 0
             }
 
         except Exception as e:
@@ -117,7 +121,6 @@ class StateParser:
             
             # 3.1 Handle Missing Data (Explicit Default Injection)
             if val is None:
-                logger.warning(f"STATE WARNING: Field '{field}' missing. Using default: {f_default}")
                 validated[field] = f_default
                 missing_count += 1
                 continue
@@ -128,8 +131,8 @@ class StateParser:
                     # Explicit cast and sanity check
                     f_val = float(val)
                     if not math.isfinite(f_val):
-                        logger.warning(f"STATE WARNING: Field '{field}' is NaN/Inf. Using default: {f_default}")
                         validated[field] = f_default
+                        missing_count += 1
                     else:
                         # 3.3 Range Enforcement (Clamping)
                         clamped = max(f_min, min(f_max, f_val))
@@ -148,13 +151,13 @@ class StateParser:
                         elif low_val in ["false", "0", "no", "off"]:
                             validated[field] = False
                         else:
-                            logger.warning(f"STATE WARNING: Field '{field}' has ambiguous string value '{val}'. Using default: {f_default}")
                             validated[field] = f_default
+                            missing_count += 1
                     elif isinstance(val, (int, float)):
                         validated[field] = bool(val)
                     else:
-                        logger.warning(f"STATE WARNING: Field '{field}' invalid boolean type {type(val)}. Using default: {f_default}")
                         validated[field] = f_default
+                        missing_count += 1
                 
                 elif f_type == int:
                     i_val = int(val)
@@ -166,7 +169,6 @@ class StateParser:
                     validated[field] = val
 
             except (ValueError, TypeError):
-                logger.warning(f"STATE WARNING: Field '{field}' invalid value or type {type(val)}. Using default: {f_default}")
                 validated[field] = f_default
                 missing_count += 1
         

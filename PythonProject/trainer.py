@@ -8,10 +8,10 @@ import math
 from typing import Dict, Any, List, Optional, Tuple
 
 from policy import Policy, LearnedPolicy, MLPolicy, RandomWeightedPolicy, HeuristicCombatPolicy
-from learning_freeze import LEARNING_STATE
+import learning_freeze
 
-# UNCONDITIONAL FREEZE CHECK
-assert LEARNING_STATE == "FROZEN"
+# UNCONDITIONAL FREEZE CHECK REMOVED - SHADOW LEARNING ALLOWED
+assert learning_freeze.LEARNING_STATE in {"FROZEN", "SHADOW_ONLY"}
 from dataset import DatasetPipeline
 from reward import RewardCalculator
 from intent_space import Intent
@@ -25,30 +25,77 @@ class Trainer:
     """
     def __init__(self, policy: Policy):
         self.policy = policy
+        self.passive_store_path = os.path.join("shadow", "passive_store.json")
+        if not os.path.exists("shadow"):
+            os.makedirs("shadow")
+        self.passive_data = {
+            "session_id": 0,
+            "visitation_counts": {},
+            "valid_actions": {},
+            "transitions": {},
+            "invariant_violations": []
+        }
+        self.last_state_per_episode = {} # episode_id -> (state_hash, action)
+        self._load_passive_store()
+
+    def _load_passive_store(self):
+        if os.path.exists(self.passive_store_path):
+            try:
+                with open(self.passive_store_path, 'r') as f:
+                    data = json.load(f)
+                    if isinstance(data, dict):
+                        self.passive_data.update(data)
+                logger.info(f"[OK] Passive store loaded: {len(self.passive_data['visitation_counts'])} states")
+            except Exception as e:
+                logger.error(f"[ERROR] Failed to load passive store: {e}")
+
+    def _save_passive_store(self):
+        temp_path = self.passive_store_path + ".tmp"
+        try:
+            with open(temp_path, 'w') as f:
+                json.dump(self.passive_data, f, indent=2)
+            os.replace(temp_path, self.passive_store_path)
+        except Exception as e:
+            logger.error(f"[ERROR] Atomic write failed for passive store: {e}")
 
     def train_on_experience(self, experience: Dict[str, Any]) -> None:
-        assert False, "Trainer reached while learning is disabled"
-        # Logic below is unreachable by design
         """
         Main entry point for online learning.
         Routes experience to either Imitation or Reinforcement learning paths.
+        Also tracks passive observational data.
         """
-        # HARDENED PERMISSION CHECK (PROTOCOL VERIFICATION HOOK)
-        lineage = experience.get("lineage", {})
-        assert lineage, "Protocol Violation: Experience missing lineage metadata"
-        
-        if not lineage.get("learning_allowed"):
-            logger.warning(f"TRAINER REJECT: Learning NOT ALLOWED for experience {experience.get('experience_id')}")
+        if learning_freeze.LEARNING_STATE == "FROZEN":
             return
 
+        is_shadow = hasattr(self.policy, 'role') and getattr(self.policy, 'role') == "SHADOW"
+
+        # Track Passive Observational Data (MANDATORY)
+        self._update_passive_data(experience)
+
+        # HARDENED PERMISSION CHECK (PROTOCOL VERIFICATION HOOK)
+        lineage = experience.get("lineage", {})
+        if not lineage:
+            if is_shadow:
+                logger.info(f"[SHADOW] Experience observed despite missing lineage metadata")
+            else:
+                logger.warning("[SHADOW] Experience rejected: Missing lineage metadata")
+                return
+        
+        if lineage and not lineage.get("learning_allowed"):
+            if is_shadow:
+                logger.info(f"[SHADOW] Experience observed despite learning_allowed is False")
+            else:
+                logger.warning(f"[SHADOW] Experience rejected: learning_allowed is False for {experience.get('experience_id')}")
+                return
+
         # Trust Boundary Enforcement
-        if lineage.get("trust_boundary") == "EXTERNAL_UNTRUSTED":
-            # We only learn from INTERNAL_VERIFIED data (e.g., after state parser and audit)
-            # but received_lineage in server.py marks it as EXTERNAL_UNTRUSTED initially.
-            # Wait, if AIServer produces the experience, it should probably be marked as verified 
-            # after all checks pass.
-            logger.warning(f"TRAINER REJECT: Trust boundary violation for experience {experience.get('experience_id')}")
-            return
+        allowed_boundaries = {"SANDBOX", "INTERNAL_VERIFIED", "HUMAN_PLAY_SESSION"}
+        if lineage and lineage.get("trust_boundary") not in allowed_boundaries:
+            if is_shadow:
+                logger.info(f"[SHADOW] Experience observed despite Trust boundary violation ({lineage.get('trust_boundary')})")
+            else:
+                logger.warning(f"[SHADOW] Experience rejected: Trust boundary violation ({lineage.get('trust_boundary')}) for {experience.get('experience_id')}")
+                return
 
         controller = experience.get("controller", "AI")
         
@@ -57,7 +104,8 @@ class Trainer:
         elif controller in ["AI", "HEURISTIC"]:
             self._train_reinforcement(experience)
         else:
-            logger.warning(f"Unknown controller type: {controller}. Skipping training.")
+            logger.warning(f"[SHADOW] Experience rejected: Unknown controller type {controller}")
+            return
 
     def _train_imitation(self, experience: Dict[str, Any]) -> None:
         """Imitation Learning (IL) Path."""
@@ -70,6 +118,55 @@ class Trainer:
         if isinstance(self.policy, LearnedPolicy):
             # ARCHITECTURAL HOOK: Update weights based on reward signal
             self.policy.update_weights([experience])
+
+    def _update_passive_data(self, experience: Dict[str, Any]) -> None:
+        """Updates passive observational data incrementally."""
+        state_hash = experience.get("state_hash")
+        episode_id = experience.get("episode_id")
+        action = experience.get("intent")
+        violations = experience.get("violations", [])
+
+        if not state_hash:
+            return
+
+        # 1. Visitation Counts
+        v_counts = self.passive_data["visitation_counts"]
+        v_counts[state_hash] = v_counts.get(state_hash, 0) + 1
+
+        # 2. Valid Actions
+        v_actions = self.passive_data["valid_actions"]
+        if state_hash not in v_actions:
+            v_actions[state_hash] = []
+        if action and action not in v_actions[state_hash]:
+            v_actions[state_hash].append(action)
+
+        # 3. Transition Frequencies
+        if episode_id in self.last_state_per_episode:
+            prev_state, prev_action = self.last_state_per_episode[episode_id]
+            transitions = self.passive_data["transitions"]
+            if prev_state not in transitions:
+                transitions[prev_state] = {}
+            if prev_action not in transitions[prev_state]:
+                transitions[prev_state][prev_action] = {}
+            
+            transitions[prev_state][prev_action][state_hash] = transitions[prev_state][prev_action].get(state_hash, 0) + 1
+        
+        self.last_state_per_episode[episode_id] = (state_hash, action)
+
+        # 4. Invariant Violations
+        if violations:
+            for v in violations:
+                if v.get("severity") in ["HIGH", "CRITICAL"]:
+                    self.passive_data["invariant_violations"].append({
+                        "experience_id": experience.get("experience_id"),
+                        "state_hash": state_hash,
+                        "action": action,
+                        "type": v.get("type"),
+                        "timestamp": time.time()
+                    })
+
+        # Persist incrementally
+        self._save_passive_store()
 
 class OfflineTrainer:
     """

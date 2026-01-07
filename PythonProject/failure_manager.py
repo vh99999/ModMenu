@@ -17,6 +17,7 @@ class DisasterMode(str, Enum):
     TEMPORAL_LOCK = "TEMPORAL_LOCK"   # Suspend time logic
     ISOLATED = "ISOLATED"             # No network
     LOCKDOWN = "LOCKDOWN"             # READ_ONLY + FREEZE + No API changes
+    SHADOW_QUARANTINE = "SHADOW_QUARANTINE" # Learning quarantine
 
 class FailureType(str, Enum):
     CONFIDENCE_COLLAPSE = "CONFIDENCE_COLLAPSE"
@@ -41,6 +42,8 @@ class FailureType(str, Enum):
     TIME_INTEGRITY_VIOLATION = "TIME_INTEGRITY_VIOLATION"
     FLOOD_DETECTION = "FLOOD_DETECTION"
     HOSTILE_PAYLOAD = "HOSTILE_PAYLOAD"
+    CONTROL_MODE_CHANGED = "CONTROL_MODE_CHANGED"
+    CONTROL_MODE_REJECTED = "CONTROL_MODE_REJECTED"
 
 class FailureSeverity(str, Enum):
     INFO = "INFO"
@@ -79,12 +82,30 @@ class FailureManager:
         """
         Records a failure incident and generates a report.
         """
+        # MANDATORY FIRST CHECK (ABSOLUTE LAW):
+        # Failure management does NOT apply to Shadow mode.
+        is_shadow = False
+        if audit_entry and audit_entry.get("policy_mode") == "SHADOW":
+            is_shadow = True
+        elif details and "[SHADOW]" in str(details):
+            is_shadow = True
+        elif failure_type and "[SHADOW]" in str(failure_type):
+            is_shadow = True
+
+        if is_shadow:
+            if failure_type == FailureType.NETWORK_DROP:
+                logger.warning(f"NETWORK ISOLATION DETECTED [SHADOW]: {details or 'No details'}")
+            else:
+                logger.info(f"[SHADOW] OBSERVATIONAL FAILURE: {failure_type} - {details or 'No details'}")
+            return # RETURN IMMEDIATELY, NO STATE TRANSITION
+
         incident_id = str(uuid.uuid4())
         
-        # Automatic LOCKDOWN on CRITICAL severity
-        if severity == FailureSeverity.CRITICAL:
-            logger.critical(f"CRITICAL INCIDENT DETECTED: {failure_type}. Triggering system LOCKDOWN.")
-            self.set_mode(DisasterMode.LOCKDOWN)
+        # Automatic Mitigation on CRITICAL severity
+        # MANDATORY: Shadow mode incidents NEVER trigger SHADOW_QUARANTINE
+        if severity == FailureSeverity.CRITICAL and self.mode != DisasterMode.SHADOW_QUARANTINE and not is_shadow:
+            logger.critical(f"CRITICAL INCIDENT DETECTED: {failure_type}. Triggering SHADOW_QUARANTINE.")
+            self.set_mode(DisasterMode.SHADOW_QUARANTINE)
 
         report = {
             "incident_id": incident_id,
@@ -132,15 +153,19 @@ class FailureManager:
 
         # Automatic Containment Logic
         # LOCKDOWN takes precedence over all other modes
-        if self.mode != DisasterMode.LOCKDOWN:
+        if self.mode != DisasterMode.LOCKDOWN and not is_shadow:
             self._trigger_containment(failure_type)
 
     def _trigger_containment(self, failure_type: FailureType):
         """
         Deterministic containment based on failure type.
         """
+        # SHADOW learning should not trigger quarantine escalation repeatedly
+        if self.mode == DisasterMode.SHADOW_QUARANTINE:
+            return
+
         if failure_type in [FailureType.REWARD_INVARIANT, FailureType.CONTRACT_VIOLATION]:
-            self.set_mode(DisasterMode.READ_ONLY)
+            self.set_mode(DisasterMode.SHADOW_QUARANTINE)
         elif failure_type in [FailureType.CORRUPTION_NAN, FailureType.VERSION_CONFLICT]:
             self.set_mode(DisasterMode.FREEZE)
         elif failure_type in [FailureType.TIMEOUT, FailureType.CONFIDENCE_COLLAPSE]:
@@ -162,8 +187,8 @@ class FailureManager:
             if self.mode == DisasterMode.NORMAL:
                 self.set_mode(DisasterMode.SAFE_MODE)
         elif failure_type == FailureType.HOSTILE_PAYLOAD:
-            # Rejection usually happens at parser, but if it reaches here, READ_ONLY
-            self.set_mode(DisasterMode.READ_ONLY)
+            # Rejection usually happens at parser, but if it reaches here, SHADOW_QUARANTINE
+            self.set_mode(DisasterMode.SHADOW_QUARANTINE)
 
     def get_status(self) -> Dict[str, Any]:
         return {

@@ -34,20 +34,6 @@ public class ClientForgeEvents {
                 Minecraft.getInstance().setScreen(new MainMenuScreen());
             }
 
-            while (KeyMappings.TOGGLE_AI_KEY.consumeClick()) {
-                com.example.modmenu.ai.AIController controller = com.example.modmenu.ai.AIHandler.getController();
-                boolean currentlyEnabled = controller.getMode() == com.example.modmenu.ai.AIController.ControlMode.AI;
-                controller.setMode(currentlyEnabled ? com.example.modmenu.ai.AIController.ControlMode.HUMAN : com.example.modmenu.ai.AIController.ControlMode.AI);
-                
-                if (Minecraft.getInstance().player != null) {
-                    boolean nowEnabled = controller.getMode() == com.example.modmenu.ai.AIController.ControlMode.AI;
-                    Minecraft.getInstance().player.displayClientMessage(
-                        net.minecraft.network.chat.Component.literal("AI Status: " + (nowEnabled ? "§aENABLED" : "§cDISABLED (Shadow Learning Active)")),
-                        true
-                    );
-                }
-            }
-
             if (StorePriceManager.clientAbilities.chestHighlightActive || StorePriceManager.clientAbilities.trapHighlightActive || StorePriceManager.clientAbilities.entityESPActive) {
                 scanTick++;
                 if (scanTick >= 20) { // Scan every 1 second

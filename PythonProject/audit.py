@@ -44,10 +44,12 @@ class Auditor:
                      shadow_data: Optional[Dict[str, Any]] = None,
                      java_timestamp: Optional[float] = None,
                      missing_fields: int = 0,
+                     is_incomplete: bool = False,
                      lineage: Optional[Dict[str, Any]] = None,
                      authority: str = "UNKNOWN",
                      reward_class: str = "DIAGNOSTIC",
-                     full_payload: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+                     full_payload: Optional[Dict[str, Any]] = None,
+                     policy_mode: str = "ACTIVE") -> Dict[str, Any]:
         """
         Records a single cycle, runs validation, and returns the audit entry.
         """
@@ -92,8 +94,10 @@ class Auditor:
             "reward_breakdown": reward_breakdown,
             "reward_class": reward_class,
             "missing_fields": missing_fields,
+            "is_incomplete": is_incomplete,
             "lineage": lineage,
             "full_payload": full_payload,
+            "policy_mode": policy_mode,
             "violations": []
         }
 
@@ -114,7 +118,13 @@ class Auditor:
     def check_quality_gate(self, entry: Dict[str, Any]) -> bool:
         """
         Returns True if the experience passes all quality gates and can be used for training.
+        SHADOW mode never quarantines.
         """
+        # MANDATORY FIRST CHECK: SHADOW mode is observational only.
+        if entry.get("policy_mode") == "SHADOW":
+            logger.info(f"AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: {entry.get('state_hash', 'UNKNOWN')[:8]}")
+            return True
+
         is_valid = DataQualityGate.is_pass(entry)
         if not is_valid:
             self.quarantine.append(entry)
@@ -238,11 +248,22 @@ class ViolationDetector:
                         })
 
         # 0.4 Partial Corruption
-        if entry["missing_fields"] > 2: # More than 50% of 4 core fields (health, energy, dist, colliding)
+        if entry.get("is_incomplete") or entry["missing_fields"] > 2:
+            is_shadow_mode = entry.get("policy_mode") == "SHADOW"
+            
+            # Non-shadow is strict; shadow is observational
+            if entry["missing_fields"] > 2:
+                severity = ViolationSeverity.HIGH
+            else:
+                severity = ViolationSeverity.LOW
+                
+            if is_shadow_mode:
+                severity = ViolationSeverity.INFO # Downgrade for Shadow
+
             violations.append({
                 "type": "PARTIAL_CORRUPTION",
-                "severity": ViolationSeverity.HIGH,
-                "description": f"{entry['missing_fields']} fields missing/defaulted"
+                "severity": severity,
+                "description": f"{entry['missing_fields']} fields missing/defaulted (Shadow: {is_shadow_mode})"
             })
 
         # 0.5 DATA LINEAGE VALIDATION
@@ -285,6 +306,10 @@ class ViolationDetector:
                 "severity": ViolationSeverity.HIGH,
                 "description": "Java result is not a dictionary"
             })
+            # MANDATORY SHADOW DOWNGRADE before early return
+            if entry.get("policy_mode") == "SHADOW":
+                for v in violations:
+                    v["severity"] = ViolationSeverity.INFO
             return violations
 
         # 1. Unknown Enums
@@ -354,6 +379,11 @@ class ViolationDetector:
                 "description": "is_alive is false but reward > -1.0"
             })
 
+        # MANDATORY SHADOW DOWNGRADE: Shadow mode violations are observational only
+        if entry.get("policy_mode") == "SHADOW":
+            for v in violations:
+                v["severity"] = ViolationSeverity.INFO
+
         return violations
 
 class DataQualityGate:
@@ -363,11 +393,19 @@ class DataQualityGate:
     @staticmethod
     def is_pass(entry: Dict[str, Any]) -> bool:
         # 1. Critical Violations are immediate fail
+        is_shadow_mode = entry.get("policy_mode") == "SHADOW"
         for v in entry["violations"]:
             if v["severity"] == ViolationSeverity.CRITICAL:
                 return False
-            if v["type"] in ["MALFORMED_PAYLOAD", "MISSING_FIELD", "PARTIAL_CORRUPTION", "BACKWARDS_TIME", "STALE_STATE", "DATA_LINEAGE_VIOLATION"]:
+            
+            # Critical components that ALWAYS fail quality gate
+            if v["type"] in ["MALFORMED_PAYLOAD", "MISSING_FIELD", "BACKWARDS_TIME", "STALE_STATE", "DATA_LINEAGE_VIOLATION"]:
                 return False
+            
+            # Shadow mode bypass for partial corruption (Requirement: DO NOT INVALIDATE)
+            if v["type"] == "PARTIAL_CORRUPTION" and not is_shadow_mode:
+                return False
+
             # Deduplication: We don't train on duplicates
             if v["type"] == "DUPLICATE_STATE":
                 return False

@@ -26,7 +26,7 @@ class RewardCalculator:
     }
 
     @classmethod
-    def calculate(cls, result: Dict[str, Any], learning_allowed: bool = False, is_evaluative: bool = False) -> Tuple[float, Dict[str, float], str]:
+    def calculate(cls, result: Dict[str, Any], learning_allowed: bool = False, is_evaluative: bool = False, is_incomplete: bool = False) -> Tuple[float, Dict[str, float], str]:
         """
         Calculates a continuous scalar reward and its breakdown.
         'result' is a dictionary containing outcome metrics.
@@ -37,34 +37,46 @@ class RewardCalculator:
         - Deterministic output.
         - Dominance (Death) enforcement.
         - NaN/Inf immunity.
-        - Reward classification (DIAGNOSTIC | EVALUATIVE | LEARNING_APPLICABLE).
+        - Reward classification (DIAGNOSTIC | EVALUATIVE | LEARNING_APPLICABLE | LEARNING_APPLICABLE_INCOMPLETE).
         """
         # Determine classification
         if learning_allowed:
             classification = "LEARNING_APPLICABLE"
+            if is_incomplete:
+                classification = "LEARNING_APPLICABLE_INCOMPLETE"
         elif is_evaluative:
             classification = "EVALUATIVE"
         else:
             classification = "DIAGNOSTIC"
 
         # INVARIANT: If learning_allowed is false, classification cannot be LEARNING_APPLICABLE
-        if not learning_allowed and classification == "LEARNING_APPLICABLE":
+        if not learning_allowed and classification.startswith("LEARNING_APPLICABLE"):
             classification = "DIAGNOSTIC"
 
         try:
             # 1. Input Validation (Contract Integrity)
             if not isinstance(result, dict):
                 logger.error("REWARD FAILURE: Input result is not a dictionary.")
-                return 0.0, {"error_invalid_input": 0.0}, "DIAGNOSTIC"
+                # DO NOT ZERO REWARD SILENTLY for Shadow
+                err_reward = 0.0
+                if classification.startswith("LEARNING"):
+                    err_reward = cls.WEIGHTS["survival"] # Return baseline survival instead of zero
+                    classification = "LEARNING_APPLICABLE_INCOMPLETE"
+                return err_reward, {"error_invalid_input": 1.0, "incomplete_state_marker": 1.0}, classification
 
             outcomes = result.get("outcomes")
             if not isinstance(outcomes, dict):
                 logger.warning("REWARD WARNING: Missing or invalid 'outcomes' in result. Using defaults.")
                 outcomes = {}
+                is_incomplete = True # Result incompleteness is also state incompleteness
+                if classification == "LEARNING_APPLICABLE":
+                    classification = "LEARNING_APPLICABLE_INCOMPLETE"
 
             # 2. Extract & Sanitize (NaN/Inf Immunity + Non-negativity)
             def sanitize(val: Any, default: float = 0.0) -> float:
                 try:
+                    if val is None:
+                        return default
                     f_val = float(val)
                     if not math.isfinite(f_val):
                         return default
@@ -104,6 +116,9 @@ class RewardCalculator:
                     "efficiency_penalty": comp_efficiency
                 }
 
+            if is_incomplete:
+                breakdown["incomplete_state_marker"] = 1.0
+
             # 5. Final Safety Clamp (Boundedness)
             # R MUST be in range [-2.0, 2.0]
             clamped_reward = max(-2.0, min(2.0, float(total_reward)))
@@ -115,4 +130,7 @@ class RewardCalculator:
             
         except Exception as e:
             logger.error(f"REWARD CRITICAL: Unexpected failure: {e}", exc_info=True)
-            return 0.0, {"error_system_failure": 0.0}, "DIAGNOSTIC"
+            err_reward = 0.0
+            if classification.startswith("LEARNING"):
+                err_reward = cls.WEIGHTS["survival"]
+            return err_reward, {"error_system_failure": 1.0}, classification

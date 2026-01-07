@@ -135,6 +135,46 @@ public class AIClient {
     }
 
     /**
+     * Sends the CONTROL_MODE message to the server.
+     * @param mode The target control mode.
+     * @return true if the server acknowledged the mode change.
+     */
+    public boolean sendControlMode(ControlMode mode) {
+        JsonObject payload = new JsonObject();
+        payload.addProperty("type", "CONTROL_MODE");
+        payload.addProperty("mode", mode.name());
+        payload.addProperty("source", "GUI");
+        payload.addProperty("protocol_version", PROTOCOL_VERSION);
+
+        int retries = 0;
+        while (retries <= 1) {
+            try (Socket socket = new Socket()) {
+                socket.connect(new InetSocketAddress(host, port), CONNECT_TIMEOUT_MS);
+                socket.setSoTimeout(READ_TIMEOUT_MS);
+
+                try (OutputStream out = socket.getOutputStream();
+                     InputStream in = socket.getInputStream();
+                     PrintWriter writer = new PrintWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8), true);
+                     BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+
+                    writer.println(gson.toJson(payload));
+                    String response = reader.readLine();
+                    if (response != null) {
+                        JsonObject jsonResponse = gson.fromJson(response, JsonObject.class);
+                        if (jsonResponse.has("status") && "OK".equals(jsonResponse.get("status").getAsString())) {
+                            return true;
+                        }
+                    }
+                }
+            } catch (IOException e) {
+                LOGGER.warn("Control mode update failed (attempt {}): {}", retries + 1, e.getMessage());
+            }
+            retries++;
+        }
+        return false;
+    }
+
+    /**
      * Opaque response container to allow AIController to handle fallbacks.
      */
     public static class Response {

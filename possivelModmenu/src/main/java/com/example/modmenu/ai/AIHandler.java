@@ -13,7 +13,7 @@ import net.minecraftforge.fml.common.Mod;
  */
 @Mod.EventBusSubscriber(modid = "modmenu", value = Dist.CLIENT)
 public class AIHandler {
-    private static final AIController CONTROLLER = new AIController("127.0.0.1", 5000);
+    private static final AIController CONTROLLER = new AIController("127.0.0.1", 5001);
 
     @SubscribeEvent
     public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
