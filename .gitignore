@@ -1,21 +1,57 @@
-# Python
+############################
+# INCIDENTS / RUNTIME DATA #
+############################
+
+# Incidents (any depth, any name)
+incidents/
+**/incidents/
+**/incidents/**
+
+# Incident files (generic safety net)
+*.incident
+*.incident.json
+*.incident.log
+
+############################
+# LOGS / RUNTIME OUTPUT   #
+############################
+
+logs/
+**/logs/
+*.log
+
+############################
+# SHADOW / AI RUNTIME     #
+############################
+
+shadow/
+shadow_runtime/
+shadow_cache/
+**/shadow_runtime/
+**/shadow_cache/
+
+snapshots/tmp/
+snapshots/staging/
+
+############################
+# PYTHON                  #
+############################
+
 __pycache__/
+**/__pycache__/
 *.pyc
 *.pyo
-*.pyd
-.env
-.venv/
-venv/
 
-# Logs
-*.log
-logs/
-*.out
+############################
+# IDE                     #
+############################
 
-# IDEs
 .idea/
 .vscode/
 
-# OS
+############################
+# OS                      #
+############################
+
 .DS_Store
 Thumbs.db
