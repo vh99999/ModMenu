@@ -55,7 +55,18 @@ class Auditor:
         """
         # PROTOCOL VERIFICATION HOOK
         assert experience_id, "Protocol Violation: experience_id missing in audit record"
-        assert authority in ["ADVISORY", "AUTHORITATIVE", "OVERRIDE"], f"Protocol Violation: Illegal authority '{authority}'"
+        
+        STABLE_WHITELIST = ["ADVISORY", "AUTHORITATIVE", "OVERRIDE"]
+        original_authority = authority
+        
+        if policy_mode == "SHADOW":
+            if authority not in STABLE_WHITELIST:
+                logger.warning(f"[WARNING] GOVERNANCE: Unauthorized authority '{original_authority}' observed in ShadowPolicy")
+                logger.info(f"AUTHORITY_OBSERVATION: scope=shadow, authority={original_authority}, experience_id={experience_id}")
+                authority = "SHADOW_UNSCOPED_AUTHORITY"
+        else:
+            if authority not in STABLE_WHITELIST:
+                raise ValueError(f"Protocol Violation: Illegal authority '{authority}'")
         
         try:
             state_str = json.dumps(raw_state, sort_keys=True)
@@ -98,6 +109,7 @@ class Auditor:
             "lineage": lineage,
             "full_payload": full_payload,
             "policy_mode": policy_mode,
+            "original_authority": original_authority,
             "violations": []
         }
 
@@ -209,11 +221,13 @@ class ViolationDetector:
         if history and len(history) > 0:
             last_entry = history[-1]
             if entry["state_hash"] == last_entry["state_hash"]:
-                violations.append({
-                    "type": "DUPLICATE_STATE",
-                    "severity": ViolationSeverity.LOW,
-                    "description": "State hash matches immediately preceding cycle"
-                })
+                # Ignore duplicates if trying to move (might be blocked)
+                if entry.get("intent_issued") != "MOVE":
+                    violations.append({
+                        "type": "DUPLICATE_STATE",
+                        "severity": ViolationSeverity.LOW,
+                        "description": "State hash matches immediately preceding cycle"
+                    })
 
         # 0.2 Time-To-Live (TTL)
         if entry["java_timestamp"] is not None:

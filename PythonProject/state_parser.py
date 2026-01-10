@@ -25,17 +25,20 @@ class StateParser:
     SUPPORTED_VERSIONS = [0, 1] # 0 is legacy/unknown
     
     # SCHEMA DEFINITION
-    # field: (type, default_if_missing, range_min, range_max)
-    # Range is used for both clamping and normalization.
+    # field: (type, default_if_missing, range_min, range_max, is_required)
     SCHEMA = {
-        "health": (float, 1.0, 0.0, 1.0),
-        "energy": (float, 1.0, 0.0, 1.0),
-        "target_distance": (float, 1000.0, 0.0, 1000.0),
-        "is_colliding": (bool, False, None, None)
+        "health": (float, 1.0, 0.0, 1.0, True),
+        "energy": (float, 1.0, 0.0, 1.0, True),
+        "target_distance": (float, 1000.0, 0.0, 1000.0, True),
+        "target_yaw": (float, 0.0, -180.0, 180.0, True),
+        "is_colliding": (bool, False, None, None, True),
+        "pos_x": (float, 0.0, None, None, True),
+        "pos_y": (float, 0.0, None, None, True),
+        "pos_z": (float, 0.0, None, None, True)
     }
 
     @classmethod
-    def parse(cls, raw_payload: Any) -> Optional[Dict[str, Any]]:
+    def parse(cls, raw_payload: Any, fast: bool = False) -> Optional[Dict[str, Any]]:
         """
         Parses raw JSON data into a structured state dictionary.
         Returns None only on non-recoverable errors.
@@ -43,13 +46,43 @@ class StateParser:
         try:
             # 1. Type Check Root
             if not isinstance(raw_payload, dict):
-                logger.error("STATE FAILURE: Root payload must be a dictionary.")
+                if not fast:
+                    logger.error("STATE FAILURE: Root payload must be a dictionary.")
                 return None
 
             # 2. Version Validation
-            # Java is dumb, might not send version yet. Fallback to 0.
             version = raw_payload.get("state_version", 0)
             
+            # Fast path skips detailed logging and version checks
+            if fast:
+                raw_extracted = {}
+                for field, (f_type, f_default, f_min, f_max, _) in cls.SCHEMA.items():
+                    val = raw_payload.get(field, f_default)
+                    if f_type == float and val is not None:
+                        # Minimal clamping/sanity for speed
+                        try:
+                            f_val = float(val)
+                            if f_min is not None: f_val = max(f_min, f_val)
+                            if f_max is not None: f_val = min(f_max, f_val)
+                            raw_extracted[field] = f_val
+                        except (ValueError, TypeError):
+                            raw_extracted[field] = f_default
+                    else:
+                        raw_extracted[field] = val
+                
+                normalized = cls._normalize(raw_extracted)
+                derived = cls._derive(normalized, raw_extracted)
+                
+                return {
+                    "version": version,
+                    "raw": raw_extracted,
+                    "normalized": normalized,
+                    "derived": derived,
+                    "missing_fields": 0,
+                    "missing_fields_list": [],
+                    "is_incomplete": False
+                }
+
             if version < cls.CURRENT_VERSION:
                 # Backward compatibility check
                 if version not in cls.SUPPORTED_VERSIONS:
@@ -62,10 +95,14 @@ class StateParser:
                 logger.warning(f"STATE WARNING: Newer version {version} detected. Forward compatibility mode active.")
 
             # 3. Extraction, Type Enforcement & Sanity (NaN/Inf)
-            raw_extracted, missing_count = cls._extract_and_validate(raw_payload)
+            raw_extracted, missing_fields_list, missing_required = cls._extract_and_validate(raw_payload)
+            missing_count = len(missing_fields_list)
             
             if missing_count > 0:
-                logger.warning(f"STATE WARNING: Incomplete state detected ({missing_count} fields defaulted). Parsing once and continuing.")
+                logger.warning(f"STATE_DIAGNOSTIC: Incomplete state detected. Missing fields: {missing_fields_list}. Applied defaults.")
+            
+            if len(missing_required) > 0:
+                logger.error(f"STATE_PROTOCOL_VIOLATION: Required fields missing: {missing_required}. EXECUTION BLOCKED.")
 
             # 4. Normalization (To [0, 1] range)
             normalized = cls._normalize(raw_extracted)
@@ -76,7 +113,7 @@ class StateParser:
                     assert math.isfinite(v), f"Protocol Violation: NaN/Inf detected in normalized field '{k}'"
             
             # 5. Derivation (Interpretation happens ONLY here)
-            derived = cls._derive(normalized)
+            derived = cls._derive(normalized, raw_extracted)
 
             return {
                 "version": version,
@@ -84,7 +121,9 @@ class StateParser:
                 "normalized": normalized,
                 "derived": derived,
                 "missing_fields": missing_count,
-                "is_incomplete": missing_count > 0
+                "missing_fields_list": missing_fields_list,
+                "missing_required": missing_required,
+                "is_incomplete": len(missing_required) > 0
             }
 
         except Exception as e:
@@ -108,21 +147,24 @@ class StateParser:
         ]
 
     @classmethod
-    def _extract_and_validate(cls, data: Dict[str, Any]) -> Tuple[Dict[str, Any], int]:
+    def _extract_and_validate(cls, data: Dict[str, Any]) -> Tuple[Dict[str, Any], List[str], List[str]]:
         """
         Extracts fields from the raw data, enforces types, 
         checks for NaN/Inf, and applies defaults.
-        Returns (validated_data, missing_field_count)
+        Returns (validated_data, missing_fields_list, missing_required_list)
         """
         validated = {}
-        missing_count = 0
-        for field, (f_type, f_default, f_min, f_max) in cls.SCHEMA.items():
+        missing_fields = []
+        missing_required = []
+        for field, (f_type, f_default, f_min, f_max, is_required) in cls.SCHEMA.items():
             val = data.get(field)
             
             # 3.1 Handle Missing Data (Explicit Default Injection)
             if val is None:
                 validated[field] = f_default
-                missing_count += 1
+                missing_fields.append(field)
+                if is_required:
+                    missing_required.append(field)
                 continue
 
             # 3.2 Type Enforcement & Sanity (NaN/Inf)
@@ -132,10 +174,17 @@ class StateParser:
                     f_val = float(val)
                     if not math.isfinite(f_val):
                         validated[field] = f_default
-                        missing_count += 1
+                        missing_fields.append(f"{field}(non_finite)")
+                        if is_required:
+                            missing_required.append(field)
                     else:
                         # 3.3 Range Enforcement (Clamping)
-                        clamped = max(f_min, min(f_max, f_val))
+                        clamped = f_val
+                        if f_min is not None:
+                            clamped = max(f_min, clamped)
+                        if f_max is not None:
+                            clamped = min(f_max, clamped)
+                        
                         if clamped != f_val:
                             logger.debug(f"STATE: Field '{field}' value {f_val} clamped to {clamped}")
                         validated[field] = clamped
@@ -152,12 +201,16 @@ class StateParser:
                             validated[field] = False
                         else:
                             validated[field] = f_default
-                            missing_count += 1
+                            missing_fields.append(f"{field}(invalid_bool)")
+                            if is_required:
+                                missing_required.append(field)
                     elif isinstance(val, (int, float)):
                         validated[field] = bool(val)
                     else:
                         validated[field] = f_default
-                        missing_count += 1
+                        missing_fields.append(f"{field}(invalid_type)")
+                        if is_required:
+                            missing_required.append(field)
                 
                 elif f_type == int:
                     i_val = int(val)
@@ -170,15 +223,17 @@ class StateParser:
 
             except (ValueError, TypeError):
                 validated[field] = f_default
-                missing_count += 1
+                missing_fields.append(f"{field}(parse_error)")
+                if is_required:
+                    missing_required.append(field)
         
-        return validated, missing_count
+        return validated, missing_fields, missing_required
 
     @classmethod
     def _normalize(cls, raw: Dict[str, Any]) -> Dict[str, Any]:
         """Binds and normalizes numeric values to [0.0, 1.0]."""
         normalized = {}
-        for field, (f_type, _, f_min, f_max) in cls.SCHEMA.items():
+        for field, (f_type, _, f_min, f_max, _) in cls.SCHEMA.items():
             val = raw[field]
             if f_type == float and f_min is not None and f_max is not None:
                 denominator = f_max - f_min
@@ -190,7 +245,7 @@ class StateParser:
         return normalized
 
     @classmethod
-    def _derive(cls, normalized: Dict[str, Any]) -> Dict[str, Any]:
+    def _derive(cls, normalized: Dict[str, Any], raw: Dict[str, Any]) -> Dict[str, Any]:
         """
         Computes explicit semantic interpretations from normalized data.
         These are used by policies for decision making.
@@ -207,6 +262,17 @@ class StateParser:
             derived["distance_category"] = "MEDIUM"
         else:
             derived["distance_category"] = "FAR"
+
+        # 5.1b Target Direction categories
+        actual_yaw = raw.get("target_yaw", 0.0)
+        if abs(actual_yaw) < 45:
+            derived["target_direction"] = "FRONT"
+        elif actual_yaw >= 45 and actual_yaw < 135:
+            derived["target_direction"] = "RIGHT"
+        elif actual_yaw <= -45 and actual_yaw > -135:
+            derived["target_direction"] = "LEFT"
+        else:
+            derived["target_direction"] = "BACK"
 
         # 5.2 Combat & Survival Semantics
         derived["can_attack"] = normalized["energy"] > 0.2

@@ -1,0 +1,95 @@
+{
+  "session_id": 9,
+  "visitation_counts": {
+    "3238bbca14d94c5e102bd09b802cf4c74fabd93590a6b7a5f12a608874ba5720": 1,
+    "4059b35ad8a119f67cf47b87dcf1434a11bf55e15e1941e801c10dabeec564a6": 1,
+    "37d65ffa0f96133b418e72a918b59b3b85eac4dcbb4d06a562c6bbd8d4ead685": 1,
+    "ceedb3b460f89c20b271f7b22cce7dc60d432b3669439c3c771ebf7d9d412b96": 1,
+    "0433b6895eb292996faeb3eda47245ef8e51f2c6ce4ff735290be98ec28fbeb5": 1
+  },
+  "valid_actions": {
+    "3238bbca14d94c5e102bd09b802cf4c74fabd93590a6b7a5f12a608874ba5720": [
+      {
+        "action_name": "MOVE",
+        "hold_duration_ticks": 1,
+        "cooldown_ticks_observed": 0,
+        "params": {
+          "vector": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "sprinting": true
+        }
+      }
+    ],
+    "4059b35ad8a119f67cf47b87dcf1434a11bf55e15e1941e801c10dabeec564a6": [
+      {
+        "action_name": "MOVE",
+        "hold_duration_ticks": 1,
+        "cooldown_ticks_observed": 0,
+        "params": {
+          "vector": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "sprinting": true
+        }
+      }
+    ],
+    "37d65ffa0f96133b418e72a918b59b3b85eac4dcbb4d06a562c6bbd8d4ead685": [
+      {
+        "action_name": "JUMP",
+        "hold_duration_ticks": 1,
+        "cooldown_ticks_observed": 0
+      }
+    ],
+    "ceedb3b460f89c20b271f7b22cce7dc60d432b3669439c3c771ebf7d9d412b96": [
+      {
+        "action_name": "MOVE",
+        "hold_duration_ticks": 1,
+        "cooldown_ticks_observed": 0,
+        "params": {
+          "vector": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "sprinting": true
+        }
+      }
+    ]
+  },
+  "transitions": {
+    "3238bbca14d94c5e102bd09b802cf4c74fabd93590a6b7a5f12a608874ba5720": {
+      "MOVE": {
+        "4059b35ad8a119f67cf47b87dcf1434a11bf55e15e1941e801c10dabeec564a6": 1
+      }
+    },
+    "4059b35ad8a119f67cf47b87dcf1434a11bf55e15e1941e801c10dabeec564a6": {
+      "MOVE": {
+        "37d65ffa0f96133b418e72a918b59b3b85eac4dcbb4d06a562c6bbd8d4ead685": 1
+      }
+    },
+    "37d65ffa0f96133b418e72a918b59b3b85eac4dcbb4d06a562c6bbd8d4ead685": {
+      "JUMP": {
+        "ceedb3b460f89c20b271f7b22cce7dc60d432b3669439c3c771ebf7d9d412b96": 1
+      }
+    },
+    "ceedb3b460f89c20b271f7b22cce7dc60d432b3669439c3c771ebf7d9d412b96": {
+      "MOVE": {
+        "0433b6895eb292996faeb3eda47245ef8e51f2c6ce4ff735290be98ec28fbeb5": 1
+      }
+    }
+  },
+  "invariant_violations": [],
+  "blocked_resolutions": {
+    "3238bbca14d94c5e102bd09b802cf4c74fabd93590a6b7a5f12a608874ba5720": {
+      "JUMP": 1
+    },
+    "ceedb3b460f89c20b271f7b22cce7dc60d432b3669439c3c771ebf7d9d412b96": {
+      "STOP": 1
+    }
+  }
+}

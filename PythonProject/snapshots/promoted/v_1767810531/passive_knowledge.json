@@ -1,0 +1,71 @@
+{
+  "session_id": 11,
+  "visitation_counts": {
+    "f11f4386ff798e32f6fbe9db3d6b1293e1a2f1ae81fe4244c7231fa852fe7332": 2,
+    "e6b2c862263a92572ef081c597699cfddf32e9ce7bb5876761b437856bc5adce": 2,
+    "067076aa6629233e6a5777a37253320f4f6eee374f48580f5d7a02f7568aa0f4": 1
+  },
+  "valid_actions": {
+    "f11f4386ff798e32f6fbe9db3d6b1293e1a2f1ae81fe4244c7231fa852fe7332": [
+      {
+        "action_name": "MOVE",
+        "hold_duration_ticks": 1,
+        "cooldown_ticks_observed": 0,
+        "params": {
+          "vector": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "sprinting": true
+        }
+      }
+    ],
+    "e6b2c862263a92572ef081c597699cfddf32e9ce7bb5876761b437856bc5adce": [
+      {
+        "action_name": "MOVE",
+        "hold_duration_ticks": 1,
+        "cooldown_ticks_observed": 0,
+        "params": {
+          "vector": [
+            1.0,
+            0.0,
+            0.0
+          ],
+          "sprinting": true
+        }
+      }
+    ],
+    "067076aa6629233e6a5777a37253320f4f6eee374f48580f5d7a02f7568aa0f4": [
+      {
+        "action_name": "JUMP",
+        "hold_duration_ticks": 1,
+        "cooldown_ticks_observed": 0
+      }
+    ]
+  },
+  "transitions": {
+    "f11f4386ff798e32f6fbe9db3d6b1293e1a2f1ae81fe4244c7231fa852fe7332": {
+      "MOVE": {
+        "e6b2c862263a92572ef081c597699cfddf32e9ce7bb5876761b437856bc5adce": 1,
+        "067076aa6629233e6a5777a37253320f4f6eee374f48580f5d7a02f7568aa0f4": 1
+      }
+    },
+    "e6b2c862263a92572ef081c597699cfddf32e9ce7bb5876761b437856bc5adce": {
+      "MOVE": {
+        "f11f4386ff798e32f6fbe9db3d6b1293e1a2f1ae81fe4244c7231fa852fe7332": 1
+      }
+    },
+    "067076aa6629233e6a5777a37253320f4f6eee374f48580f5d7a02f7568aa0f4": {
+      "JUMP": {
+        "e6b2c862263a92572ef081c597699cfddf32e9ce7bb5876761b437856bc5adce": 1
+      }
+    }
+  },
+  "invariant_violations": [],
+  "blocked_resolutions": {
+    "f11f4386ff798e32f6fbe9db3d6b1293e1a2f1ae81fe4244c7231fa852fe7332": {
+      "JUMP": 1
+    }
+  }
+}

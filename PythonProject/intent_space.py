@@ -35,7 +35,7 @@ class Intent(str, Enum):
                 "is_combat": False
             },
             Intent.MOVE: {
-                "params": ["vector"],
+                "params": ["vector", "sprinting"],
                 "priority": 1,
                 "is_combat": False
             },
@@ -66,6 +66,28 @@ class Intent(str, Enum):
     def has_value(cls, value: str) -> bool:
         return value in cls._value2member_map_
 
+class MovementIntent:
+    """
+    Represents a persistent movement state.
+    """
+    def __init__(self, direction_vector: List[float], sprinting: bool, start_tick: int):
+        self.direction_vector = direction_vector
+        self.sprinting = sprinting
+        self.start_tick = start_tick
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "direction_vector": self.direction_vector,
+            "sprinting": self.sprinting,
+            "start_tick": self.start_tick
+        }
+
+    def __eq__(self, other):
+        if not isinstance(other, MovementIntent):
+            return False
+        return (self.direction_vector == other.direction_vector and 
+                self.sprinting == other.sprinting)
+
 class ExecutionStatus(str, Enum):
     SUCCESS = "SUCCESS"
     FAILURE = "FAILURE"
@@ -94,6 +116,8 @@ class IntentValidator:
             "status": ExecutionStatus.FAILURE.value,
             "failure_reason": FailureReason.UNKNOWN.value,
             "partial_execution": False,
+            "hold_duration_ticks": 1,
+            "cooldown_ticks_observed": 0,
             "safety_flags": {
                 "is_blocked": False,
                 "on_cooldown": False,
@@ -148,6 +172,8 @@ class IntentValidator:
             "status": status,
             "failure_reason": reason,
             "partial_execution": safe_bool(raw_result.get("partial_execution")),
+            "hold_duration_ticks": int(safe_float(raw_result.get("hold_duration_ticks", 1), 1)),
+            "cooldown_ticks_observed": int(safe_float(raw_result.get("cooldown_ticks_observed", 0), 0)),
             "safety_flags": {
                 "is_blocked": safe_bool(raw_result.get("safety_flags", {}).get("is_blocked")),
                 "on_cooldown": safe_bool(raw_result.get("safety_flags", {}).get("on_cooldown")),

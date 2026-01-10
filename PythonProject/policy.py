@@ -7,7 +7,7 @@ import math
 import json
 from abc import ABC, abstractmethod
 from typing import Dict, Any, Tuple, Optional, List
-from intent_space import Intent
+from intent_space import Intent, MovementIntent
 from state_parser import StateParser
 
 logger = logging.getLogger(__name__)
@@ -19,10 +19,11 @@ class Policy(ABC):
     """
     
     @abstractmethod
-    def decide(self, state: Dict[str, Any], state_hash: Optional[str] = None) -> Tuple[str, float, Optional[str], str]:
+    def decide(self, state: Dict[str, Any], state_hash: Optional[str] = None) -> Tuple[str, float, Optional[str], str, int, Dict[str, Any]]:
         """
         Returns a selected Intent string, its associated confidence [0.0, 1.0],
-        an optional version/provenance identifier, and the AUTHORITY level.
+        an optional version/provenance identifier, the AUTHORITY level,
+        the hold duration in ticks, and a dictionary of intent parameters.
         Authority: ADVISORY | AUTHORITATIVE | OVERRIDE
         """
         pass
@@ -45,7 +46,7 @@ class HeuristicCombatPolicy(Policy):
     """
     VERSION = "GOLDEN_HEURISTIC_v1.0.0"
 
-    def decide(self, state: Dict[str, Any], state_hash: Optional[str] = None) -> Tuple[str, float, Optional[str], str]:
+    def decide(self, state: Dict[str, Any], state_hash: Optional[str] = None) -> Tuple[str, float, Optional[str], str, int, Dict[str, Any]]:
         # Extract semantic interpretations
         derived = state.get("derived", {})
         normalized = state.get("normalized", {})
@@ -58,30 +59,30 @@ class HeuristicCombatPolicy(Policy):
         # 1. Critical Self-preservation: If threatened and close, evade
         if is_threatened and distance_cat == "CLOSE":
             # High confidence because it's a critical safety rule
-            return Intent.EVADE.value, 0.95, self.VERSION, "OVERRIDE"
+            return Intent.EVADE.value, 0.95, self.VERSION, "OVERRIDE", 1, {}
 
         # 2. Obstruction Handling: If trying to move but hitting something, jump
         if is_obstructed and distance_cat != "CLOSE":
-            return Intent.JUMP.value, 0.85, self.VERSION, "AUTHORITATIVE"
+            return Intent.JUMP.value, 0.85, self.VERSION, "AUTHORITATIVE", 1, {}
 
         # 3. Aggression: If close and have energy, attack
         if distance_cat == "CLOSE" and can_attack:
-            return Intent.PRIMARY_ATTACK.value, 0.8, self.VERSION, "AUTHORITATIVE"
+            return Intent.PRIMARY_ATTACK.value, 0.8, self.VERSION, "AUTHORITATIVE", 1, {}
 
         # 4. Engagement: If far, move closer
         if distance_cat == "FAR":
-            return Intent.MOVE.value, 0.75, self.VERSION, "AUTHORITATIVE"
+            return Intent.MOVE.value, 0.75, self.VERSION, "AUTHORITATIVE", 1, {"vector": [1.0, 0.0, 0.0], "sprinting": True}
 
         # 5. Tactical Positioning: If medium distance
         if distance_cat == "MEDIUM":
             # If we have lots of energy, maybe jump to reposition or close in
             if normalized.get("energy", 0.0) > 0.8:
-                return Intent.JUMP.value, 0.6, self.VERSION, "AUTHORITATIVE"
+                return Intent.JUMP.value, 0.6, self.VERSION, "AUTHORITATIVE", 1, {}
             # Otherwise hold and recover energy
-            return Intent.HOLD.value, 0.7, self.VERSION, "AUTHORITATIVE"
+            return Intent.HOLD.value, 0.7, self.VERSION, "AUTHORITATIVE", 5, {}
 
         # Default fallback: Stop
-        return Intent.STOP.value, 1.0, self.VERSION, "AUTHORITATIVE"
+        return Intent.STOP.value, 1.0, self.VERSION, "AUTHORITATIVE", 1, {}
 
 class RandomWeightedPolicy(Policy):
     """
@@ -105,7 +106,7 @@ class RandomWeightedPolicy(Policy):
 
     VERSION = "STOCHASTIC_RANDOM_v1.0.0"
 
-    def decide(self, state: Dict[str, Any], state_hash: Optional[str] = None) -> Tuple[str, float, Optional[str], str]:
+    def decide(self, state: Dict[str, Any], state_hash: Optional[str] = None) -> Tuple[str, float, Optional[str], str, int, Dict[str, Any]]:
         """
         Returns a selected Intent and its associated confidence/probability.
         """
@@ -121,7 +122,7 @@ class RandomWeightedPolicy(Policy):
             # Confidence during exploration is 1/N but scaled by exploration rate
             # for more accurate statistical bookkeeping.
             confidence = 1.0 / len(intents)
-            return chosen_intent.value, confidence, self.VERSION, "AUTHORITATIVE"
+            return chosen_intent.value, confidence, self.VERSION, "AUTHORITATIVE", 1, {}
 
         # Weighted selection based on policy knowledge
         chosen_intent = random.choices(intents, weights=normalized_probs, k=1)[0]
@@ -129,7 +130,11 @@ class RandomWeightedPolicy(Policy):
         # Confidence is the probability assigned by the policy
         confidence = self.weights.get(chosen_intent, 0.0) / total_weight
         
-        return chosen_intent.value, float(confidence), self.VERSION, "AUTHORITATIVE"
+        params = {}
+        if chosen_intent == Intent.MOVE:
+            params = {"vector": [random.uniform(-1, 1), 0, random.uniform(-1, 1)], "sprinting": random.random() > 0.5}
+            
+        return chosen_intent.value, float(confidence), self.VERSION, "AUTHORITATIVE", 1, params
 
 class MLPolicy(LearnedPolicy):
     """
@@ -146,6 +151,14 @@ class MLPolicy(LearnedPolicy):
         self.update_history: List[Dict[str, Any]] = [] # Bounded buffer for updates (Req 3)
         self.MAX_UPDATE_HISTORY = 100
         self.history_lock = random.random() # Symbolic lock for atomic swap
+        self.tick_counter = 0
+        self.last_action_tick = {} # action_name -> last_tick_issued
+        self.observed_cooldowns = {} # action_name -> cooldown_ticks
+        self.promoted_error = None
+        self.current_movement_intent: Optional[MovementIntent] = None
+        self.last_pos = None
+        self.is_currently_blocked = False
+        self.movement_failure_count = 0
 
     def load_promoted_knowledge(self, promoted_dir: str):
         """Loads validated passive knowledge from a promotion snapshot directory."""
@@ -206,26 +219,84 @@ class MLPolicy(LearnedPolicy):
             # Re-raise to trigger HARD FAIL in server
             raise
 
-    def decide(self, state: Dict[str, Any], state_hash: Optional[str] = None) -> Tuple[str, float, Optional[str], Dict[str, float], str]:
+    def decide(self, state: Dict[str, Any], state_hash: Optional[str] = None) -> Tuple[str, float, Optional[str], str, int, Dict[str, Any]]:
         """Wraps decide_version based on policy role."""
         # Active policy exclusively uses active model, Shadow uses candidate (or active if no candidate)
         version = self.manager.active_model_version
         if self.role == "SHADOW" and self.manager.candidate_model_version:
             version = self.manager.candidate_model_version
             
-        return self.decide_version(state, version, state_hash=state_hash)
+        intent, conf, ver, probs, auth, dur, params = self.decide_version(state, version, state_hash=state_hash)
+        return intent, conf, ver, auth, dur, params
 
-    def _decide_from_knowledge(self, state_hash: Optional[str]) -> Tuple[str, float, str, Dict[str, float], str]:
+    def _categorize_movement_type(self, target_dir: str, vector: List[float]) -> str:
+        if not vector or len(vector) < 3:
+            return "STOP"
+        vx, vy, vz = vector
+        if abs(vx) < 0.1 and abs(vz) < 0.1:
+            return "STOP"
+        if target_dir == "FRONT":
+            if vx > 0.5: return "MOVE_CLOSER"
+            if abs(vz) > 0.5: return "STRAFE"
+        elif target_dir == "BACK":
+            if vx < -0.5: return "MOVE_CLOSER"
+            if abs(vz) > 0.5: return "STRAFE"
+        elif target_dir == "RIGHT":
+            if vz > 0.5: return "MOVE_CLOSER"
+            if abs(vx) > 0.5: return "STRAFE"
+        elif target_dir == "LEFT":
+            if vz < -0.5: return "MOVE_CLOSER"
+            if abs(vx) > 0.5: return "STRAFE"
+        return "OTHER"
+
+    def _decide_from_knowledge(self, state: Dict[str, Any], state_hash: Optional[str], is_blocked: bool = False) -> Tuple[str, float, str, Dict[str, float], str, int, Dict[str, Any]]:
         """
         Implementation of PART 2, 3, and 4: Passive knowledge-based decision making.
         """
         if not self.promoted_knowledge:
-            return Intent.STOP.value, 0.0, "KNOWLEDGE_MISSING", {}, "AUTHORITATIVE"
+            return Intent.STOP.value, 0.0, "KNOWLEDGE_MISSING", {}, "AUTHORITATIVE", 1, {}
 
         if not state_hash:
             logger.warning("ACTIVE: state_hash missing, cannot query knowledge. Falling back.")
-            return Intent.STOP.value, 0.0, "KNOWLEDGE_NO_HASH", {}, "AUTHORITATIVE"
+            return Intent.STOP.value, 0.0, "KNOWLEDGE_NO_HASH", {}, "AUTHORITATIVE", 1, {}
 
+        # PART 0: Block Resolution (New Requirement)
+        if state_hash != getattr(self, "last_blocked_state_hash", None):
+            self.movement_failure_count = 0
+            self.last_blocked_state_hash = state_hash
+
+        if is_blocked:
+            self.movement_failure_count += 1
+            
+        if self.movement_failure_count >= 3:
+            logger.warning(f"ACTIVE: Movement safety gate triggered ({self.movement_failure_count} failures). Force disengage.")
+            return Intent.STOP.value, 1.0, "KNOWLEDGE_SAFETY_GATE", {}, "AUTHORITATIVE", 1, {}
+
+        if is_blocked:
+            blocked_resolutions = self.promoted_knowledge.get("blocked_resolutions", {})
+            resolutions = blocked_resolutions.get(state_hash, {})
+            if resolutions:
+                # Pick MOST COMMON resolution
+                best_res = max(resolutions.items(), key=lambda x: x[1])[0]
+                logger.info(f"ACTIVE: Block detected! Replaying most common resolution for {state_hash[:8]}: {best_res}")
+                
+                # Check if it's on cooldown
+                last_tick = self.last_action_tick.get(best_res, -1000)
+                if self.tick_counter - last_tick >= 1: # Basic sanity, resolutions usually don't have long cooldowns
+                    self.last_action_tick[best_res] = self.tick_counter
+                    return best_res, 1.0, "KNOWLEDGE_BLOCK_RESOLUTION", {best_res: 1.0}, "AUTHORITATIVE", 1, {}
+            
+            logger.info(f"ACTIVE: Block detected but no resolution known for {state_hash[:8]}. stopping and reassessing.")
+            return Intent.STOP.value, 1.0, "KNOWLEDGE_BLOCK_NO_RESOLUTION", {}, "AUTHORITATIVE", 1, {}
+        else:
+            pass # We don't reset failure count just by not being blocked (e.g. after a STOP)
+
+        # PART 0.1: Effective Range Gating (Combat Requirement)
+        derived = state.get("derived", {})
+        distance_cat = derived.get("distance_category", "FAR")
+        can_attack = derived.get("can_attack", False)
+        target_dir = derived.get("target_direction", "FRONT")
+        
         # PART 1: Query the passive graph
         visitation_counts = self.promoted_knowledge.get("visitation_counts", {})
         valid_actions = self.promoted_knowledge.get("valid_actions", {})
@@ -233,14 +304,15 @@ class MLPolicy(LearnedPolicy):
         violations = self.promoted_knowledge.get("invariant_violations", [])
 
         # Retrieve observed actions for current state
-        observed_actions = valid_actions.get(state_hash, [])
-        if not observed_actions:
+        observed_entries = valid_actions.get(state_hash, [])
+        if not observed_entries:
             logger.debug(f"ACTIVE: State {state_hash[:8]} unknown to knowledge graph.")
-            return Intent.STOP.value, 0.0, "KNOWLEDGE_UNKNOWN_STATE", {}, "AUTHORITATIVE"
+            return Intent.STOP.value, 0.0, "KNOWLEDGE_UNKNOWN_STATE", {}, "AUTHORITATIVE", 1, {}
 
         # PART 2: Action Filtering
-        # - NEVER choose an action that Shadow marked invalid (Implicitly only use observed valid_actions)
+        # - NEVER choose an action that Shadow marked invalid
         # - NEVER repeat an action that caused invariant violations
+        # - COOLDOWN GATE: Prevent spamming actions faster than observed cooldowns
         forbidden_actions = set()
         for v in violations:
             if v.get("state_hash") == state_hash:
@@ -248,18 +320,58 @@ class MLPolicy(LearnedPolicy):
                 if forbidden_action:
                     forbidden_actions.add(forbidden_action)
 
-        candidates = [a for a in observed_actions if a not in forbidden_actions]
+        candidates = []
+        for entry in observed_entries:
+            # Handle both legacy string and new dictionary representation
+            if isinstance(entry, dict):
+                action_name = entry["action_name"]
+                cooldown = entry.get("cooldown_ticks_observed", 0)
+            else:
+                action_name = entry
+                cooldown = 0
+            
+            if action_name in forbidden_actions:
+                continue
+            
+            # 1. Cooldown Enforcement
+            last_tick = self.last_action_tick.get(action_name, -1000)
+            elapsed = self.tick_counter - last_tick
+            
+            # Fallback for missing cooldown data (Conservative minimum delay)
+            if cooldown <= 0:
+                # Combat actions get a base 5-tick cooldown if not observed
+                if action_name in [Intent.PRIMARY_ATTACK, Intent.JUMP]:
+                    cooldown = 5
+                else:
+                    cooldown = 1 # Minimum 1 tick between same action
+            
+            if elapsed < cooldown:
+                logger.info(f"ACTIVE: Cooldown gate blocked '{action_name}' ({elapsed}/{cooldown} ticks)")
+                continue
+                
+            candidates.append(entry)
         
         if not candidates:
-            logger.warning(f"ACTIVE: No safe actions available for state {state_hash[:8]} (Forbidden: {list(forbidden_actions)})")
+            logger.warning(f"ACTIVE: No safe actions available for state {state_hash[:8]} (Forbidden: {list(forbidden_actions)}, others on cooldown)")
             # Fall back to safe deterministic action (STOP)
-            return Intent.STOP.value, 1.0, "KNOWLEDGE_NO_SAFE_CANDIDATES", {}, "AUTHORITATIVE"
+            return Intent.STOP.value, 1.0, "KNOWLEDGE_NO_SAFE_CANDIDATES", {}, "AUTHORITATIVE", 1, {}
 
         # PART 3: Deterministic Scoring
         scores = {}
         breakdowns = {}
+        durations = {}
+        params_map = {}
         
-        for action in candidates:
+        for entry in candidates:
+            if isinstance(entry, dict):
+                action = entry["action_name"]
+                duration = entry.get("hold_duration_ticks", 1)
+                params = entry.get("params", {})
+            else:
+                action = entry
+                duration = 1
+                params = {}
+            
             # 1) Predict likely next state using transition frequencies
             state_transitions = transitions.get(state_hash, {}).get(action, {})
             if not state_transitions:
@@ -278,13 +390,40 @@ class MLPolicy(LearnedPolicy):
             total_transitions = sum(state_transitions.values())
             stability = state_transitions[likely_next_state] / total_transitions if total_transitions > 0 else 0.0
             
-            # 4) Apply invariant penalty (Handled via filtering, but adding a base score)
-            score = stability + novelty
+            # 4) Combat Bias (Enables target-oriented movement based on observed frequencies)
+            combat_bias = 0.0
+            cmp = self.promoted_knowledge.get("combat_movement_patterns", {})
+            dir_patterns = cmp.get(target_dir, {})
+            
+            if dir_patterns:
+                total_obs = sum(dir_patterns.values())
+                if total_obs > 0:
+                    if action == Intent.MOVE.value:
+                        m_type = self._categorize_movement_type(target_dir, params.get("vector", [0,0,0]))
+                        freq = dir_patterns.get(m_type, 0) / total_obs
+                        combat_bias += freq * 0.4 
+                    elif action == Intent.STOP.value:
+                        freq = dir_patterns.get("STOP", 0) / total_obs
+                        combat_bias += freq * 0.4
+
+            # 4.1) Hard Distance Gating (Requirement: Stop when in effective range)
+            if action == Intent.MOVE.value and distance_cat == "CLOSE":
+                m_type = self._categorize_movement_type(target_dir, params.get("vector", [0,0,0]))
+                if m_type == "MOVE_CLOSER":
+                    combat_bias -= 0.5 # Strongly discourage moving closer when already close
+            elif action == Intent.STOP.value and distance_cat == "CLOSE":
+                combat_bias += 0.3 # Encourage stopping when close
+            
+            # 5) Apply invariant penalty (Handled via filtering, but adding a base score)
+            score = stability + novelty + combat_bias
             
             scores[action] = score
+            durations[action] = duration
+            params_map[action] = params
             breakdowns[action] = {
                 "stability": stability,
                 "novelty": novelty,
+                "combat_bias": combat_bias,
                 "next_state": likely_next_state[:8],
                 "next_visits": next_visit_count
             }
@@ -292,35 +431,69 @@ class MLPolicy(LearnedPolicy):
         # Select highest-scoring action
         best_action = max(scores.items(), key=lambda x: x[1])[0]
         best_score = scores[best_action]
+        best_duration = durations[best_action]
+        best_params = params_map[best_action]
+        
+        # Track issued action for cooldowns
+        self.last_action_tick[best_action] = self.tick_counter
 
         # PART 4: Safety & Transparency
         logger.debug(f"ACTIVE DECISION [State: {state_hash[:8]}]:")
-        for action in candidates:
+        for entry in candidates:
+            action = entry["action_name"] if isinstance(entry, dict) else entry
             b = breakdowns.get(action, {})
-            logger.debug(f"  - Action: {action} | Score: {scores[action]:.4f} (Stab: {b.get('stability', 0):.2f}, Nov: {b.get('novelty', 0):.2f})")
-        logger.debug(f"SELECTED: {best_action} (Reason: Highest Score)")
+            logger.debug(f"  - Action: {action} | Score: {scores.get(action, 0):.4f} (Stab: {b.get('stability', 0):.2f}, Nov: {b.get('novelty', 0):.2f}, Combat: {b.get('combat_bias', 0):.2f})")
+        logger.info(f"SELECTED: {best_action} (Reason: Highest Score | Tick: {self.tick_counter} | Hold: {best_duration})")
 
-        return best_action, float(min(1.0, best_score)), "PROMOTED_KNOWLEDGE", {best_action: 1.0}, "AUTHORITATIVE"
+        return best_action, float(min(1.0, best_score)), "PROMOTED_KNOWLEDGE", {best_action: 1.0}, "AUTHORITATIVE", best_duration, best_params
 
-    def decide_version(self, state: Dict[str, Any], version: Optional[str], bypass_state_update: bool = False, state_hash: Optional[str] = None) -> Tuple[str, float, Optional[str], Dict[str, float], str]:
+    def decide_version(self, state: Dict[str, Any], version: Optional[str], bypass_state_update: bool = False, state_hash: Optional[str] = None) -> Tuple[str, float, Optional[str], Dict[str, float], str, int, Dict[str, Any]]:
         """
         ACTIVE role uses promoted knowledge.
         SHADOW role uses model suggestion.
         """
+        if not bypass_state_update:
+            self.tick_counter += 1
+
+        # Track displacement if moving
+        raw = state.get("raw", {})
+        pos = (raw.get("pos_x", 0.0), raw.get("pos_y", 0.0), raw.get("pos_z", 0.0))
+        
+        last_action = None
+        if self.tick_counter - 1 in self.last_action_tick.values():
+            # Find which action was issued in the previous tick
+            for act, tick in self.last_action_tick.items():
+                if tick == self.tick_counter - 1:
+                    last_action = act
+                    break
+        
+        if not bypass_state_update:
+            if self.last_pos and last_action == Intent.MOVE.value:
+                dist = math.sqrt(sum((a - b) ** 2 for a, b in zip(pos, self.last_pos)))
+                if dist < 0.01:
+                    self.is_currently_blocked = True
+                else:
+                    self.is_currently_blocked = False
+                    self.movement_failure_count = 0 # Successful MOVE resets failure count
+            else:
+                self.is_currently_blocked = False
+                
+            self.last_pos = pos
+
         # PART 5: Failure Modes
         if self.role == "ACTIVE":
             if self.promoted_error:
                 logger.error(f"ACTIVE FAILURE: {self.promoted_error}. Disabling AI:ON behavior.")
                 # Fall back to baseline movement (STOP)
-                return Intent.STOP.value, 0.0, "KNOWLEDGE_ERROR_FALLBACK", {}, "AUTHORITATIVE"
+                return Intent.STOP.value, 0.0, "KNOWLEDGE_ERROR_FALLBACK", {}, "AUTHORITATIVE", 1, {}
             
             # Consume promoted knowledge
-            intent, conf, source, probs, auth = self._decide_from_knowledge(state_hash)
-            if source == "PROMOTED_KNOWLEDGE":
-                return intent, conf, f"ML_PROMOTED_{intent}", probs, auth
+            res = self._decide_from_knowledge(state, state_hash, is_blocked=self.is_currently_blocked)
+            intent, conf, source, probs, auth, dur, params = res
+            if source.startswith("PROMOTED_") or source.startswith("KNOWLEDGE_"):
+                return intent, conf, source, probs, auth, dur, params
             else:
-                # If knowledge couldn't make a decision, fall back to baseline
-                return Intent.STOP.value, 0.0, f"ML_BASELINE_{source}", {}, "AUTHORITATIVE"
+                return Intent.STOP.value, 0.0, f"ML_BASELINE_{source}", {}, "AUTHORITATIVE", 1, {}
 
         start_time = time.monotonic()
         
@@ -341,12 +514,12 @@ class MLPolicy(LearnedPolicy):
             # 3.1 Canonical Check
             if not Intent.has_value(intent_str):
                 logger.error(f"ML POLICY FAILURE: Model {version} suggested non-canonical intent: {intent_str}")
-                return Intent.STOP.value, 0.0, actual_version, {}, authority
+                return Intent.STOP.value, 0.0, actual_version, {}, authority, 1, {}
             
             # 3.2 Confidence Sanity
             if not (0.0 <= confidence <= 1.0):
                 logger.error(f"ML POLICY FAILURE: Model {version} invalid confidence range: {confidence}")
-                return intent_str, 0.0, actual_version, probs, authority
+                return intent_str, 0.0, actual_version, probs, authority, 1, {}
 
             # 3.3 BLIND SPOT DETECTION (OOD Features)
             # If health is extremely low, model might not have been trained here.
@@ -367,11 +540,17 @@ class MLPolicy(LearnedPolicy):
             # Apply learned boost (Requirement 1 & 4 Phase 10A/B)
             boosted_confidence = min(1.0, confidence + self.learned_boost)
             
-            return intent_str, float(boosted_confidence), actual_version, probs, authority
+            # Default params for ML (vector/sprinting might need to be derived if needed, 
+            # but for now we use defaults or knowledge-based params)
+            params = {}
+            if intent_str == Intent.MOVE.value:
+                params = {"vector": [1.0, 0.0, 0.0], "sprinting": True}
+
+            return intent_str, float(boosted_confidence), actual_version, probs, authority, 1, params
 
         except Exception as e:
             logger.error(f"ML POLICY CRITICAL: Inference failure for model {version}: {e}")
-            return Intent.STOP.value, 0.0, version, {}, authority
+            return Intent.STOP.value, 0.0, version, {}, authority, 1, {}
 
     def update_weights(self, batch: List[Dict[str, Any]]) -> float:
         """
@@ -598,6 +777,8 @@ class PolicyArbitrator:
         # ONLINE MONITORING & SOFT DEGRADE
         self.ml_failure_cooldown = 0
         self.last_ml_entropy = 0.0
+        self.current_movement_intent: Optional[MovementIntent] = None
+        self.last_active_pos = None
         
         # Separated Metrics (Requirement: DO NOT SHARE COUNTERS)
         self.active_metrics = {
@@ -632,7 +813,7 @@ class PolicyArbitrator:
             logger.info("ARBITRATOR: ML Policy has been ENABLED.")
             self.ml_failure_cooldown = 0 # Reset cooldown on manual enable
 
-    def decide(self, state: Dict[str, Any], policy_mode: str = "ACTIVE", state_hash: Optional[str] = None) -> Tuple[str, float, str, str, Optional[str], Optional[str], Optional[Dict[str, Any]]]:
+    def decide(self, state: Dict[str, Any], policy_mode: str = "ACTIVE", state_hash: Optional[str] = None) -> Tuple[str, float, str, str, Optional[str], Optional[str], Optional[Dict[str, Any]], int, Dict[str, Any]]:
         """
         Arbitration Flow (per ONLINE_ML_PROTOCOL):
         1. HEURISTIC VETO (Survival Guardian)
@@ -640,7 +821,7 @@ class PolicyArbitrator:
         3. HEURISTIC FALLBACK (Safe path)
         4. RANDOM FALLBACK (Entropy path)
         
-        Returns: (intent, confidence, source, authority, fallback_reason, model_version, shadow_data)
+        Returns: (intent, confidence, source, authority, fallback_reason, model_version, shadow_data, hold_duration_ticks, params)
         """
         # MANDATORY FIRST CHECK: SHADOW MODE IS NOT SUBJECT TO ARBITRATION
         if policy_mode == "SHADOW":
@@ -650,18 +831,18 @@ class PolicyArbitrator:
             if self.shadow_policy.manager.candidate_model_version:
                 s_ver_target = self.shadow_policy.manager.candidate_model_version
                 
-            s_intent, s_conf, s_ver, s_probs, s_auth = self.shadow_policy.decide_version(
+            s_intent, s_conf, s_ver, s_probs, s_auth, s_dur, s_params = self.shadow_policy.decide_version(
                 state, 
                 s_ver_target,
                 bypass_state_update=True,
                 state_hash=state_hash
             )
-            shadow_data = {"intent": s_intent, "confidence": s_conf, "version": s_ver, "authority": s_auth}
+            shadow_data = {"intent": s_intent, "confidence": s_conf, "version": s_ver, "authority": s_auth, "hold_duration_ticks": s_dur, "params": s_params}
             
             # 0. Candidate Evaluation (Observational only - IGNORE MONITOR EVENTS)
             candidate_ver = self.ml_policy.manager.candidate_model_version
             if candidate_ver:
-                c_intent, c_conf, c_ver, c_probs, c_auth = self.ml_policy.decide_version(
+                c_intent, c_conf, c_ver, c_probs, c_auth, c_dur, c_params = self.ml_policy.decide_version(
                     state, 
                     candidate_ver,
                     bypass_state_update=True,
@@ -671,47 +852,107 @@ class PolicyArbitrator:
                     "version": c_ver,
                     "intent": c_intent,
                     "confidence": c_conf,
-                    "authority": c_auth
+                    "authority": c_auth,
+                    "hold_duration_ticks": c_dur,
+                    "params": c_params
                 }
             
             # ABSOLUTE LAW: IGNORE MONITOR RECOMMENDATIONS, SIGNALS, COUNTERS, AND COOLDOWNS
             # RETURN NO-OP
-            return Intent.STOP.value, 1.0, "SHADOW_MODE", "ADVISORY", None, s_ver, shadow_data
+            return Intent.STOP.value, 1.0, "SHADOW_MODE", "ADVISORY", None, s_ver, shadow_data, 1, {}
 
         self.metrics["total_cycles"] += 1
+        
+        # ACTIVE Persistent Movement Intent Logic
+        if self.current_movement_intent:
+            invalidation_reason = None
+            normalized = state.get("normalized", {})
+            raw = state.get("raw", {})
+            
+            # 1. Obstacle Detected (Legacy)
+            if normalized.get("is_colliding", 0.0) > 0.5:
+                invalidation_reason = "OBSTACLE_DETECTED"
+            
+            # 2. Target Lost (distance maxed out or 1.0 normalized)
+            elif normalized.get("target_distance", 1.0) >= 1.0:
+                invalidation_reason = "TARGET_LOST"
+            
+            # 3. Blocked Detection (New Requirement)
+            pos = (raw.get("pos_x", 0.0), raw.get("pos_y", 0.0), raw.get("pos_z", 0.0))
+            if self.last_active_pos:
+                dist = math.sqrt(sum((a - b) ** 2 for a, b in zip(pos, self.last_active_pos)))
+                if dist < 0.01:
+                    invalidation_reason = "MOVEMENT_BLOCKED"
+            self.last_active_pos = pos
+            
+            if invalidation_reason:
+                logger.info(f"ACTIVE: Movement intent ENDED: {invalidation_reason}")
+                self.current_movement_intent = None
+        else:
+            # Update last_active_pos even if no intent is active to have a baseline
+            raw = state.get("raw", {})
+            self.last_active_pos = (raw.get("pos_x", 0.0), raw.get("pos_y", 0.0), raw.get("pos_z", 0.0))
+
         shadow_data = None
         candidate_ver = self.ml_policy.manager.candidate_model_version
 
         # 0. Shadow Evaluation (Always run if candidate exists - Failure Management bypass)
         if candidate_ver:
-            c_intent, c_conf, c_ver, c_probs, c_auth = self.ml_policy.decide_version(state, candidate_ver, state_hash=state_hash)
+            c_intent, c_conf, c_ver, c_probs, c_auth, c_dur, c_params = self.ml_policy.decide_version(state, candidate_ver, state_hash=state_hash)
             shadow_data = {
                 "version": c_ver,
                 "intent": c_intent,
                 "confidence": c_conf,
-                "authority": c_auth
+                "authority": c_auth,
+                "hold_duration_ticks": c_dur,
+                "params": c_params
             }
             self.metrics["candidate_calls"] += 1
         
         # 1. Shadow Policy Evaluation (MANDATORY: ALWAYS RUN)
-        s_intent, s_conf, s_ver, s_probs, s_auth = self.shadow_policy.decide(state, state_hash=state_hash)
+        s_intent, s_conf, s_ver, s_auth, s_dur, s_params = self.shadow_policy.decide(state, state_hash=state_hash)
         if shadow_data is None:
-            shadow_data = {"intent": s_intent, "confidence": s_conf, "version": s_ver}
+            shadow_data = {"intent": s_intent, "confidence": s_conf, "version": s_ver, "hold_duration_ticks": s_dur, "params": s_params}
 
         # 2. Safety Veto Check (Heuristics are the guardians)
-        h_intent, h_conf, h_ver, h_auth = self.heuristic_policy.decide(state, state_hash=state_hash)
+        h_intent, h_conf, h_ver, h_auth, h_dur, h_params = self.heuristic_policy.decide(state, state_hash=state_hash)
         
         # If Heuristic is VERY confident (Safety rule triggered), it vetoes ML
         if h_conf >= 0.9:
-            return h_intent, h_conf, "HEURISTIC_VETO", h_auth, "SAFETY_RULE_TRIGGERED", h_ver, shadow_data
+            if self.current_movement_intent:
+                logger.info(f"ACTIVE: Movement intent ENDED: HEURISTIC_VETO ({h_intent})")
+                self.current_movement_intent = None
+            return h_intent, h_conf, "HEURISTIC_VETO", h_auth, "SAFETY_RULE_TRIGGERED", h_ver, shadow_data, h_dur, h_params
 
         # 3. ML Suggestion (Active Path)
         # Soft Degrade Check: If in cooldown, bypass ML
         if self.ml_failure_cooldown > 0:
             self.ml_failure_cooldown -= 1
             res = list(self._heuristic_fallback(h_intent, h_conf, h_ver, h_auth, "SOFT_DEGRADE_FALLBACK", "ML_FAILURE_COOLDOWN", state_hash=state_hash))
-            res.append(shadow_data)
-            return tuple(res)
+            # res is (intent, conf, source, auth, reason, ver, dur, params) - 8 elements
+            # We need to insert shadow_data to match return type (9 elements)
+            res.insert(6, shadow_data)
+            
+            final_intent, final_conf, final_source, final_auth, final_reason, final_ver, final_shadow_data, final_dur, final_params = tuple(res)
+            
+            if self.current_movement_intent:
+                intent_enum = Intent[final_intent] if final_intent in Intent.__members__ else None
+                move_priority = Intent.MOVE.metadata.get("priority", 0)
+                new_priority = intent_enum.metadata.get("priority", 0) if intent_enum else 0
+                
+                if new_priority > move_priority:
+                    logger.info(f"ACTIVE: Movement intent ENDED: HIGHER_PRIORITY_FALLBACK ({final_intent})")
+                    self.current_movement_intent = None
+                elif final_intent == Intent.STOP.value:
+                    logger.info(f"ACTIVE: Movement intent ENDED: EXPLICIT_STOP_FALLBACK")
+                    self.current_movement_intent = None
+                else:
+                    return Intent.MOVE.value, 1.0, "PERSISTENT_INTENT", "AUTHORITATIVE", None, final_ver, shadow_data, 1, {
+                        "vector": self.current_movement_intent.direction_vector,
+                        "sprinting": self.current_movement_intent.sprinting
+                    }
+            
+            return final_intent, final_conf, final_source, final_auth, final_reason, final_ver, shadow_data, final_dur, final_params
 
         if self.ml_enabled:
             # Decide if we use Canary (Candidate) or Production
@@ -724,7 +965,7 @@ class PolicyArbitrator:
             
             # Phase 10B: Dual-Policy Influence
             # ActivePolicy → action_A
-            ml_intent, ml_conf, ml_ver, ml_probs, ml_auth = self.active_policy.decide_version(state, target_version, state_hash=state_hash)
+            ml_intent, ml_conf, ml_ver, ml_probs, ml_auth, ml_dur, ml_params = self.active_policy.decide_version(state, target_version, state_hash=state_hash)
             
             # Final action: final = mix(action_A, action_S, influence_weight)
             source_prefix = "CANARY_" if use_candidate else "ML_"
@@ -737,14 +978,42 @@ class PolicyArbitrator:
                     final_conf = s_conf
                     final_ver = s_ver
                     final_auth = s_auth
+                    final_dur = s_dur
+                    final_params = s_params
                     source_prefix = "SHADOW_INFLUENCE_"
                     is_shadow = True
                 else:
-                    final_intent, final_conf, final_ver, final_auth = ml_intent, ml_conf, ml_ver, ml_auth
+                    final_intent, final_conf, final_ver, final_auth, final_dur, final_params = ml_intent, ml_conf, ml_ver, ml_auth, ml_dur, ml_params
                     source_prefix = "ML_FALLBACK_"
             else:
-                final_intent, final_conf, final_ver, final_auth = ml_intent, ml_conf, ml_ver, ml_auth
+                final_intent, final_conf, final_ver, final_auth, final_dur, final_params = ml_intent, ml_conf, ml_ver, ml_auth, ml_dur, ml_params
             
+            # Persistent Intent Logic for ML Suggestion
+            if self.current_movement_intent:
+                intent_enum = Intent[final_intent] if final_intent in Intent.__members__ else None
+                move_priority = Intent.MOVE.metadata.get("priority", 0)
+                new_priority = intent_enum.metadata.get("priority", 0) if intent_enum else 0
+                
+                if new_priority > move_priority:
+                    logger.info(f"ACTIVE: Movement intent ENDED: HIGHER_PRIORITY_ACTION ({final_intent})")
+                    self.current_movement_intent = None
+                elif final_intent == Intent.STOP.value:
+                    logger.info(f"ACTIVE: Movement intent ENDED: EXPLICIT_STOP")
+                    self.current_movement_intent = None
+                else:
+                    # Replay
+                    return Intent.MOVE.value, 1.0, "PERSISTENT_INTENT", "AUTHORITATIVE", None, final_ver, shadow_data, 1, {
+                        "vector": self.current_movement_intent.direction_vector,
+                        "sprinting": self.current_movement_intent.sprinting
+                    }
+
+            # Start persistent intent
+            if final_intent == Intent.MOVE.value and not self.current_movement_intent:
+                vector = final_params.get("vector", [0,0,0])
+                sprinting = final_params.get("sprinting", False)
+                self.current_movement_intent = MovementIntent(vector, sprinting, self.ml_policy.tick_counter)
+                logger.info(f"ACTIVE: Movement intent STARTED: {vector} (sprint: {sprinting})")
+
             # Track calls
             m = self.shadow_metrics if is_shadow else self.active_metrics
             m["calls"] += 1
@@ -756,7 +1025,7 @@ class PolicyArbitrator:
                 if not is_shadow:
                     self._trigger_soft_degrade("TIMEOUT")
                 res = list(self._heuristic_fallback(h_intent, h_conf, h_ver, h_auth, "ML_TIMEOUT_FALLBACK", "TIMEOUT_EXCEEDED", state_hash=state_hash))
-                res.append(shadow_data)
+                res.insert(-2, shadow_data)
                 return tuple(res)
 
             # 3.2 UNCERTAINTY & ENTROPY CHECK
@@ -765,7 +1034,7 @@ class PolicyArbitrator:
             if ml_entropy > 1.5: # Threshold for high uncertainty
                 logger.warning(f"ML UNCERTAINTY: High entropy ({ml_entropy:.3f}) detected for model {ml_ver}. Falling back.")
                 res = list(self._heuristic_fallback(h_intent, h_conf, h_ver, h_auth, "ML_ENTROPY_FALLBACK", "HIGH_UNCERTAINTY", state_hash=state_hash))
-                res.append(shadow_data)
+                res.insert(-2, shadow_data)
                 return tuple(res)
 
             # 3.3 Confidence & Output Validation
@@ -776,35 +1045,43 @@ class PolicyArbitrator:
                 if final_intent != h_intent and h_conf > 0.5:
                     m["divergence_count"] += 1
                 
-                return final_intent, final_conf, f"{source_prefix}SUGGESTION", final_auth, None, final_ver, shadow_data
+                final_source = f"{source_prefix}SUGGESTION"
+                if final_ver and (final_ver.startswith("PROMOTED_") or "KNOWLEDGE_" in final_ver):
+                    final_source = f"{source_prefix}{final_ver}"
+                
+                return final_intent, final_conf, final_source, final_auth, None, final_ver, shadow_data, final_dur, final_params
             
             # ML was certain enough but didn't meet threshold
             if final_conf < 0.1: # Extreme uncertainty or rejection
                 m["failures"] += 1
                 res = list(self._heuristic_fallback(h_intent, h_conf, h_ver, h_auth, f"{source_prefix}REJECTION_FALLBACK", "LOW_CONFIDENCE", state_hash=state_hash))
-                res.append(shadow_data)
+                res.insert(6, shadow_data)
                 return tuple(res)
 
             res = list(self._heuristic_fallback(h_intent, h_conf, h_ver, h_auth, f"{source_prefix}LOW_CONFIDENCE_FALLBACK", "LOW_CONFIDENCE", state_hash=state_hash))
-            res.append(shadow_data)
+            res.insert(6, shadow_data)
             return tuple(res)
 
         # 4. Heuristic Fallback
         res = list(self._heuristic_fallback(h_intent, h_conf, h_ver, h_auth, "HEURISTIC_FALLBACK", "ML_DISABLED", state_hash=state_hash))
-        res.append(shadow_data)
+        res.insert(6, shadow_data)
         return tuple(res)
 
-    def _heuristic_fallback(self, h_intent: str, h_conf: float, h_ver: str, h_auth: str, source: str, reason: str, state_hash: Optional[str] = None) -> Tuple[str, float, str, str, str, str]:
+    def _heuristic_fallback(self, h_intent: str, h_conf: float, h_ver: str, h_auth: str, source: str, reason: str, state_hash: Optional[str] = None) -> Tuple[str, float, str, str, str, str, int, Dict[str, Any]]:
         if h_conf >= 0.5:
-            return h_intent, h_conf, source, h_auth, reason, h_ver
+            # Heuristic might need params for MOVE
+            params = {}
+            if h_intent == Intent.MOVE.value:
+                params = {"vector": [1.0, 0.0, 0.0], "sprinting": True}
+            return h_intent, h_conf, source, h_auth, reason, h_ver, 1, params
         
         # 4. Random Fallback
-        r_intent, r_conf, r_ver, r_auth = self.random_policy.decide({}, state_hash=state_hash)
-        return r_intent, r_conf, "RANDOM_FALLBACK", r_auth, f"{reason}_AND_HEURISTIC_UNCERTAIN", r_ver
+        r_intent, r_conf, r_ver, r_auth, r_dur, r_params = self.random_policy.decide({}, state_hash=state_hash)
+        return r_intent, r_conf, "RANDOM_FALLBACK", r_auth, f"{reason}_AND_HEURISTIC_UNCERTAIN", r_ver, r_dur, r_params
 
     def _run_shadow_ml(self, state: Dict[str, Any], h_intent: str):
         """Runs ML without acting, for divergence and performance tracking."""
-        ml_intent, ml_conf, ml_ver, ml_probs, ml_auth = self.ml_policy.decide(state)
+        ml_intent, ml_conf, ml_ver, ml_auth, ml_dur, ml_params = self.ml_policy.decide(state)
         self.shadow_metrics["calls"] += 1
         if ml_intent != h_intent:
             self.shadow_metrics["divergence_count"] += 1

@@ -1,0 +1,13 @@
+{
+  "version_id": "v_1767810689",
+  "source": "shadow",
+  "promotion_timestamp": 1767810689.367709,
+  "schema_version": "1.0.0",
+  "hash": "b2479bfdb3e0bf325d74c67d972524ee1d5fcfc22af88c285346c82c4c76c072",
+  "validation_status": "PASS",
+  "stats": {
+    "states": 2,
+    "transitions": 3,
+    "observations": 4
+  }
+}

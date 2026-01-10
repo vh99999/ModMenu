@@ -24,8 +24,17 @@ public class AIClient {
     private final String host;
     private final int port;
     private final Gson gson = new Gson();
-    private static final int CONNECT_TIMEOUT_MS = 1000;
-    private static final int READ_TIMEOUT_MS = 1000;
+    private static int connectTimeoutMs = 5000;
+    private static int readTimeoutMs = 0;
+
+    private Socket socket;
+    private OutputStream out;
+    private BufferedReader reader;
+
+    public static void setTimeouts(int connect, int read) {
+        connectTimeoutMs = connect;
+        readTimeoutMs = read;
+    }
 
     private static final int PROTOCOL_VERSION = 1;
 
@@ -34,40 +43,27 @@ public class AIClient {
         this.port = port;
     }
 
-    /**
-     * Sends a heartbeat request to verify server health.
-     * @return true if the server is alive and responding correctly.
-     */
-    public boolean sendHeartbeat() {
-        JsonObject heartbeat = new JsonObject();
-        heartbeat.addProperty("type", "HEARTBEAT");
-        heartbeat.addProperty("protocol_version", PROTOCOL_VERSION);
-
-        try (Socket socket = new Socket()) {
-            socket.connect(new InetSocketAddress(host, port), CONNECT_TIMEOUT_MS);
-            socket.setSoTimeout(READ_TIMEOUT_MS);
-
-            try (OutputStream out = socket.getOutputStream();
-                 InputStream in = socket.getInputStream();
-                 PrintWriter writer = new PrintWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8), true);
-                 BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
-
-                writer.println(gson.toJson(heartbeat));
-                String response = reader.readLine();
-                if (response != null) {
-                    JsonObject jsonResponse = gson.fromJson(response, JsonObject.class);
-                    // Explicit validation of response structure
-                    if (!jsonResponse.has("status")) {
-                        LOGGER.error("[CONTRACT_VIOLATION] Heartbeat response missing 'status'");
-                        return false;
-                    }
-                    return "OK".equals(jsonResponse.get("status").getAsString());
-                }
-            }
-        } catch (IOException e) {
-            LOGGER.debug("Heartbeat failed: {}", e.getMessage());
+    private synchronized void ensureConnected() throws IOException {
+        if (socket == null || socket.isClosed() || !socket.isConnected()) {
+            closeQuietly();
+            LOGGER.info("[AI_NET] [DEBUG] Connecting to {}:{}", host, port);
+            socket = new Socket();
+            socket.connect(new InetSocketAddress(host, port), connectTimeoutMs);
+            socket.setSoTimeout(readTimeoutMs);
+            out = socket.getOutputStream();
+            reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
         }
-        return false;
+    }
+
+    private void closeQuietly() {
+        try {
+            if (socket != null) {
+                socket.close();
+            }
+        } catch (IOException ignored) {}
+        socket = null;
+        out = null;
+        reader = null;
     }
 
     /**
@@ -75,103 +71,80 @@ public class AIClient {
      * @param payload The complete JSON structure required by the Python server.
      * @return A Response object containing the intent or error information.
      */
-    public Response getNextIntent(JsonObject payload) {
-        // Enforce protocol version in all outgoing requests
-        payload.addProperty("protocol_version", PROTOCOL_VERSION);
+    public synchronized Response getNextIntent(JsonObject payload) {
+        try {
+            ensureConnected();
 
-        try (Socket socket = new Socket()) {
-            socket.connect(new InetSocketAddress(host, port), CONNECT_TIMEOUT_MS);
-            socket.setSoTimeout(READ_TIMEOUT_MS);
+            // Send complete payload
+            String json = gson.toJson(payload) + "\n";
+            byte[] payloadBytes = json.getBytes(StandardCharsets.UTF_8);
+            
+            // LOGGING: EXACT JSON sent (Required)
+            LOGGER.info("[AI_NET] Outbound JSON: {}", json.trim());
+            out.write(payloadBytes);
+            out.flush();
 
-            try (OutputStream out = socket.getOutputStream();
-                 InputStream in = socket.getInputStream();
-                 PrintWriter writer = new PrintWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8), true);
-                 BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+            // Read intent response - STRICT ONE LINE - Block until response
+            String response = reader.readLine();
+            
+            if (response == null) {
+                LOGGER.warn("[AI_NET] Connection closed by Python server (EOF).");
+                closeQuietly();
+                return new Response(IntentType.STOP, 0.0, "CONNECTION_CLOSED");
+            }
 
-                // Send complete payload
-                writer.println(gson.toJson(payload));
+            // LOGGING: Response received (Required)
+            LOGGER.info("[AI_NET] Inbound JSON: {}", response.trim());
 
-                // Read intent response
-                String response = reader.readLine();
-                if (response == null) {
-                    return new Response(null, 0.0, "EMPTY_RESPONSE");
-                }
+            JsonObject jsonResponse;
+            try {
+                jsonResponse = gson.fromJson(response, JsonObject.class);
+            } catch (Exception e) {
+                LOGGER.error("[AI_NET] Parse failure for response: {}", response);
+                return new Response(IntentType.STOP, 0.0, "INVALID_JSON_RESPONSE");
+            }
 
-                JsonObject jsonResponse;
-                try {
-                    jsonResponse = gson.fromJson(response, JsonObject.class);
-                } catch (com.google.gson.JsonSyntaxException e) {
-                    return new Response(null, 0.0, "INVALID_JSON_RESPONSE");
-                }
+            if (jsonResponse == null) {
+                return new Response(IntentType.STOP, 0.0, "NULL_JSON_RESPONSE");
+            }
+            
+            // 1. Check for explicit error fields from Python
+            if (jsonResponse.has("status") && "ERROR".equals(jsonResponse.get("status").getAsString())) {
+                String error = jsonResponse.has("error") ? jsonResponse.get("error").getAsString() : "Unknown Python error";
+                return new Response(IntentType.STOP, 0.0, "SERVER_ERROR: " + error);
+            }
+
+            // 2. Validate successful response schema
+            if (!jsonResponse.has("intent") || jsonResponse.get("intent").isJsonNull()) {
+                return new Response(IntentType.STOP, 0.0, "MALFORMED_RESPONSE: Missing 'intent'");
+            }
+
+            try {
+                String intentStr = jsonResponse.get("intent").getAsString();
+                IntentType intent = IntentType.valueOf(intentStr.toUpperCase());
                 
-                // 1. Check for explicit error fields from Python
-                if (jsonResponse.has("status") && "ERROR".equals(jsonResponse.get("status").getAsString())) {
-                    String error = jsonResponse.has("error") ? jsonResponse.get("error").getAsString() : "Unknown Python error";
-                    return new Response(null, 0.0, "SERVER_ERROR: " + error);
+                // Map NO_OP to STOP to comply with Requirement 8 (No NO_OP sent by client)
+                if (intent == IntentType.NO_OP) {
+                    intent = IntentType.STOP;
                 }
 
-                // 2. Validate successful response schema
-                if (!jsonResponse.has("intent")) {
-                    return new Response(null, 0.0, "MALFORMED_RESPONSE: Missing 'intent'");
-                }
+                double confidence = (jsonResponse.has("confidence") && !jsonResponse.get("confidence").isJsonNull()) 
+                    ? jsonResponse.get("confidence").getAsDouble() : 1.0;
 
-                try {
-                    String intentStr = jsonResponse.get("intent").getAsString();
-                    IntentType intent = IntentType.valueOf(intentStr.toUpperCase());
-                    
-                    double confidence = jsonResponse.has("confidence") ? jsonResponse.get("confidence").getAsDouble() : 1.0;
-
-                    return new Response(intent, confidence, null);
-                } catch (IllegalArgumentException e) {
-                    String unknownIntent = jsonResponse.get("intent").getAsString();
-                    LOGGER.error("[CONTRACT_VIOLATION] Received unknown intent from Python: {}", unknownIntent);
-                    return new Response(null, 0.0, "UNKNOWN_INTENT: " + unknownIntent);
-                }
+                return new Response(intent, confidence, null);
+            } catch (Exception e) {
+                LOGGER.error("[AI_NET] Unknown intent received: {}", jsonResponse.get("intent"));
+                return new Response(IntentType.STOP, 0.0, "INTENT_PARSE_FAILURE");
             }
         } catch (IOException e) {
-            LOGGER.debug("AI Server communication failure: {}", e.getMessage());
-            return new Response(null, 0.0, "COMMUNICATION_FAILURE: " + e.getMessage());
+            String errorMsg = e.getMessage();
+            LOGGER.debug("[AI_NET] Communication failure: {}", errorMsg);
+            closeQuietly();
+            return new Response(IntentType.STOP, 0.0, "COMMUNICATION_FAILURE: " + errorMsg);
+        } catch (Throwable t) {
+            LOGGER.error("[AI_NET] Critical client error: {}", t.getMessage());
+            return new Response(IntentType.STOP, 0.0, "CRITICAL_CLIENT_ERROR: " + t.getMessage());
         }
-    }
-
-    /**
-     * Sends the CONTROL_MODE message to the server.
-     * @param mode The target control mode.
-     * @return true if the server acknowledged the mode change.
-     */
-    public boolean sendControlMode(ControlMode mode) {
-        JsonObject payload = new JsonObject();
-        payload.addProperty("type", "CONTROL_MODE");
-        payload.addProperty("mode", mode.name());
-        payload.addProperty("source", "GUI");
-        payload.addProperty("protocol_version", PROTOCOL_VERSION);
-
-        int retries = 0;
-        while (retries <= 1) {
-            try (Socket socket = new Socket()) {
-                socket.connect(new InetSocketAddress(host, port), CONNECT_TIMEOUT_MS);
-                socket.setSoTimeout(READ_TIMEOUT_MS);
-
-                try (OutputStream out = socket.getOutputStream();
-                     InputStream in = socket.getInputStream();
-                     PrintWriter writer = new PrintWriter(new OutputStreamWriter(out, StandardCharsets.UTF_8), true);
-                     BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
-
-                    writer.println(gson.toJson(payload));
-                    String response = reader.readLine();
-                    if (response != null) {
-                        JsonObject jsonResponse = gson.fromJson(response, JsonObject.class);
-                        if (jsonResponse.has("status") && "OK".equals(jsonResponse.get("status").getAsString())) {
-                            return true;
-                        }
-                    }
-                }
-            } catch (IOException e) {
-                LOGGER.warn("Control mode update failed (attempt {}): {}", retries + 1, e.getMessage());
-            }
-            retries++;
-        }
-        return false;
     }
 
     /**
@@ -191,5 +164,13 @@ public class AIClient {
         public boolean isSuccess() {
             return intent != null && errorMessage == null;
         }
+    }
+
+    private String bytesToHex(byte[] bytes) {
+        StringBuilder sb = new StringBuilder();
+        for (byte b : bytes) {
+            sb.append(String.format("%02x ", b));
+        }
+        return sb.toString().trim();
     }
 }

@@ -5,6 +5,8 @@ import time
 import os
 import hashlib
 import math
+import threading
+import queue
 from typing import Dict, Any, List, Optional, Tuple
 
 from policy import Policy, LearnedPolicy, MLPolicy, RandomWeightedPolicy, HeuristicCombatPolicy
@@ -14,7 +16,7 @@ import learning_freeze
 assert learning_freeze.LEARNING_STATE in {"FROZEN", "SHADOW_ONLY"}
 from dataset import DatasetPipeline
 from reward import RewardCalculator
-from intent_space import Intent
+from intent_space import Intent, MovementIntent
 from execution_mode import ExecutionMode, enforce_mode
 
 logger = logging.getLogger(__name__)
@@ -33,10 +35,56 @@ class Trainer:
             "visitation_counts": {},
             "valid_actions": {},
             "transitions": {},
-            "invariant_violations": []
+            "invariant_violations": [],
+            "blocked_resolutions": {}, # state_hash -> {resolution_action: count}
+            "combat_movement_patterns": {} # target_direction -> {movement_type: count}
         }
         self.last_state_per_episode = {} # episode_id -> (state_hash, action)
+        self.active_holds = {} # episode_id -> {action, state_hash, duration, cooldown}
+        self.last_pos_per_episode = {} # episode_id -> (x, y, z)
+        self.blocked_since_tick = {} # episode_id -> start_tick
+        self.blocked_state_hash = {} # episode_id -> state_hash
+        self.tick_counts = {} # episode_id -> current_tick
         self._load_passive_store()
+        
+        # Async logging and training (Requirement 3)
+        self.experience_queue = queue.Queue()
+        self.worker_thread = threading.Thread(target=self._worker, daemon=True)
+        self.worker_thread.start()
+
+    def _worker(self):
+        """Background thread for processing experiences and persisting data."""
+        while True:
+            experience = self.experience_queue.get()
+            if experience is None:
+                break
+            try:
+                # Track Passive Observational Data (MANDATORY)
+                self._update_passive_data(experience)
+
+                # Training logic (IL/RL)
+                is_shadow = hasattr(self.policy, 'role') and getattr(self.policy, 'role') == "SHADOW"
+                
+                # Trust Boundary Enforcement (Previously in train_on_experience)
+                lineage = experience.get("lineage", {})
+                if not lineage:
+                    if not is_shadow: continue
+                elif not lineage.get("learning_allowed"):
+                    if not is_shadow: continue
+                
+                allowed_boundaries = {"SANDBOX", "INTERNAL_VERIFIED", "HUMAN_PLAY_SESSION"}
+                if lineage and lineage.get("trust_boundary") not in allowed_boundaries:
+                    if not is_shadow: continue
+
+                controller = experience.get("controller", "AI")
+                if controller == "HUMAN":
+                    self._train_imitation(experience)
+                elif controller in ["AI", "HEURISTIC"]:
+                    self._train_reinforcement(experience)
+            except Exception as e:
+                logger.error(f"ASYNC TRAINER ERROR: {e}")
+            finally:
+                self.experience_queue.task_done()
 
     def _load_passive_store(self):
         if os.path.exists(self.passive_store_path):
@@ -45,6 +93,8 @@ class Trainer:
                     data = json.load(f)
                     if isinstance(data, dict):
                         self.passive_data.update(data)
+                    if "combat_movement_patterns" not in self.passive_data:
+                        self.passive_data["combat_movement_patterns"] = {}
                 logger.info(f"[OK] Passive store loaded: {len(self.passive_data['visitation_counts'])} states")
             except Exception as e:
                 logger.error(f"[ERROR] Failed to load passive store: {e}")
@@ -61,51 +111,13 @@ class Trainer:
     def train_on_experience(self, experience: Dict[str, Any]) -> None:
         """
         Main entry point for online learning.
-        Routes experience to either Imitation or Reinforcement learning paths.
-        Also tracks passive observational data.
+        Buffers experience for async processing to guarantee sub-10ms tick.
         """
         if learning_freeze.LEARNING_STATE == "FROZEN":
             return
-
-        is_shadow = hasattr(self.policy, 'role') and getattr(self.policy, 'role') == "SHADOW"
-
-        # Track Passive Observational Data (MANDATORY)
-        self._update_passive_data(experience)
-
-        # HARDENED PERMISSION CHECK (PROTOCOL VERIFICATION HOOK)
-        lineage = experience.get("lineage", {})
-        if not lineage:
-            if is_shadow:
-                logger.info(f"[SHADOW] Experience observed despite missing lineage metadata")
-            else:
-                logger.warning("[SHADOW] Experience rejected: Missing lineage metadata")
-                return
         
-        if lineage and not lineage.get("learning_allowed"):
-            if is_shadow:
-                logger.info(f"[SHADOW] Experience observed despite learning_allowed is False")
-            else:
-                logger.warning(f"[SHADOW] Experience rejected: learning_allowed is False for {experience.get('experience_id')}")
-                return
-
-        # Trust Boundary Enforcement
-        allowed_boundaries = {"SANDBOX", "INTERNAL_VERIFIED", "HUMAN_PLAY_SESSION"}
-        if lineage and lineage.get("trust_boundary") not in allowed_boundaries:
-            if is_shadow:
-                logger.info(f"[SHADOW] Experience observed despite Trust boundary violation ({lineage.get('trust_boundary')})")
-            else:
-                logger.warning(f"[SHADOW] Experience rejected: Trust boundary violation ({lineage.get('trust_boundary')}) for {experience.get('experience_id')}")
-                return
-
-        controller = experience.get("controller", "AI")
-        
-        if controller == "HUMAN":
-            self._train_imitation(experience)
-        elif controller in ["AI", "HEURISTIC"]:
-            self._train_reinforcement(experience)
-        else:
-            logger.warning(f"[SHADOW] Experience rejected: Unknown controller type {controller}")
-            return
+        # Push to buffer immediately (Task 3)
+        self.experience_queue.put(experience)
 
     def _train_imitation(self, experience: Dict[str, Any]) -> None:
         """Imitation Learning (IL) Path."""
@@ -124,21 +136,125 @@ class Trainer:
         state_hash = experience.get("state_hash")
         episode_id = experience.get("episode_id")
         action = experience.get("intent")
+        intent_params = experience.get("intent_params", {})
+        hold_duration = experience.get("hold_duration_ticks", 1)
+        cooldown = experience.get("cooldown_ticks_observed", 0)
         violations = experience.get("violations", [])
+        state = experience.get("state", {})
+        derived = state.get("derived", {})
+        target_dir = derived.get("target_direction", "UNKNOWN")
 
         if not state_hash:
             return
+
+        # NEW: Flush other episodes' holds if this is a new one
+        # (Assuming only one active episode at a time per session for simplicity)
+        to_flush = [eid for eid in self.active_holds if eid != episode_id]
+        for eid in to_flush:
+            last_hold = self.active_holds.pop(eid)
+            self._record_action_observation(
+                last_hold["state_hash"], 
+                last_hold["action"], 
+                last_hold["duration"], 
+                last_hold["cooldown"],
+                params=last_hold.get("params")
+            )
+            logger.info(f"SHADOW_OBSERVATION: Flushed final action '{last_hold['action']}' for episode {eid}")
+
+        # 0. Displacement & Block Tracking
+        raw = state.get("raw", {})
+        pos = (raw.get("pos_x", 0.0), raw.get("pos_y", 0.0), raw.get("pos_z", 0.0))
+        
+        # Incremental tick counter per episode
+        self.tick_counts[episode_id] = self.tick_counts.get(episode_id, 0) + 1
+        current_tick = self.tick_counts[episode_id]
+        
+        last_pos = self.last_pos_per_episode.get(episode_id)
+        displacement = 0.0
+        if last_pos:
+            displacement = math.sqrt(sum((a - b) ** 2 for a, b in zip(pos, last_pos)))
+        
+        self.last_pos_per_episode[episode_id] = pos
+        
+        is_moving_intent = (action == Intent.MOVE)
+        EPSILON = 0.01
+        
+        was_blocked = episode_id in self.blocked_since_tick
+        is_blocked = is_moving_intent and (displacement < EPSILON)
+        
+        if is_blocked:
+            if not was_blocked:
+                self.blocked_since_tick[episode_id] = current_tick
+                self.blocked_state_hash[episode_id] = state_hash
+                logger.info(f"SHADOW_OBSERVATION: Blocked state STARTED at tick {current_tick} (Hash: {state_hash[:8]})")
+        elif was_blocked:
+            # Block RESOLVED
+            start_tick = self.blocked_since_tick.pop(episode_id)
+            b_hash = self.blocked_state_hash.pop(episode_id)
+            blocked_duration = current_tick - start_tick
+            
+            # Record the resolution
+            resolutions = self.passive_data["blocked_resolutions"]
+            if b_hash not in resolutions:
+                resolutions[b_hash] = {}
+            resolutions[b_hash][action] = resolutions[b_hash].get(action, 0) + 1
+            
+            logger.info(f"SHADOW_OBSERVATION: Block RESOLVED by '{action}' after {blocked_duration} ticks (Displacement: {displacement:.4f})")
 
         # 1. Visitation Counts
         v_counts = self.passive_data["visitation_counts"]
         v_counts[state_hash] = v_counts.get(state_hash, 0) + 1
 
-        # 2. Valid Actions
-        v_actions = self.passive_data["valid_actions"]
-        if state_hash not in v_actions:
-            v_actions[state_hash] = []
-        if action and action not in v_actions[state_hash]:
-            v_actions[state_hash].append(action)
+        # 2. Hold Aggregation & Valid Actions
+        last_hold = self.active_holds.get(episode_id)
+        
+        # Determine if current action is a continuation of the last hold
+        # A continuation has same action AND incremental duration
+        is_continuation = (
+            last_hold and 
+            last_hold["action"] == action and 
+            hold_duration > last_hold["duration"]
+        )
+        
+        # For MOVE, also check if vector or sprinting changed
+        if is_continuation and action == Intent.MOVE:
+            last_params = last_hold.get("params", {})
+            if last_params.get("vector") != intent_params.get("vector") or \
+               last_params.get("sprinting") != intent_params.get("sprinting"):
+                is_continuation = False
+
+        if last_hold and not is_continuation:
+            # Previous hold ended. Record it.
+            self._record_action_observation(
+                last_hold["state_hash"], 
+                last_hold["action"], 
+                last_hold["duration"], 
+                last_hold["cooldown"],
+                params=last_hold.get("params")
+            )
+            if last_hold["action"] == Intent.MOVE:
+                lp = last_hold.get("params", {})
+                target_dir = last_hold.get("target_direction", "UNKNOWN")
+                logger.info(f"SHADOW_OBSERVATION: Movement Intent '{lp.get('vector')}' (sprint: {lp.get('sprinting')}, relative to target: {target_dir}) held for {last_hold['duration']} ticks")
+            else:
+                logger.info(f"SHADOW_OBSERVATION: Action '{last_hold['action']}' held for {last_hold['duration']} ticks (cooldown: {last_hold['cooldown']})")
+
+        # Start or update current hold
+        if not is_continuation:
+            self.active_holds[episode_id] = {
+                "action": action,
+                "state_hash": state_hash,
+                "duration": hold_duration,
+                "cooldown": cooldown,
+                "params": intent_params,
+                "target_direction": target_dir
+            }
+            if action == Intent.MOVE:
+                logger.info(f"SHADOW_OBSERVATION: Movement Intent STARTED: {intent_params.get('vector')} (sprint: {intent_params.get('sprinting')}, relative to target: {derived.get('target_direction', 'UNKNOWN')})")
+        else:
+            # Update existing hold with latest data
+            last_hold["duration"] = hold_duration
+            last_hold["cooldown"] = max(last_hold["cooldown"], cooldown)
 
         # 3. Transition Frequencies
         if episode_id in self.last_state_per_episode:
@@ -165,8 +281,89 @@ class Trainer:
                         "timestamp": time.time()
                     })
 
+        # 5. Combat Movement Patterns
+        if action in [Intent.MOVE, Intent.STOP]:
+            cmp = self.passive_data.get("combat_movement_patterns", {})
+            if target_dir not in cmp:
+                cmp[target_dir] = {"MOVE_CLOSER": 0, "STRAFE": 0, "STOP": 0, "OTHER": 0}
+            
+            if action == Intent.STOP:
+                cmp[target_dir]["STOP"] += 1
+            else:
+                m_type = self._categorize_movement(target_dir, intent_params.get("vector", [0,0,0]))
+                cmp[target_dir][m_type] += 1
+            self.passive_data["combat_movement_patterns"] = cmp
+
         # Persist incrementally
         self._save_passive_store()
+
+    def _categorize_movement(self, target_dir: str, vector: List[float]) -> str:
+        if not vector or len(vector) < 3:
+            return "STOP"
+            
+        vx, vy, vz = vector
+        if abs(vx) < 0.1 and abs(vz) < 0.1:
+            return "STOP"
+            
+        # Target-relative logic
+        # Assumes +X is Forward, +/-Z is Side
+        if target_dir == "FRONT":
+            if vx > 0.5: return "MOVE_CLOSER"
+            if abs(vz) > 0.5: return "STRAFE"
+        elif target_dir == "BACK":
+            if vx < -0.5: return "MOVE_CLOSER"
+            if abs(vz) > 0.5: return "STRAFE"
+        elif target_dir == "RIGHT":
+            if vz > 0.5: return "MOVE_CLOSER"
+            if abs(vx) > 0.5: return "STRAFE"
+        elif target_dir == "LEFT":
+            if vz < -0.5: return "MOVE_CLOSER"
+            if abs(vx) > 0.5: return "STRAFE"
+            
+        return "OTHER"
+
+    def _record_action_observation(self, state_hash: str, action_name: str, duration: int, cooldown: int, params: Optional[Dict[str, Any]] = None) -> None:
+        """Records an observed action with its temporal properties."""
+        if not action_name:
+            return
+            
+        v_actions = self.passive_data["valid_actions"]
+        if state_hash not in v_actions:
+            v_actions[state_hash] = []
+            
+        found = False
+        for entry in v_actions[state_hash]:
+            if isinstance(entry, dict) and entry.get("action_name") == action_name:
+                # Update with latest observed values
+                entry["hold_duration_ticks"] = max(entry.get("hold_duration_ticks", 1), duration)
+                entry["cooldown_ticks_observed"] = max(entry.get("cooldown_ticks_observed", 0), cooldown)
+                if params:
+                    entry["params"] = params
+                found = True
+                break
+            elif isinstance(entry, str) and entry == action_name:
+                # Migrate legacy entry
+                v_actions[state_hash].remove(entry)
+                new_entry = {
+                    "action_name": action_name,
+                    "hold_duration_ticks": duration,
+                    "cooldown_ticks_observed": cooldown
+                }
+                if params:
+                    new_entry["params"] = params
+                v_actions[state_hash].append(new_entry)
+                found = True
+                break
+                
+        if not found:
+            new_entry = {
+                "action_name": action_name,
+                "hold_duration_ticks": duration,
+                "cooldown_ticks_observed": cooldown
+            }
+            if params:
+                new_entry["params"] = params
+            v_actions[state_hash].append(new_entry)
 
 class OfflineTrainer:
     """

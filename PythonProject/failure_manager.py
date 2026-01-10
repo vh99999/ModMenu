@@ -3,6 +3,8 @@ import time
 import uuid
 import json
 import os
+import threading
+import queue
 from enum import Enum
 from typing import Dict, Any, List, Optional
 
@@ -67,6 +69,20 @@ class FailureManager:
         
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
+            
+    def _persist_incident(self, report: Dict[str, Any]):
+        """Persists incident report to disk synchronously."""
+        incident_id = report["incident_id"]
+        filepath = os.path.join(self.log_dir, f"incident_{incident_id[:8]}.json")
+        try:
+            with open(filepath, 'w') as f:
+                json.dump(report, f, indent=2)
+        except (IOError, OSError) as e:
+            if "space" in str(e).lower() or (hasattr(e, 'errno') and e.errno == 28):
+                logger.critical("SYSTEM CRITICAL: Disk is full! Entering READ_ONLY_DISK mode.")
+                self.set_mode(DisasterMode.READ_ONLY_DISK)
+            else:
+                logger.error(f"FAILURE_MANAGER: Failed to persist incident report: {e}")
 
     def set_mode(self, mode: DisasterMode):
         if self.mode != mode:
@@ -135,21 +151,9 @@ class FailureManager:
         
         if self.mode == DisasterMode.READ_ONLY_DISK:
             logger.warning(f"FAILURE_MANAGER: Suppressing report write for {incident_id[:8]} (READ_ONLY_DISK mode).")
-            return
-
-        # Persist report
-        filepath = os.path.join(self.log_dir, f"incident_{incident_id[:8]}.json")
-        try:
-            with open(filepath, 'w') as f:
-                json.dump(report, f, indent=2)
-        except (IOError, OSError) as e:
-            # Detect Disk Full (Error 28 on Linux, but we are on Windows)
-            # On Windows it might be "No space left on device" in the error message
-            if "space" in str(e).lower() or (hasattr(e, 'errno') and e.errno == 28):
-                logger.critical("SYSTEM CRITICAL: Disk is full! Entering READ_ONLY_DISK mode.")
-                self.set_mode(DisasterMode.READ_ONLY_DISK)
-            else:
-                logger.error(f"FAILURE_MANAGER: Failed to persist incident report: {e}")
+        else:
+            # Persist report synchronously
+            self._persist_incident(report)
 
         # Automatic Containment Logic
         # LOCKDOWN takes precedence over all other modes

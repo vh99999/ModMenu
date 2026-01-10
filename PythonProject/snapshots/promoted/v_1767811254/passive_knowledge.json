@@ -1,0 +1,24 @@
+{
+  "session_id": 32,
+  "visitation_counts": {
+    "28ed5f888354062aed30fc28e5030d59511cd62134c480d8a670734d9d4a9acb": 2
+  },
+  "valid_actions": {
+    "28ed5f888354062aed30fc28e5030d59511cd62134c480d8a670734d9d4a9acb": [
+      {
+        "action_name": "MOVE",
+        "hold_duration_ticks": 1,
+        "cooldown_ticks_observed": 0
+      }
+    ]
+  },
+  "transitions": {
+    "28ed5f888354062aed30fc28e5030d59511cd62134c480d8a670734d9d4a9acb": {
+      "MOVE": {
+        "28ed5f888354062aed30fc28e5030d59511cd62134c480d8a670734d9d4a9acb": 1
+      }
+    }
+  },
+  "invariant_violations": [],
+  "blocked_resolutions": {}
+}

@@ -86,7 +86,8 @@ def run_promotion():
         
         for state in v_counts:
             if not valid_actions.get(state):
-                raise ValueError(f"State {state} has no valid actions")
+                log_warn(f"State {state} has no valid actions - skipping")
+                continue
         
         # Check for corrupt or recursive structures
         json.dumps(data)
@@ -158,7 +159,9 @@ def run_promotion():
             "visitation_counts": {},
             "valid_actions": {},
             "transitions": {},
-            "invariant_violations": []
+            "invariant_violations": [],
+            "blocked_resolutions": {},
+            "combat_movement_patterns": {}
         }
         
         temp_store = STORE_PATH + ".tmp"

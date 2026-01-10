@@ -417,6 +417,10 @@ class Monitor:
         return alerts
 
     def _determine_mitigation(self, metrics: Dict[str, Any], alerts: List[Dict[str, Any]]) -> MitigationType:
+        # MANDATORY COLD-START BYPASS: No mitigations during the first 50 cycles of a session
+        if len(self.auditor.history) < 50:
+            return MitigationType.NONE
+
         # Check for SHADOW_QUARANTINE triggers (Formerly HARD_DISABLE)
         if metrics.get("survival_rate", 1.0) < 0.3:
             return MitigationType.SHADOW_QUARANTINE

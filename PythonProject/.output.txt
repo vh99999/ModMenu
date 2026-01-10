@@ -1,418 +1,318 @@
-2026-01-07 12:39:21,519 [INFO] policy: GOVERNANCE: Model version M-MockModel-D20260105-H00000000-R1.0.0-C00000000 registered successfully.
-2026-01-07 12:39:21,519 [INFO] policy: GOVERNANCE_EVENT: Model activated as PRODUCTION. OLD: None -> NEW: M-MockModel-D20260105-H00000000-R1.0.0-C00000000
-2026-01-07 12:39:21,520 [INFO] trainer: [OK] Passive store loaded: 0 states
-2026-01-07 12:39:21,524 [ERROR] policy: [ERROR] Failed to load promoted knowledge: Expecting value: line 1 column 1 (char 0)
-2026-01-07 12:39:21,533 [INFO] AIServer: Generic AI Server established at 127.0.0.1:5006
-2026-01-07 12:39:22,551 [INFO] AIServer: CONFIRMED: Action 'RESET_FAILURE_STATUS' confirmed by UNKNOWN_OPERATOR
-2026-01-07 12:39:22,763 [INFO] AIServer: SHADOW_LEARNING_CONTROL: LIVE_SHADOW_LEARNING set to True
-2026-01-07 12:39:22,765 [INFO] AIServer: CONTROL_MODE_CHANGED: HUMAN -> AI (Source: GUI)
-2026-01-07 12:39:22,769 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:22,770 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:22,772 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:22,787 [INFO] trainer: [SHADOW] Experience observed despite learning_allowed is False
-2026-01-07 12:39:22,803 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:22,813 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:22,817 [ERROR] policy: ACTIVE FAILURE: Expecting value: line 1 column 1 (char 0). Disabling AI:ON behavior.
-DEBUG: initial_confidence=0.75
-2026-01-07 12:39:22,867 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 5151d427
-2026-01-07 12:39:22,885 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:22,899 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:22,901 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:22,917 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:22,918 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:22,945 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 81b6c35d
-2026-01-07 12:39:22,954 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:22,965 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:22,985 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:23,068 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:23,085 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:23,137 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 5456e08f
-2026-01-07 12:39:23,149 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:23,152 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:23,167 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:23,187 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:23,198 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:23,218 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 58de6b2c
-2026-01-07 12:39:23,218 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:23,218 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:23,228 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:23,248 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:23,270 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:23,285 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: cf71c78f
-2026-01-07 12:39:23,285 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:23,286 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:23,286 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:23,294 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:23,295 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:23,309 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 9023f761
-2026-01-07 12:39:23,309 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:23,310 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:23,310 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:23,315 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:23,315 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:23,336 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 926b14f4
-2026-01-07 12:39:23,342 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:23,345 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:23,348 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:23,355 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:23,363 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:23,370 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: c077ecef
-2026-01-07 12:39:23,370 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:23,371 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:23,371 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:23,385 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:23,385 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:23,394 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 48907283
-2026-01-07 12:39:23,395 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:23,396 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:23,396 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:23,400 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:23,401 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:23,404 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 02f95224
-2026-01-07 12:39:23,404 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:23,404 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:23,404 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:23,415 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:23,415 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:23,419 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 499f9e86
-2026-01-07 12:39:23,419 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:23,420 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:23,420 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:23,423 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:23,426 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:23,434 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 704e4e27
-2026-01-07 12:39:23,434 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:23,435 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:23,435 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:23,437 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:23,438 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:23,479 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: ecb94f5c
-2026-01-07 12:39:23,484 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:23,494 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:23,502 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:23,514 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:23,516 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:23,603 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 6f7a9668
-2026-01-07 12:39:23,717 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:23,737 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:23,767 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:23,784 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:23,800 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:23,837 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 8b65d72d
-2026-01-07 12:39:23,901 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:23,999 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:24,034 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:24,083 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:24,086 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:24,294 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 60a9c357
-2026-01-07 12:39:24,332 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:24,335 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:24,337 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:24,348 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:24,349 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:24,399 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: f7e342a2
-2026-01-07 12:39:24,399 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:24,401 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:24,403 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:24,413 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:24,414 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:24,420 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: dfcd3e8c
-2026-01-07 12:39:24,420 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:24,421 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:24,421 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:24,431 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:24,433 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:24,439 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: bc0ef41c
-2026-01-07 12:39:24,449 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:24,450 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:24,451 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:24,454 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:24,457 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:24,467 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 482bbbd9
-2026-01-07 12:39:24,469 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:24,471 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:24,471 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:24,484 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:24,484 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:24,490 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: a4bc9172
-2026-01-07 12:39:24,493 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:24,494 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:24,498 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:24,503 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:24,505 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:24,552 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 2ae486cb
-2026-01-07 12:39:24,563 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:24,565 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:24,567 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:24,570 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:24,571 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:24,580 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: bfc83e20
-2026-01-07 12:39:24,580 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:24,581 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:24,581 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:24,587 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:24,588 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:24,602 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: f94e60d8
-2026-01-07 12:39:24,603 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:24,603 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:24,603 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:24,618 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:24,620 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:24,633 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 865da1ef
-2026-01-07 12:39:24,637 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:24,637 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:24,637 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:24,663 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:24,666 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:24,682 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 78f96ae5
-2026-01-07 12:39:24,684 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:24,701 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:24,722 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:24,759 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:24,768 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:24,951 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: f7c16956
-2026-01-07 12:39:24,966 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:24,970 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:24,975 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:24,992 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:24,997 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:25,007 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: aa784a25
-2026-01-07 12:39:25,009 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:25,009 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:25,009 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:25,022 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:25,028 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:25,038 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: f4e34e81
-2026-01-07 12:39:25,039 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:25,039 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:25,039 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:25,049 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:25,050 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:25,053 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 3e93e90c
-2026-01-07 12:39:25,053 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:25,054 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:25,055 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:25,063 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:25,065 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:25,069 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 0fb44cd7
-2026-01-07 12:39:25,069 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:25,070 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:25,070 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:25,076 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:25,079 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:25,083 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 385d4bfc
-2026-01-07 12:39:25,084 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:25,084 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:25,084 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:25,087 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:25,087 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:25,099 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: bee2d957
-2026-01-07 12:39:25,100 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:25,100 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:25,100 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:25,104 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:25,104 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:25,110 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: abdc208d
-2026-01-07 12:39:25,115 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:25,116 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:25,116 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:25,121 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:25,121 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:25,132 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 1dfb6821
-2026-01-07 12:39:25,133 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:25,133 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:25,133 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:25,136 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:25,136 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:25,143 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: a2933728
-2026-01-07 12:39:25,143 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:25,144 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:25,144 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:25,147 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:25,148 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:25,153 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: bd8fab3b
-2026-01-07 12:39:25,187 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:25,201 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:25,202 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:25,219 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:25,239 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:25,372 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: e4a0d8c5
-2026-01-07 12:39:25,403 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:25,415 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:25,430 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:25,475 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:25,488 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:25,523 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 582c696b
-2026-01-07 12:39:25,555 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:25,586 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:25,587 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:25,666 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:25,685 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:26,244 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 33663201
-2026-01-07 12:39:26,251 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:26,255 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:26,268 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:26,302 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:26,319 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:26,362 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: a86cf405
-2026-01-07 12:39:26,362 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:26,363 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:26,363 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:26,369 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:26,369 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:26,375 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 11d6803f
-2026-01-07 12:39:26,376 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:26,376 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:26,376 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:26,386 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:26,386 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:26,424 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 94d10a75
-2026-01-07 12:39:26,432 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:26,433 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:26,436 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:26,443 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:26,444 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:26,448 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 30769349
-2026-01-07 12:39:26,448 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:26,449 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:26,449 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:26,452 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:26,452 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:26,456 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 2622aed8
-2026-01-07 12:39:26,456 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:26,456 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:26,457 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:26,467 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:26,467 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:26,475 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: ef295257
-2026-01-07 12:39:26,476 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:26,476 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:26,476 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:26,485 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:26,486 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:26,490 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: c9c30357
-2026-01-07 12:39:26,492 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:26,492 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:26,493 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:26,503 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:26,504 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:26,509 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 44f8d86a
-2026-01-07 12:39:26,509 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:26,514 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:26,529 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:26,542 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:26,542 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:26,551 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 129952d5
-2026-01-07 12:39:26,551 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:26,551 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:26,551 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:26,569 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:26,569 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:26,573 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 8d7046a0
-2026-01-07 12:39:26,573 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:26,574 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:26,584 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:26,589 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:26,589 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:26,624 [ERROR] policy: ACTIVE FAILURE: Expecting value: line 1 column 1 (char 0). Disabling AI:ON behavior.
-2026-01-07 12:39:26,664 [INFO] AIServer: CONFIRMED: Action 'COMMIT_SHADOW_LEARNING' confirmed by UNKNOWN_OPERATOR
-2026-01-07 12:39:26,665 [INFO] AIServer: COMMIT_GATE: Initiating atomic swap of ShadowPolicy to ActivePolicy.
-2026-01-07 12:39:26,668 [INFO] AIServer: COMMIT_GATE: ATOMIC_SWAP_COMPLETE. Active Boost: 0.1020
-DEBUG: committed_boost=0.10200000000000008
-2026-01-07 12:39:26,670 [INFO] AIServer: CONFIRMED: Action 'ROLLBACK_SHADOW_LEARNING' confirmed by UNKNOWN_OPERATOR
-2026-01-07 12:39:26,670 [WARNING] AIServer: ROLLBACK_GATE: Instantaneous restore. Boost 0.1020 -> 0.0000
-2026-01-07 12:39:26,673 [ERROR] policy: ACTIVE FAILURE: Expecting value: line 1 column 1 (char 0). Disabling AI:ON behavior.
-.2026-01-07 12:39:26,685 [INFO] AIServer: CONFIRMED: Action 'RESET_FAILURE_STATUS' confirmed by UNKNOWN_OPERATOR
-2026-01-07 12:39:26,689 [INFO] AIServer: SHADOW_LEARNING_CONTROL: LIVE_SHADOW_LEARNING set to False
-2026-01-07 12:39:26,690 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:26,691 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:26,692 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:26,703 [INFO] trainer: [SHADOW] Experience observed despite learning_allowed is False
-2026-01-07 12:39:26,722 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:26,723 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:26,735 [ERROR] policy: ACTIVE FAILURE: Expecting value: line 1 column 1 (char 0). Disabling AI:ON behavior.
-2026-01-07 12:39:26,737 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:26,738 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:26,738 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:26,747 [INFO] trainer: [SHADOW] Experience observed despite learning_allowed is False
-2026-01-07 12:39:26,747 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:26,749 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:26,751 [ERROR] policy: ACTIVE FAILURE: Expecting value: line 1 column 1 (char 0). Disabling AI:ON behavior.
-2026-01-07 12:39:26,753 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:26,753 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:26,754 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:26,760 [INFO] trainer: [SHADOW] Experience observed despite learning_allowed is False
-2026-01-07 12:39:26,760 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:26,760 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:26,764 [ERROR] policy: ACTIVE FAILURE: Expecting value: line 1 column 1 (char 0). Disabling AI:ON behavior.
-2026-01-07 12:39:26,767 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:26,767 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:26,767 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:26,772 [INFO] trainer: [SHADOW] Experience observed despite learning_allowed is False
-2026-01-07 12:39:26,772 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:26,772 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:26,777 [ERROR] policy: ACTIVE FAILURE: Expecting value: line 1 column 1 (char 0). Disabling AI:ON behavior.
-2026-01-07 12:39:26,806 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:26,806 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:26,807 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": true, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:26,859 [INFO] trainer: [SHADOW] Experience observed despite learning_allowed is False
-2026-01-07 12:39:26,865 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:26,866 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:26,869 [ERROR] policy: ACTIVE FAILURE: Expecting value: line 1 column 1 (char 0). Disabling AI:ON behavior.
-2026-01-07 12:39:26,872 [INFO] AIServer: CONFIRMED: Action 'COMMIT_SHADOW_LEARNING' confirmed by UNKNOWN_OPERATOR
-2026-01-07 12:39:26,872 [INFO] AIServer: COMMIT_GATE: Initiating atomic swap of ShadowPolicy to ActivePolicy.
-2026-01-07 12:39:26,872 [INFO] AIServer: COMMIT_GATE: ATOMIC_SWAP_COMPLETE. Active Boost: 0.0100
-.
-----------------------------------------------------------------------
-Ran 2 tests in 5.354s
-OK
-2026-01-07 12:39:27,332 [INFO] policy: GOVERNANCE: Model version M-MockModel-D20260105-H00000000-R1.0.0-C00000000 registered successfully.
-2026-01-07 12:39:27,333 [INFO] policy: GOVERNANCE_EVENT: Model activated as PRODUCTION. OLD: None -> NEW: M-MockModel-D20260105-H00000000-R1.0.0-C00000000
-2026-01-07 12:39:27,334 [INFO] trainer: [OK] Passive store loaded: 56 states
-2026-01-07 12:39:27,354 [ERROR] policy: [ERROR] Failed to load promoted knowledge: Expecting value: line 1 column 1 (char 0)
-2026-01-07 12:39:27,364 [INFO] AIServer: Generic AI Server established at 127.0.0.1:5020
-2026-01-07 12:39:28,362 [WARNING] state_parser: STATE WARNING: Incomplete state detected (3 fields defaulted). Parsing once and continuing.
-2026-01-07 12:39:28,365 [ERROR] audit: AUDIT VIOLATION [HIGH]: PARTIAL_CORRUPTION -
-2026-01-07 12:39:28,366 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 04861b7e
-2026-01-07 12:39:28,366 [INFO] AIServer: [SHADOW] Experience d8c97fd7-9d9a-4196-86ea-e7b86a7a0b68 quality gate fail - proceeding with observation
-2026-01-07 12:39:28,366 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:28,366 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:28,366 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": false, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:28,371 [INFO] trainer: [SHADOW] Experience observed despite learning_allowed is False
-2026-01-07 12:39:28,372 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:28,372 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:28,373 [WARNING] failure_manager: FAILURE_EVENT: System entering FREEZE mode.
-2026-01-07 12:39:28,374 [WARNING] policy: ARBITRATOR: ML Policy has been DISABLED via kill-switch.
-2026-01-07 12:39:28,374 [CRITICAL] policy: ARBITRATOR: SHADOW_QUARANTINE triggered by Monitor.
-2026-01-07 12:39:28,378 [WARNING] failure_manager: FAILURE_EVENT: System entering SHADOW_QUARANTINE mode.
-2026-01-07 12:39:28,381 [WARNING] audit: AUDIT: Experience quarantined due to quality gate failure. Hash: 04861b7e
-.2026-01-07 12:39:28,383 [WARNING] state_parser: STATE WARNING: Incomplete state detected (1 fields defaulted). Parsing once and continuing.
-2026-01-07 12:39:28,383 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 89b80aec
-2026-01-07 12:39:28,383 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:28,384 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:28,384 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": false, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:28,389 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:28,389 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:28,389 [INFO] AIServer: [SHADOW] Audit violations observed for dd31d27c-5f2a-44e8-a6e9-f8ee18d62d3a - skipping FailureManager reporting
-2026-01-07 12:39:28,389 [INFO] failure_manager: [SHADOW] OBSERVATIONAL FAILURE: CONTRACT_VIOLATION - Monitor Alert: {'type': 'CONTRACT_BREACH', 'level': <AlertLevel.CRITICAL: 'CRITICAL'>, 'value': 1.0, 'threshold': 0.1}
-2026-01-07 12:39:28,389 [INFO] failure_manager: [SHADOW] OBSERVATIONAL FAILURE: TIME_INTEGRITY_VIOLATION - Monitor Alert: {'type': 'INTEGRITY_BREACH', 'level': <AlertLevel.CRITICAL: 'CRITICAL'>, 'description': 'High rate of data integrity violations detected'}
-2026-01-07 12:39:28,394 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 89b80aec
-.2026-01-07 12:39:28,397 [WARNING] state_parser: STATE WARNING: Processing legacy version 0.
-2026-01-07 12:39:28,397 [ERROR] intent_space: CONTRACT VIOLATION: Result must be a dictionary.
-2026-01-07 12:39:28,398 [INFO] audit: AUDIT [SHADOW]: Observational message only - quality gate bypassed. Hash: 4878715f
-2026-01-07 12:39:28,398 [INFO] AIServer: LEARNING_GATE [Architecture]: PASS - Shadow mode architecture bypass
-2026-01-07 12:39:28,398 [INFO] AIServer: FINAL_LEARNING_ACTION_DECISION: SHADOW_LEARNING_ALLOWED
-2026-01-07 12:39:28,398 [INFO] AIServer: LEARNING_READINESS: {"would_learn": false, "confidence_sufficient": false, "data_quality_ok": false, "distribution_stable": true, "reward_signal_valid": false, "policy_disagreement_rate": 1.0, "sample_volume_window": 250, "blocked_by": []}
-2026-01-07 12:39:28,402 [INFO] policy: [SHADOW] Learning event verified
-2026-01-07 12:39:28,402 [INFO] policy: [SHADOW] Learning allowed under SHADOW_ONLY mode
-2026-01-07 12:39:28,402 [INFO] AIServer: [SHADOW] Audit violations observed for bb7a9356-56c3-461e-ac40-0d410491f5a9 - skipping FailureManager reporting
-2026-01-07 12:39:28,402 [INFO] failure_manager: [SHADOW] OBSERVATIONAL FAILURE: CONTRACT_VIOLATION - Monitor Alert: {'type': 'CONTRACT_BREACH', 'level': <AlertLevel.CRITICAL: 'CRITICAL'>, 'value': 1.0, 'threshold': 0.1}
-2026-01-07 12:39:28,403 [INFO] failure_manager: [SHADOW] OBSERVATIONAL FAILURE: TIME_INTEGRITY_VIOLATION - Monitor Alert: {'type': 'INTEGRITY_BREACH', 'level': <AlertLevel.CRITICAL: 'CRITICAL'>, 'description': 'High rate of data integrity violations detected'}
-.
-----------------------------------------------------------------------
-Ran 3 tests in 1.074s
-OK
-..
-----------------------------------------------------------------------
-Ran 2 tests in 0.000s
-OK
+Testing Generic AI Server v1.1...
+Sending HEARTBEAT request...
+Response Status: OK
+Audit Metrics: {}
+Dataset Metrics: {}
+Sending AI-controlled request (Heuristic)...
+Response: {
+  "action": "NO_OP",
+  "reason": "default_safety_reply",
+  "experience_id": "UNKNOWN",
+  "intent": "STOP",
+  "intent_params": {
+    "Movement": "none",
+    "Attack": false,
+    "Jump": false,
+    "Sneak": false,
+    "Sprint": false
+  }
+}
+Sending AI-controlled request (ML/Arbitrator)...
+Response: {
+  "experience_id": "UNKNOWN",
+  "intent": "STOP",
+  "intent_params": {},
+  "hold_duration_ticks": 1,
+  "confidence": 1.0,
+  "policy_source": "HUMAN_GATED",
+  "learning_state": "SHADOW_ONLY",
+  "authority": "AUTHORITATIVE",
+  "fallback_reason": "CONTROL_MODE_HUMAN",
+  "model_version": null,
+  "shadow_data": {
+    "intent": "MOVE",
+    "confidence": 0.15873015873015872,
+    "version": "M-MockModel-D20260105-H00000000-R1.0.0-C00000000",
+    "authority": "AUTHORITATIVE",
+    "hold_duration_ticks": 1,
+    "params": {
+      "vector": [
+        1.0,
+        0.0,
+        0.0
+      ],
+      "sprinting": true
+    }
+  },
+  "action": "NO_OP",
+  "reason": "shadow_observation"
+}
+Sending HUMAN-controlled request (Shadow Learning)...
+Response: {
+  "experience_id": "UNKNOWN",
+  "intent": "STOP",
+  "intent_params": {},
+  "hold_duration_ticks": 1,
+  "confidence": 1.0,
+  "policy_source": "HUMAN_GATED",
+  "learning_state": "SHADOW_ONLY",
+  "authority": "AUTHORITATIVE",
+  "fallback_reason": "CONTROL_MODE_HUMAN",
+  "model_version": null,
+  "shadow_data": {
+    "intent": "PRIMARY_ATTACK",
+    "confidence": 0.1678004535147392,
+    "version": "M-MockModel-D20260105-H00000000-R1.0.0-C00000000",
+    "authority": "AUTHORITATIVE",
+    "hold_duration_ticks": 1,
+    "params": {}
+  },
+  "action": "NO_OP",
+  "reason": "shadow_observation"
+}
+Sending malformed request...
+Response: {
+  "experience_id": "UNKNOWN",
+  "intent": "STOP",
+  "intent_params": {},
+  "hold_duration_ticks": 1,
+  "confidence": 1.0,
+  "policy_source": "HUMAN_GATED",
+  "learning_state": "SHADOW_ONLY",
+  "authority": "AUTHORITATIVE",
+  "fallback_reason": "CONTROL_MODE_HUMAN",
+  "model_version": null,
+  "shadow_data": {
+    "intent": "PRIMARY_ATTACK",
+    "confidence": 0.1678004535147392,
+    "version": "M-MockModel-D20260105-H00000000-R1.0.0-C00000000",
+    "authority": "AUTHORITATIVE",
+    "hold_duration_ticks": 1,
+    "params": {}
+  },
+  "action": "NO_OP",
+  "reason": "shadow_observation"
+}
+py : 2026-01-07 21:58:14,974 [INFO] policy: GOVERNANCE: Model version
+M-MockModel-D20260105-H00000000-R1.0.0-C00000000 registered successfully.
+No linha:1 caractere:35
++ ... env:AISERVER_MODE="PROD_SERVER"; py server.py > server_debug.log 2>&1
++                                      ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (2026-01-07 21:5...d successfully.
+   :String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+
+2026-01-07 21:58:14,974 [INFO] policy: GOVERNANCE_EVENT: Model activated as
+PRODUCTION. OLD: None -> NEW: M-MockModel-D20260105-H00000000-R1.0.0-C00000000
+2026-01-07 21:58:14,975 [INFO] trainer: [OK] Passive store loaded: 360 states
+2026-01-07 21:58:14,977 [INFO] policy: ACTIVE: Loaded promoted knowledge
+v_1767814146 (MANUAL, OPERATOR-INITIATED)
+2026-01-07 21:58:14,979 [INFO] AIServer: Generic AI Server established at
+127.0.0.1:5001
+2026-01-07 21:58:14,979 [INFO] AIServer: DEBUG: Before accept()
+2026-01-07 21:58:19,608 [INFO] AIServer: DEBUG: After accept() from
+('127.0.0.1', 55411)
+2026-01-07 21:58:19,608 [INFO] AIServer: DEBUG: Entering handle_client for
+('127.0.0.1', 55411)
+2026-01-07 21:58:19,608 [INFO] AIServer: DEBUG: Before accept()
+2026-01-07 21:58:19,608 [INFO] AIServer: DEBUG: Before recv from ('127.0.0.1',
+55411)
+2026-01-07 21:58:19,608 [INFO] AIServer: DEBUG: After recv from ('127.0.0.1',
+55411). Data len: 21
+2026-01-07 21:58:19,610 [INFO] AIServer: DEBUG: Raw bytes (repr): b'{"type":
+"HEARTBEAT"}'
+2026-01-07 21:58:19,610 [INFO] AIServer: DEBUG: Raw bytes (hex):
+7b2274797065223a2022484541525442454154227d
+2026-01-07 21:58:19,610 [INFO] AIServer: DEBUG: Before recv from ('127.0.0.1',
+55411)
+2026-01-07 21:58:29,609 [INFO] AIServer: DEBUG: accept() timed out (10s)
+2026-01-07 21:58:29,609 [INFO] AIServer: DEBUG: Before accept()
+2026-01-07 21:58:39,622 [INFO] AIServer: DEBUG: accept() timed out (10s)
+2026-01-07 21:58:39,622 [INFO] AIServer: DEBUG: Before accept()
+2026-01-07 21:58:45,025 [WARNING] AIServer: NETWORK WATCHDOG: No requests for
+30.0s. System potentially isolated.
+2026-01-07 21:58:49,636 [INFO] AIServer: DEBUG: accept() timed out (10s)
+2026-01-07 21:58:49,636 [INFO] AIServer: DEBUG: Before accept()
+2026-01-07 21:58:50,032 [WARNING] AIServer: NETWORK WATCHDOG: No requests for
+35.1s. System potentially isolated.
+2026-01-07 21:58:55,047 [WARNING] AIServer: NETWORK WATCHDOG: No requests for
+40.1s. System potentially isolated.
+2026-01-07 21:58:59,642 [INFO] AIServer: DEBUG: accept() timed out (10s)
+2026-01-07 21:58:59,642 [INFO] AIServer: DEBUG: Before accept()
+2026-01-07 21:59:00,057 [WARNING] AIServer: NETWORK WATCHDOG: No requests for
+45.1s. System potentially isolated.
+2026-01-07 21:59:05,073 [WARNING] AIServer: NETWORK WATCHDOG: No requests for
+50.1s. System potentially isolated.
+2026-01-07 21:59:09,657 [INFO] AIServer: DEBUG: accept() timed out (10s)
+2026-01-07 21:59:09,657 [INFO] AIServer: DEBUG: Before accept()
+2026-01-07 21:59:10,084 [WARNING] AIServer: NETWORK WATCHDOG: No requests for
+55.1s. System potentially isolated.
+2026-01-07 21:59:15,087 [WARNING] AIServer: NETWORK WATCHDOG: No requests for
+60.1s. System potentially isolated.
+2026-01-07 21:59:15,087 [ERROR] AIServer: NETWORK WATCHDOG: Network drop
+suspected. Entering ISOLATED mode.
+2026-01-07 21:59:15,087 [WARNING] failure_manager: FAILURE_EVENT: System
+entering ISOLATED mode.
+2026-01-07 21:59:19,623 [WARNING] AIServer: Connection timeout from
+('127.0.0.1', 55411)
+2026-01-07 21:59:19,623 [INFO] AIServer: Disconnected ('127.0.0.1', 55411)
+2026-01-07 21:59:19,671 [INFO] AIServer: DEBUG: accept() timed out (10s)
+2026-01-07 21:59:19,671 [INFO] AIServer: DEBUG: Before accept()
+2026-01-07 21:59:29,681 [INFO] AIServer: DEBUG: accept() timed out (10s)
+2026-01-07 21:59:29,681 [INFO] AIServer: DEBUG: Before accept()
+2026-01-07 21:59:34,615 [INFO] AIServer: DEBUG: After accept() from
+('127.0.0.1', 56303)
+2026-01-07 21:59:34,616 [INFO] AIServer: DEBUG: Entering handle_client for
+('127.0.0.1', 56303)
+2026-01-07 21:59:34,616 [INFO] AIServer: DEBUG: Before accept()
+2026-01-07 21:59:34,616 [INFO] AIServer: DEBUG: Before recv from ('127.0.0.1',
+56303)
+2026-01-07 21:59:34,616 [INFO] AIServer: DEBUG: After recv from ('127.0.0.1',
+56303). Data len: 22
+2026-01-07 21:59:34,616 [INFO] AIServer: DEBUG: Raw bytes (repr): b'{"type":
+"HEARTBEAT"}\n'
+2026-01-07 21:59:34,616 [INFO] AIServer: DEBUG: Raw bytes (hex):
+7b2274797065223a2022484541525442454154227d0a
+2026-01-07 21:59:34,616 [INFO] AIServer: Request received
+2026-01-07 21:59:34,616 [INFO] AIServer: NETWORK RECOVERY: Heartbeat received.
+Resuming from ISOLATED mode.
+2026-01-07 21:59:34,616 [WARNING] failure_manager: FAILURE_EVENT: System
+entering NORMAL mode.
+2026-01-07 21:59:34,617 [INFO] AIServer: DEBUG: Before recv from ('127.0.0.1',
+56303)
+2026-01-07 21:59:34,617 [INFO] AIServer: DEBUG: After recv from ('127.0.0.1',
+56303). Data len: 0
+2026-01-07 21:59:34,617 [INFO] AIServer: Disconnected ('127.0.0.1', 56303)
+2026-01-07 21:59:34,617 [INFO] AIServer: DEBUG: After accept() from
+('127.0.0.1', 56304)
+2026-01-07 21:59:34,617 [INFO] AIServer: DEBUG: Entering handle_client for
+('127.0.0.1', 56304)
+2026-01-07 21:59:34,617 [INFO] AIServer: DEBUG: Before accept()
+2026-01-07 21:59:34,617 [INFO] AIServer: DEBUG: Before recv from ('127.0.0.1',
+56304)
+2026-01-07 21:59:34,617 [INFO] AIServer: DEBUG: After recv from ('127.0.0.1',
+56304). Data len: 349
+2026-01-07 21:59:34,619 [INFO] AIServer: DEBUG: Raw bytes (repr): b'{"state":
+{"health": 0.4, "target_distance": 2.5, "is_colliding": false, "energy": 0.9},
+"intent_taken": "MOVE", "last_confidence": 0.7, "controller": "AI",
+"policy_override": "HEURISTIC", "result": {"status": "SUCCESS",
+"failure_reason": "NONE", "outcomes": {"damage_dealt": 0.0, "damage_received":
+0.1, "is_alive": true, "action_wasted": false}}}\n'
+2026-01-07 21:59:34,619 [INFO] AIServer: DEBUG: Raw bytes (hex): 7b227374617465
+223a207b226865616c7468223a20302e342c20227461726765745f64697374616e6365223a20322
+e352c202269735f636f6c6c6964696e67223a2066616c73652c2022656e65726779223a20302e39
+7d2c2022696e74656e745f74616b656e223a20224d4f5645222c20226c6173745f636f6e6669646
+56e6365223a20302e372c2022636f6e74726f6c6c6572223a20224149222c2022706f6c6963795f
+6f76657272696465223a2022484555524953544943222c2022726573756c74223a207b227374617
+47573223a202253554343455353222c20226661696c7572655f726561736f6e223a20224e4f4e45
+222c20226f7574636f6d6573223a207b2264616d6167655f6465616c74223a20302e302c2022646
+16d6167655f7265636569766564223a20302e312c202269735f616c697665223a20747275652c20
+22616374696f6e5f776173746564223a2066616c73657d7d7d0a
+2026-01-07 21:59:34,619 [INFO] AIServer: Request received
+2026-01-07 21:59:34,619 [INFO] AIServer: Response sent: NO_OP for UNKNOWN
+2026-01-07 21:59:34,619 [WARNING] state_parser: STATE WARNING: Processing
+legacy version 0.
+2026-01-07 21:59:34,619 [WARNING] state_parser: STATE WARNING: Incomplete
+state detected (4 fields defaulted). Parsing once and continuing.
+2026-01-07 21:59:34,619 [INFO] AIServer: DEBUG: Before recv from ('127.0.0.1',
+56304)
+2026-01-07 21:59:34,619 [ERROR] AIServer: BG_WORKER ERROR: Protocol Violation:
+Illegal authority 'UNKNOWN'
+2026-01-07 21:59:34,619 [INFO] AIServer: DEBUG: After recv from ('127.0.0.1',
+56304). Data len: 0
+2026-01-07 21:59:34,620 [INFO] AIServer: Disconnected ('127.0.0.1', 56304)
+2026-01-07 21:59:34,620 [INFO] AIServer: DEBUG: After accept() from
+('127.0.0.1', 56305)
+2026-01-07 21:59:34,620 [INFO] AIServer: DEBUG: Entering handle_client for
+('127.0.0.1', 56305)
+2026-01-07 21:59:34,620 [INFO] AIServer: DEBUG: Before accept()
+2026-01-07 21:59:34,620 [INFO] AIServer: DEBUG: Before recv from ('127.0.0.1',
+56305)
+2026-01-07 21:59:34,621 [INFO] AIServer: DEBUG: After recv from ('127.0.0.1',
+56305). Data len: 319
+2026-01-07 21:59:34,621 [INFO] AIServer: DEBUG: Raw bytes (repr): b'{"state":
+{"health": 0.8, "target_distance": 500.0, "is_colliding": false, "energy":
+0.8}, "intent_taken": "MOVE", "last_confidence": 0.7, "controller": "AI",
+"result": {"status": "SUCCESS", "failure_reason": "NONE", "outcomes":
+{"damage_dealt": 0.0, "damage_received": 0.0, "is_alive": true,
+"action_wasted": false}}}\n'
+2026-01-07 21:59:34,621 [INFO] AIServer: DEBUG: Raw bytes (hex): 7b227374617465
+223a207b226865616c7468223a20302e382c20227461726765745f64697374616e6365223a20353
+0302e302c202269735f636f6c6c6964696e67223a2066616c73652c2022656e65726779223a2030
+2e387d2c2022696e74656e745f74616b656e223a20224d4f5645222c20226c6173745f636f6e666
+964656e6365223a20302e372c2022636f6e74726f6c6c6572223a20224149222c2022726573756c
+74223a207b22737461747573223a202253554343455353222c20226661696c7572655f726561736
+f6e223a20224e4f4e45222c20226f7574636f6d6573223a207b2264616d6167655f6465616c7422
+3a20302e302c202264616d6167655f7265636569766564223a20302e302c202269735f616c69766
+5223a20747275652c2022616374696f6e5f776173746564223a2066616c73657d7d7d0a
+2026-01-07 21:59:34,621 [INFO] AIServer: Request received
+2026-01-07 21:59:34,621 [INFO] AIServer: Response sent: NO_OP for UNKNOWN
+2026-01-07 21:59:34,621 [WARNING] state_parser: STATE WARNING: Processing
+legacy version 0.
+2026-01-07 21:59:34,621 [WARNING] state_parser: STATE WARNING: Incomplete
+state detected (4 fields defaulted). Parsing once and continuing.
+2026-01-07 21:59:34,622 [INFO] AIServer: DEBUG: Before recv from ('127.0.0.1',
+56305)
+2026-01-07 21:59:34,622 [INFO] AIServer: DEBUG: After recv from ('127.0.0.1',
+56305). Data len: 0
+2026-01-07 21:59:34,622 [ERROR] AIServer: BG_WORKER ERROR: Protocol Violation:
+Illegal authority 'UNKNOWN'
+2026-01-07 21:59:34,622 [INFO] AIServer: Disconnected ('127.0.0.1', 56305)
+2026-01-07 21:59:34,623 [INFO] AIServer: DEBUG: After accept() from
+('127.0.0.1', 56306)
+2026-01-07 21:59:34,624 [INFO] AIServer: DEBUG: Entering handle_client for
+('127.0.0.1', 56306)
+2026-01-07 21:59:34,625 [INFO] AIServer: DEBUG: Before recv from ('127.0.0.1',
+56306)
+2026-01-07 21:59:34,625 [INFO] AIServer: DEBUG: After recv from ('127.0.0.1',
+56306). Data len: 305
+2026-01-07 21:59:34,625 [INFO] AIServer: DEBUG: Raw bytes (repr): b'{"state":
+{"health": 0.7, "target_distance": 1.2, "is_colliding": true, "energy": 0.5},
+"intent_taken": "PRIMARY_ATTACK", "controller": "HUMAN", "result": {"status":
+"SUCCESS", "failure_reason": "NONE", "outcomes": {"damage_dealt": 5.0,
+"damage_received": 0.0, "is_alive": true, "action_wasted": false}}}\n'
+2026-01-07 21:59:34,625 [INFO] AIServer: DEBUG: Raw bytes (hex): 7b227374617465
+223a207b226865616c7468223a20302e372c20227461726765745f64697374616e6365223a20312
+e322c202269735f636f6c6c6964696e67223a20747275652c2022656e65726779223a20302e357d
+2c2022696e74656e745f74616b656e223a20225052494d4152595f41545441434b222c2022636f6
+e74726f6c6c6572223a202248554d414e222c2022726573756c74223a207b22737461747573223a
+202253554343455353222c20226661696c7572655f726561736f6e223a20224e4f4e45222c20226
+f7574636f6d6573223a207b2264616d6167655f6465616c74223a20352e302c202264616d616765
+5f7265636569766564223a20302e302c202269735f616c697665223a20747275652c20226163746
+96f6e5f776173746564223a2066616c73657d7d7d0a
+2026-01-07 21:59:34,625 [INFO] AIServer: DEBUG: Before accept()
+2026-01-07 21:59:34,626 [INFO] AIServer: Request received
+2026-01-07 21:59:34,627 [INFO] AIServer: Response sent: NO_OP for UNKNOWN
+2026-01-07 21:59:34,627 [WARNING] state_parser: STATE WARNING: Processing
+legacy version 0.
+2026-01-07 21:59:34,627 [WARNING] state_parser: STATE WARNING: Incomplete
+state detected (4 fields defaulted). Parsing once and continuing.
+2026-01-07 21:59:34,627 [INFO] AIServer: DEBUG: Before recv from ('127.0.0.1',
+56306)
+2026-01-07 21:59:34,627 [ERROR] AIServer: BG_WORKER ERROR: Protocol Violation:
+Illegal authority 'UNKNOWN'
+2026-01-07 21:59:34,628 [INFO] AIServer: DEBUG: After recv from ('127.0.0.1',
+56306). Data len: 0
+2026-01-07 21:59:34,628 [INFO] AIServer: DEBUG: After accept() from
+('127.0.0.1', 56307)
+2026-01-07 21:59:34,628 [INFO] AIServer: Disconnected ('127.0.0.1', 56306)
+2026-01-07 21:59:34,631 [INFO] AIServer: DEBUG: Entering handle_client for
+('127.0.0.1', 56307)
+2026-01-07 21:59:34,632 [INFO] AIServer: DEBUG: Before accept()
+2026-01-07 21:59:34,632 [INFO] AIServer: DEBUG: Before recv from ('127.0.0.1',
+56307)
+2026-01-07 21:59:34,632 [INFO] AIServer: DEBUG: After recv from ('127.0.0.1',
+56307). Data len: 30
+2026-01-07 21:59:34,632 [INFO] AIServer: DEBUG: Raw bytes (repr): b'{"state":
+"not a dictionary"}\n'
+2026-01-07 21:59:34,632 [INFO] AIServer: DEBUG: Raw bytes (hex):
+7b227374617465223a20226e6f7420612064696374696f6e617279227d0a
+2026-01-07 21:59:34,632 [INFO] AIServer: Request received
+2026-01-07 21:59:34,632 [INFO] AIServer: Response sent: NO_OP for UNKNOWN
+2026-01-07 21:59:34,632 [ERROR] state_parser: STATE FAILURE: Root payload must
+be a dictionary.
+2026-01-07 21:59:34,632 [INFO] AIServer: DEBUG: Before recv from ('127.0.0.1',
+56307)
+2026-01-07 21:59:34,632 [INFO] AIServer: DEBUG: After recv from ('127.0.0.1',
+56307). Data len: 0
+2026-01-07 21:59:34,633 [INFO] AIServer: Disconnected ('127.0.0.1', 56307)

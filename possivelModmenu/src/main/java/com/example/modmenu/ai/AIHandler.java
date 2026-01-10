@@ -4,6 +4,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.event.entity.EntityJoinLevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -29,6 +30,14 @@ public class AIHandler {
 
         // Delegate all orchestration to the controller.
         CONTROLLER.onTick(player);
+    }
+
+    @SubscribeEvent
+    public static void onWorldJoin(EntityJoinLevelEvent event) {
+        // Ensure we only reset when the LOCAL player joins a CLIENT level
+        if (event.getLevel().isClientSide() && event.getEntity() == Minecraft.getInstance().player) {
+            CONTROLLER.reset();
+        }
     }
 
     public static AIController getController() {
