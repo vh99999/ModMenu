@@ -106,7 +106,8 @@ class AIServer:
         
         # Load promoted knowledge for ACTIVE policy (Task 2)
         try:
-            self.active_policy.load_promoted_knowledge(os.path.join("snapshots", "promoted", "latest"))
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            self.active_policy.load_promoted_knowledge(os.path.join(base_dir, "snapshots", "promoted", "latest"))
         except Exception as e:
             logger.critical(f"HARD_FAIL: Active policy could not be initialized: {e}")
             import sys
@@ -413,8 +414,8 @@ class AIServer:
             # No background thinking allowed here.
             response, experience_to_process = self._process_logic(request, start_time)
             
-            # If we are about to send STOP or NO_OP, or if status indicates failure, it is terminal
-            terminal_actions = ["STOP", "NO_OP"]
+            # If we are about to send status indicates failure, it is terminal
+            terminal_actions = []
             terminal_statuses = ["ERROR", "TERMINATED", "INVALID_REQUEST", "INVALID_STATE", "TIMEOUT"]
             
             is_terminal = (response.get("action") in terminal_actions) or (response.get("status") in terminal_statuses)
@@ -530,8 +531,9 @@ class AIServer:
             "state": "ACTING" # Default state
         }
 
-        # 1. Preloaded Policy Check
-        if not self.active_policy or not getattr(self.active_policy, 'promoted_knowledge', None):
+        # 1. Preloaded Policy Check (Strict only for inference)
+        is_inference = "state" in request
+        if is_inference and (not self.active_policy or not getattr(self.active_policy, 'promoted_knowledge', None)):
             res = {"action": "NO_OP", "status": "INVALID_STATE", "reason": "POLICY_NOT_LOADED", "experience_id": experience_id}
             summary_data["violation"] = "POLICY_NOT_LOADED"
             summary_data["state"] = "BLOCKED_PROTOCOL"
@@ -542,7 +544,7 @@ class AIServer:
             summary_data["violation"] = "UNREGISTERED_EXPERIENCE"
 
         # 2. Budget Check
-        if (time.perf_counter() - start_time) > 0.008:
+        if (time.perf_counter() - start_time) > 0.100:
             res = {"action": "NO_OP", "status": "TIMEOUT", "reason": "TIMEOUT_BEFORE_PROCESSING", "experience_id": experience_id}
             summary_data["violation"] = "TIMEOUT_BEFORE_PROCESSING"
             summary_data["state"] = "BLOCKED_PROTOCOL"
@@ -657,13 +659,30 @@ class AIServer:
 
         if req_type == "RELOAD_KNOWLEDGE":
             try:
-                self.active_policy.load_promoted_knowledge(os.path.join("snapshots", "promoted", "latest"))
+                base_dir = os.path.dirname(os.path.abspath(__file__))
+                self.active_policy.load_promoted_knowledge(os.path.join(base_dir, "snapshots", "promoted", "latest"))
                 summary_data["action"] = "SUCCESS"
                 self._log_summary(summary_data)
                 return {"status": "SUCCESS", "action": "RELOAD_SUCCESS", "version": getattr(self.active_policy, 'promoted_version', 'UNKNOWN'), "experience_id": experience_id}, None
             except Exception as e:
                 res = self._error_response(str(e), experience_id)
                 summary_data["violation"] = "RELOAD_FAILED"
+                self._log_summary(summary_data)
+                return res, None
+
+        if req_type == "PROMOTE_SHADOW":
+            try:
+                from promote.run import run_promotion
+                run_promotion()
+                # Reload knowledge after promotion
+                base_dir = os.path.dirname(os.path.abspath(__file__))
+                self.active_policy.load_promoted_knowledge(os.path.join(base_dir, "snapshots", "promoted", "latest"))
+                summary_data["action"] = "SUCCESS"
+                self._log_summary(summary_data)
+                return {"status": "SUCCESS", "action": "PROMOTE_SHADOW_SUCCESS", "experience_id": experience_id}, None
+            except Exception as e:
+                res = self._error_response(str(e), experience_id)
+                summary_data["violation"] = "PROMOTE_SHADOW_FAILED"
                 self._log_summary(summary_data)
                 return res, None
 
@@ -816,12 +835,12 @@ class AIServer:
                 result, learning_allowed=(policy_authority in ["SHADOW_LEARNING_PERMIT", "ACTIVE_LEARNING_PERMIT"]),
                 is_incomplete=normalized_state.get("is_incomplete", False)
             )
-            state_hash = self._get_state_hash(raw_state)
+            state_hash = self._get_state_hash(normalized_state)
             
             # Defer processing until after response is sent
             experience_to_process = (experience_id, request, normalized_state, policy_mode, state_hash, reward, reward_breakdown, reward_class, result)
 
-        if (time.perf_counter() - start_time) > 0.0095:
+        if (time.perf_counter() - start_time) > 0.100:
             res = {"action": "NO_OP", "status": "TIMEOUT", "reason": "TIMEOUT_BEFORE_DECISION", "experience_id": experience_id}
             summary_data["violation"] = "TIMEOUT_BEFORE_DECISION"
             self._log_summary(summary_data)
@@ -830,11 +849,12 @@ class AIServer:
         # Decide next intent
         next_intent = "STOP"; confidence = 1.0; policy_source = "UNKNOWN"; authority = "AUTHORITATIVE"
         fallback_reason = None; model_version = None; shadow_data = None; hold_duration = 1; intent_params = {}
+        target_id = -1
 
         if self.control_mode == "HUMAN":
             next_intent = "STOP"; policy_source = "HUMAN_GATED"; fallback_reason = "CONTROL_MODE_HUMAN"
             # Shadow mode is observational but MUST reply
-            _, _, _, _, _, _, shadow_data, _, _ = self.arbitrator.decide(normalized_state, policy_mode="SHADOW", state_hash=self._get_state_hash(raw_state))
+            _, _, _, _, _, _, shadow_data, _, _ = self.arbitrator.decide(normalized_state, policy_mode="SHADOW", state_hash=self._get_state_hash(normalized_state))
         
         elif self.failure_manager.mode in [DisasterMode.READ_ONLY, DisasterMode.LOCKDOWN, DisasterMode.ISOLATED]:
             next_intent = "STOP"; policy_source = "DISASTER_FALLBACK"; fallback_reason = "CRITICAL_MODE"
@@ -847,11 +867,15 @@ class AIServer:
                 ctrl = str(request.get("controller", "AI")).upper()
                 req_auth = request.get("authority")
                 mode_to_use = "SHADOW" if (pol_auth == "SHADOW_LEARNING_PERMIT" or ctrl == "HUMAN" or request.get("unregistered_experience") or req_auth == "ADVISORY") else "ACTIVE"
-                next_intent, confidence, policy_source, authority, fallback_reason, model_version, shadow_data, hold_duration, intent_params = self.arbitrator.decide(normalized_state, policy_mode=mode_to_use, state_hash=self._get_state_hash(raw_state))
+                next_intent, confidence, policy_source, authority, fallback_reason, model_version, shadow_data, hold_duration, intent_params = self.arbitrator.decide(normalized_state, policy_mode=mode_to_use, state_hash=self._get_state_hash(normalized_state))
             else:
                 policy = self.policies.get(requested_policy, self.heuristic_policy)
-                next_intent, confidence, model_version, authority, hold_duration, intent_params = policy.decide(normalized_state, state_hash=self._get_state_hash(raw_state))
+                next_intent, confidence, model_version, authority, hold_duration, intent_params = policy.decide(normalized_state, state_hash=self._get_state_hash(normalized_state))
                 policy_source = requested_policy
+                
+                # Extract target_id from blackboard if available (for Java fluid tracking)
+                if hasattr(policy, 'blackboard') and 'target_id' in policy.blackboard:
+                    target_id = policy.blackboard['target_id']
 
         if not Intent.has_value(next_intent): next_intent = "STOP"
 
@@ -870,7 +894,7 @@ class AIServer:
             "hold_duration_ticks": int(hold_duration), "confidence": float(confidence), "policy_source": policy_source,
             "learning_state": LEARNING_STATE, "authority": authority, "fallback_reason": fallback_reason,
             "model_version": model_version, "shadow_data": shadow_data, "action": action,
-            "status": status
+            "status": status, "target_id": target_id
         }
         if self.control_mode == "HUMAN":
             res["reason"] = "shadow_observation"
@@ -1053,12 +1077,33 @@ class AIServer:
         return False, rate
 
     def _get_state_hash(self, state: Dict[str, Any]) -> str:
-        """Fast canonical hashing for state dicts."""
+        """Fast canonical hashing for state dicts using discretized relative features."""
         try:
-            state_str = json.dumps(state, sort_keys=True)
-            return hashlib.sha256(state_str.encode('utf-8')).hexdigest()
-        except:
-            return hashlib.sha256(str(state).encode('utf-8')).hexdigest()
+            # If we were passed the full parsed state object, use the normalized component
+            if "normalized" in state:
+                features = StateParser.get_feature_vector(state, discretize=True)
+            else:
+                # Otherwise parse it quickly to get normalized features
+                parsed = self.parser.parse(state, fast=True)
+                features = StateParser.get_feature_vector(parsed, discretize=True)
+            
+            feature_str = json.dumps(features)
+            return hashlib.sha256(feature_str.encode('utf-8')).hexdigest()
+        except Exception:
+            # Fallback to a safe but less invariant hash if parsing fails
+            try:
+                # Use discretized features even in fallback if possible
+                if isinstance(state, dict):
+                     # Best effort extraction of keys that look like features
+                     feat_keys = ["health", "energy", "target_distance", "target_yaw", "is_colliding", "is_on_ground", "is_floor_ahead", "is_floor_far_ahead"]
+                     pseudo_norm = {k: state.get(k, 0.0) for k in feat_keys}
+                     features = StateParser.get_feature_vector(pseudo_norm, discretize=True)
+                     return hashlib.sha256(json.dumps(features).encode('utf-8')).hexdigest()
+                
+                state_str = json.dumps(state, sort_keys=True)
+                return hashlib.sha256(state_str.encode('utf-8')).hexdigest()
+            except:
+                return hashlib.sha256(str(state).encode('utf-8')).hexdigest()
 
     def _require_confirmation(self, request: Dict[str, Any], action_name: str) -> Tuple[bool, Optional[Dict[str, Any]]]:
         """

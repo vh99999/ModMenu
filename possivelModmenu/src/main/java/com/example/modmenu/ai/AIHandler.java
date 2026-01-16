@@ -18,8 +18,7 @@ public class AIHandler {
 
     @SubscribeEvent
     public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
-        // We only care about client-side tick end to ensure all game state is updated.
-        if (event.side.isServer() || event.phase != TickEvent.Phase.END) {
+        if (event.side.isServer()) {
             return;
         }
 
@@ -28,8 +27,11 @@ public class AIHandler {
             return;
         }
 
-        // Delegate all orchestration to the controller.
-        CONTROLLER.onTick(player);
+        if (event.phase == TickEvent.Phase.START) {
+            CONTROLLER.onTickStart(player);
+        } else {
+            CONTROLLER.onTickEnd(player);
+        }
     }
 
     @SubscribeEvent

@@ -12,5 +12,7 @@ public enum IntentType {
     RELEASE,
     STOP,
     JUMP,
+    SWITCH_ITEM,
+    PLACE_BLOCK,
     NO_OP
 }

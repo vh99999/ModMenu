@@ -18,8 +18,8 @@ class RewardCalculator:
     # CONFIGURATION (Magic numbers explained)
     # These determine the AI's priorities.
     WEIGHTS = {
-        "damage_dealt": 0.5,      # Aggression: Incentive for damage dealt
-        "damage_received": -0.7,  # Safety: Disincentive for damage received
+        "damage_dealt": 0.8,      # Aggression: Incentive for damage dealt (INCREASED)
+        "damage_received": -0.5,  # Safety: Disincentive for damage received (REDUCED)
         "survival": 0.1,          # Baseline: Reward for staying alive
         "wasted_action": -0.02,   # Efficiency: Penalty for pointless actions
         "death_penalty": -1.0      # Dominance: Severe penalty for dying

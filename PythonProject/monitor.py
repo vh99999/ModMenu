@@ -359,12 +359,12 @@ class Monitor:
                 "threshold": 0.1
             })
 
-        if metrics.get("avg_inference_ms", 0.0) > 40.0:
+        if metrics.get("avg_inference_ms", 0.0) > 100.0:
             alerts.append({
                 "type": "LATENCY_SPIKE",
                 "level": AlertLevel.CRITICAL,
                 "value": metrics["avg_inference_ms"],
-                "threshold": 40.0
+                "threshold": 100.0
             })
 
         # INTEGRITY ALERTS

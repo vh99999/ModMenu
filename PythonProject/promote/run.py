@@ -39,6 +39,46 @@ def validate_finite(obj):
             if isinstance(current, float) and (math.isnan(current) or math.isinf(current)):
                 raise ValueError(f"Non-finite value detected: {current}")
 
+
+def merge_knowledge(new_data, old_data):
+    if not old_data: return new_data
+    merged = old_data.copy()
+    for k in ["visitation_counts", "blocked_resolutions", "combat_movement_patterns"]:
+        new_v = new_data.get(k, {}); old_v = merged.get(k, {})
+        for key, val in new_v.items():
+            if isinstance(val, dict):
+                if key not in old_v: old_v[key] = val
+                else: 
+                    for sk, sv in val.items(): old_v[key][sk] = old_v[key].get(sk, 0) + sv
+            else: old_v[key] = old_v.get(key, 0) + val
+        merged[k] = old_v
+    new_va = new_data.get("valid_actions", {}); old_va = merged.get("valid_actions", {})
+    for state, actions in new_va.items():
+        if state not in old_va: old_va[state] = actions
+        else:
+            existing = old_va[state]
+            for a in actions:
+                name = a.get("action_name"); found = False
+                for e in existing:
+                    if e.get("action_name") == name:
+                        e["hold_duration_ticks"] = max(e.get("hold_duration_ticks", 1), a.get("hold_duration_ticks", 1))
+                        e["cooldown_ticks_observed"] = max(e.get("cooldown_ticks_observed", 0), a.get("cooldown_ticks_observed", 0))
+                        if "params" in a: e["params"] = a["params"]
+                        found = True; break
+                if not found: existing.append(a)
+    merged["valid_actions"] = old_va
+    new_t = new_data.get("transitions", {}); old_t = merged.get("transitions", {})
+    for s, acts in new_t.items():
+        if s not in old_t: old_t[s] = acts
+        else:
+            for a, ns in acts.items():
+                if a not in old_t[s]: old_t[s][a] = ns
+                else:
+                    for next_s, c in ns.items(): old_t[s][a][next_s] = old_t[s][a].get(next_s, 0) + c
+    merged["transitions"] = old_t
+    return merged
+
+
 def run_promotion():
     # 1) PRE-FLIGHT CHECKS
     if not os.path.exists(STORE_PATH):
@@ -59,7 +99,15 @@ def run_promotion():
         log_error(f"Error reading {STORE_PATH}: {e}")
         sys.exit(1)
 
-    # 2) LOAD SHADOW DATA
+    # 2) LOAD & MERGE DATA
+    latest_p = os.path.join(SNAPSHOT_BASE_DIR, "latest", "passive_knowledge.json")
+    old_data = {}
+    if os.path.exists(latest_p):
+        try:
+            with open(latest_p, "r") as f: old_data = json.load(f)
+            log_ok("Found existing knowledge, merging accumulatively...")
+        except Exception as e: log_warn(f"Failed to load existing knowledge for merging: {e}")
+    data = merge_knowledge(data, old_data)
     v_counts = data.get("visitation_counts", {})
     transitions = data.get("transitions", {})
     valid_actions = data.get("valid_actions", {})

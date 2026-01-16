@@ -27,9 +27,10 @@ class Trainer:
     """
     def __init__(self, policy: Policy):
         self.policy = policy
-        self.passive_store_path = os.path.join("shadow", "passive_store.json")
-        if not os.path.exists("shadow"):
-            os.makedirs("shadow")
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        self.passive_store_path = os.path.join(base_dir, "shadow", "passive_store.json")
+        if not os.path.exists(os.path.join(base_dir, "shadow")):
+            os.makedirs(os.path.join(base_dir, "shadow"))
         self.passive_data = {
             "session_id": 0,
             "visitation_counts": {},
@@ -45,6 +46,7 @@ class Trainer:
         self.blocked_since_tick = {} # episode_id -> start_tick
         self.blocked_state_hash = {} # episode_id -> state_hash
         self.tick_counts = {} # episode_id -> current_tick
+        self.save_counter = 0
         self._load_passive_store()
         
         # Async logging and training (Requirement 3)
@@ -294,8 +296,11 @@ class Trainer:
                 cmp[target_dir][m_type] += 1
             self.passive_data["combat_movement_patterns"] = cmp
 
-        # Persist incrementally
-        self._save_passive_store()
+        # Persist incrementally (Throttled: every 100 ticks)
+        self.save_counter += 1
+        if self.save_counter >= 100:
+            self._save_passive_store()
+            self.save_counter = 0
 
     def _categorize_movement(self, target_dir: str, vector: List[float]) -> str:
         if not vector or len(vector) < 3:

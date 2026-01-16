@@ -72,78 +72,95 @@ public class AIClient {
      * @return A Response object containing the intent or error information.
      */
     public synchronized Response getNextIntent(JsonObject payload) {
+        JsonObject jsonResponse = sendCommand(payload);
+        
+        if (jsonResponse == null) {
+            return new Response(IntentType.STOP, 0.0, new JsonObject(), "NULL_JSON_RESPONSE", -1);
+        }
+
+        if (jsonResponse.has("status") && "ERROR".equals(jsonResponse.get("status").getAsString())) {
+            String error = jsonResponse.has("error") ? jsonResponse.get("error").getAsString() : "Unknown Python error";
+            return new Response(IntentType.STOP, 0.0, new JsonObject(), "SERVER_ERROR: " + error, -1);
+        }
+
+        if (jsonResponse.has("errorMessage")) {
+            return new Response(IntentType.STOP, 0.0, new JsonObject(), jsonResponse.get("errorMessage").getAsString(), -1);
+        }
+
+        if (!jsonResponse.has("intent") || jsonResponse.get("intent").isJsonNull()) {
+            return new Response(IntentType.STOP, 0.0, new JsonObject(), "MALFORMED_RESPONSE: Missing 'intent'", -1);
+        }
+
+        try {
+            String intentStr = jsonResponse.get("intent").getAsString();
+            IntentType intent = IntentType.valueOf(intentStr.toUpperCase());
+            
+            if (intent == IntentType.NO_OP) {
+                intent = IntentType.STOP;
+            }
+
+            double confidence = (jsonResponse.has("confidence") && !jsonResponse.get("confidence").isJsonNull()) 
+                ? jsonResponse.get("confidence").getAsDouble() : 1.0;
+
+            JsonObject params = (jsonResponse.has("intent_params") && !jsonResponse.get("intent_params").isJsonNull())
+                ? jsonResponse.getAsJsonObject("intent_params") : new JsonObject();
+
+            int targetId = (jsonResponse.has("target_id") && !jsonResponse.get("target_id").isJsonNull())
+                ? jsonResponse.get("target_id").getAsInt() : -1;
+
+            return new Response(intent, confidence, params, null, targetId);
+        } catch (Exception e) {
+            LOGGER.error("[AI_NET] Unknown intent received: {}", jsonResponse.get("intent"));
+            return new Response(IntentType.STOP, 0.0, new JsonObject(), "INTENT_PARSE_FAILURE", -1);
+        }
+    }
+
+    /**
+     * Sends a generic command to the Python server and returns the raw JSON response.
+     */
+    public synchronized JsonObject sendCommand(JsonObject payload) {
         try {
             ensureConnected();
 
-            // Send complete payload
             String json = gson.toJson(payload) + "\n";
             byte[] payloadBytes = json.getBytes(StandardCharsets.UTF_8);
             
-            // LOGGING: EXACT JSON sent (Required)
             LOGGER.info("[AI_NET] Outbound JSON: {}", json.trim());
             out.write(payloadBytes);
             out.flush();
 
-            // Read intent response - STRICT ONE LINE - Block until response
             String response = reader.readLine();
             
             if (response == null) {
                 LOGGER.warn("[AI_NET] Connection closed by Python server (EOF).");
                 closeQuietly();
-                return new Response(IntentType.STOP, 0.0, "CONNECTION_CLOSED");
+                JsonObject err = new JsonObject();
+                err.addProperty("errorMessage", "CONNECTION_CLOSED");
+                return err;
             }
 
-            // LOGGING: Response received (Required)
             LOGGER.info("[AI_NET] Inbound JSON: {}", response.trim());
 
-            JsonObject jsonResponse;
             try {
-                jsonResponse = gson.fromJson(response, JsonObject.class);
+                return gson.fromJson(response, JsonObject.class);
             } catch (Exception e) {
                 LOGGER.error("[AI_NET] Parse failure for response: {}", response);
-                return new Response(IntentType.STOP, 0.0, "INVALID_JSON_RESPONSE");
-            }
-
-            if (jsonResponse == null) {
-                return new Response(IntentType.STOP, 0.0, "NULL_JSON_RESPONSE");
-            }
-            
-            // 1. Check for explicit error fields from Python
-            if (jsonResponse.has("status") && "ERROR".equals(jsonResponse.get("status").getAsString())) {
-                String error = jsonResponse.has("error") ? jsonResponse.get("error").getAsString() : "Unknown Python error";
-                return new Response(IntentType.STOP, 0.0, "SERVER_ERROR: " + error);
-            }
-
-            // 2. Validate successful response schema
-            if (!jsonResponse.has("intent") || jsonResponse.get("intent").isJsonNull()) {
-                return new Response(IntentType.STOP, 0.0, "MALFORMED_RESPONSE: Missing 'intent'");
-            }
-
-            try {
-                String intentStr = jsonResponse.get("intent").getAsString();
-                IntentType intent = IntentType.valueOf(intentStr.toUpperCase());
-                
-                // Map NO_OP to STOP to comply with Requirement 8 (No NO_OP sent by client)
-                if (intent == IntentType.NO_OP) {
-                    intent = IntentType.STOP;
-                }
-
-                double confidence = (jsonResponse.has("confidence") && !jsonResponse.get("confidence").isJsonNull()) 
-                    ? jsonResponse.get("confidence").getAsDouble() : 1.0;
-
-                return new Response(intent, confidence, null);
-            } catch (Exception e) {
-                LOGGER.error("[AI_NET] Unknown intent received: {}", jsonResponse.get("intent"));
-                return new Response(IntentType.STOP, 0.0, "INTENT_PARSE_FAILURE");
+                JsonObject err = new JsonObject();
+                err.addProperty("errorMessage", "INVALID_JSON_RESPONSE");
+                return err;
             }
         } catch (IOException e) {
             String errorMsg = e.getMessage();
             LOGGER.debug("[AI_NET] Communication failure: {}", errorMsg);
             closeQuietly();
-            return new Response(IntentType.STOP, 0.0, "COMMUNICATION_FAILURE: " + errorMsg);
+            JsonObject err = new JsonObject();
+            err.addProperty("errorMessage", "COMMUNICATION_FAILURE: " + errorMsg);
+            return err;
         } catch (Throwable t) {
             LOGGER.error("[AI_NET] Critical client error: {}", t.getMessage());
-            return new Response(IntentType.STOP, 0.0, "CRITICAL_CLIENT_ERROR: " + t.getMessage());
+            JsonObject err = new JsonObject();
+            err.addProperty("errorMessage", "CRITICAL_CLIENT_ERROR: " + t.getMessage());
+            return err;
         }
     }
 
@@ -153,12 +170,16 @@ public class AIClient {
     public static class Response {
         public final IntentType intent;
         public final double confidence;
+        public final JsonObject params;
         public final String errorMessage;
+        public final int targetId;
 
-        public Response(IntentType intent, double confidence, String errorMessage) {
+        public Response(IntentType intent, double confidence, JsonObject params, String errorMessage, int targetId) {
             this.intent = intent;
             this.confidence = confidence;
+            this.params = params;
             this.errorMessage = errorMessage;
+            this.targetId = targetId;
         }
 
         public boolean isSuccess() {

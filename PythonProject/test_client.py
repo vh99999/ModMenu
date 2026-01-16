@@ -27,8 +27,31 @@ if __name__ == "__main__":
         "state": {
             "health": 0.4, # Threatened
             "target_distance": 2.5, # Close
+            "target_yaw": 10.0,
+            "target_pitch": 5.0,
+            "target_height": 1.8,
             "is_colliding": False,
-            "energy": 0.9
+            "is_on_ground": True,
+            "is_floor_ahead": True,
+            "fall_distance_ahead": 0.0,
+            "is_floor_far_ahead": True,
+            "fall_distance_far_ahead": 0.0,
+            "energy": 0.9,
+            "yaw": 90.0,
+            "pitch": 0.0,
+            "attack_cooldown": 1.0,
+            "selected_slot": 0,
+            "pos_x": 100.0,
+            "pos_y": 64.0,
+            "pos_z": 100.0,
+            "hotbar": [
+                {"slot": 0, "id": "minecraft:iron_sword", "count": 1, "is_weapon": True, "is_food": False, "is_placeable": False},
+                {"slot": 1, "id": "minecraft:apple", "count": 5, "is_weapon": False, "is_food": True, "is_placeable": False},
+                {"slot": 2, "id": "minecraft:dirt", "count": 64, "is_weapon": False, "is_food": False, "is_placeable": True}
+            ],
+            "nearby_entities": [
+                {"id": 500, "type": "minecraft:creeper", "distance": 5.0, "is_hostile": True, "relative_yaw": -45.0}
+            ]
         },
         "intent_taken": "MOVE",
         "last_confidence": 0.7,

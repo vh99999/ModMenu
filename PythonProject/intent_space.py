@@ -17,6 +17,8 @@ class Intent(str, Enum):
     RELEASE = "RELEASE"
     STOP = "STOP"
     JUMP = "JUMP"
+    SWITCH_ITEM = "SWITCH_ITEM"
+    PLACE_BLOCK = "PLACE_BLOCK"
 
     @property
     def metadata(self) -> Dict[str, Any]:
@@ -55,6 +57,16 @@ class Intent(str, Enum):
                 "is_combat": False
             },
             Intent.JUMP: {
+                "params": [],
+                "priority": 2,
+                "is_combat": False
+            },
+            Intent.SWITCH_ITEM: {
+                "params": ["slot"],
+                "priority": 4,
+                "is_combat": False
+            },
+            Intent.PLACE_BLOCK: {
                 "params": [],
                 "priority": 2,
                 "is_combat": False

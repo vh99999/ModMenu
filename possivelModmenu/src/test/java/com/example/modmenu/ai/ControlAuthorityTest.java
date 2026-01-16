@@ -25,8 +25,10 @@ public class ControlAuthorityTest {
         mockHumanDetector = mock(HumanIntentDetector.class);
         mockPlayer = mock(Player.class);
         
+        when(mockHumanDetector.detect()).thenReturn(ParameterizedIntent.stop());
+        
         controller = new AIController(mockClient, mockStateCollector, mockIntentExecutor, mockHumanDetector);
-        AIController.forceHumanMode(); // Ensure start state is HUMAN
+        controller.forceHumanMode(); // Ensure start state is HUMAN
     }
 
     @Test
@@ -50,12 +52,12 @@ public class ControlAuthorityTest {
     public void testExclusiveAuthorityGatingAI() {
         controller.setMode(ControlMode.AI);
         
-        controller.onTick(mockPlayer);
+        controller.onTickStart(mockPlayer);
+        controller.onTickEnd(mockPlayer);
         
         // Should block human input
         verify(mockIntentExecutor, atLeastOnce()).releaseAllInputs();
-        // Should NOT detect human intent for execution - Wait, in current implementation,
-        // executeAIIntent still collects outcomes and state, but doesn't call humanDetector.
+        // Should NOT detect human intent for execution
         verify(mockHumanDetector, never()).detect();
     }
 
@@ -63,7 +65,8 @@ public class ControlAuthorityTest {
     public void testExclusiveAuthorityGatingHuman() {
         controller.setMode(ControlMode.HUMAN);
         
-        controller.onTick(mockPlayer);
+        controller.onTickStart(mockPlayer);
+        controller.onTickEnd(mockPlayer);
         
         // Should detect human intent
         verify(mockHumanDetector).detect();
@@ -74,7 +77,8 @@ public class ControlAuthorityTest {
         controller.setMode(ControlMode.AI);
         when(mockStateCollector.collect(any())).thenThrow(new RuntimeException("Crash"));
         
-        controller.onTick(mockPlayer);
+        controller.onTickStart(mockPlayer);
+        controller.onTickEnd(mockPlayer);
         
         assertEquals(ControlMode.HUMAN, controller.getMode());
     }

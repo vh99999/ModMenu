@@ -1,0 +1,246 @@
+
+    Diretório: C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        11/01/2026     19:20                promoted
+    Diretório: C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        07/01/2026     14:23                latest
+d-----        07/01/2026     14:23                v_1767806584
+d-----        07/01/2026     15:25                v_1767810347
+d-----        07/01/2026     15:27                v_1767810474
+d-----        07/01/2026     15:28                v_1767810499
+d-----        07/01/2026     15:28                v_1767810531
+d-----        07/01/2026     15:29                v_1767810586
+d-----        07/01/2026     15:30                v_1767810618
+d-----        07/01/2026     15:30                v_1767810642
+d-----        07/01/2026     15:31                v_1767810689
+d-----        07/01/2026     15:31                v_1767810710
+d-----        07/01/2026     15:32                v_1767810730
+d-----        07/01/2026     15:32                v_1767810750
+d-----        07/01/2026     15:33                v_1767810805
+d-----        07/01/2026     15:33                v_1767810821
+d-----        07/01/2026     15:34                v_1767810848
+d-----        07/01/2026     15:38                v_1767811108
+d-----        07/01/2026     15:40                v_1767811214
+d-----        07/01/2026     15:40                v_1767811240
+d-----        07/01/2026     15:40                v_1767811254
+d-----        07/01/2026     16:26                v_1767813985
+d-----        07/01/2026     16:27                v_1767814048
+d-----        07/01/2026     16:28                v_1767814091
+d-----        07/01/2026     16:28                v_1767814111
+d-----        07/01/2026     16:28                v_1767814117
+d-----        07/01/2026     16:29                v_1767814146
+d-----        07/01/2026     22:51                v_1767837101
+d-----        09/01/2026     23:48                v_1768013280
+d-----        09/01/2026     23:50                v_1768013404
+d-----        11/01/2026     14:34                v_1768152893
+d-----        11/01/2026     15:48                v_1768157316
+d-----        11/01/2026     17:30                v_1768163425
+d-----        11/01/2026     18:16                v_1768166196
+d-----        11/01/2026     19:20                v_1768170008
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\latest
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        11/01/2026     19:20            339 manifest.json
+-a----        11/01/2026     19:20        3960178 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1767806584
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        07/01/2026     14:23            337 manifest.json
+-a----        07/01/2026     14:23         115585 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1767810347
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        07/01/2026     15:25            330 manifest.json
+-a----        07/01/2026     15:25           1442 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1767810474
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        07/01/2026     15:27            330 manifest.json
+-a----        07/01/2026     15:27           2782 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1767810499
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        07/01/2026     15:28            330 manifest.json
+-a----        07/01/2026     15:28           2782 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1767810531
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        07/01/2026     15:28            330 manifest.json
+-a----        07/01/2026     15:28           2065 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1767810586
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        07/01/2026     15:29            329 manifest.json
+-a----        07/01/2026     15:29           1443 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1767810618
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        07/01/2026     15:30            328 manifest.json
+-a----        07/01/2026     15:30           1443 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1767810642
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        07/01/2026     15:30            329 manifest.json
+-a----        07/01/2026     15:30           1443 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1767810689
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        07/01/2026     15:31            329 manifest.json
+-a----        07/01/2026     15:31           1443 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1767810710
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        07/01/2026     15:31            330 manifest.json
+-a----        07/01/2026     15:31           2065 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1767810730
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        07/01/2026     15:32            328 manifest.json
+-a----        07/01/2026     15:32           2065 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1767810750
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        07/01/2026     15:32            329 manifest.json
+-a----        07/01/2026     15:32           2065 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1767810805
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        07/01/2026     15:33            330 manifest.json
+-a----        07/01/2026     15:33           2065 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1767810821
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        07/01/2026     15:33            330 manifest.json
+-a----        07/01/2026     15:33           2065 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1767810848
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        07/01/2026     15:34            330 manifest.json
+-a----        07/01/2026     15:34           2065 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1767811108
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        07/01/2026     15:38            330 manifest.json
+-a----        07/01/2026     15:38           2065 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1767811214
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        07/01/2026     15:40            330 manifest.json
+-a----        07/01/2026     15:40           1363 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1767811240
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        07/01/2026     15:40            328 manifest.json
+-a----        07/01/2026     15:40           1363 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1767811254
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        07/01/2026     15:40            329 manifest.json
+-a----        07/01/2026     15:40            638 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1767813985
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        07/01/2026     16:26            330 manifest.json
+-a----        07/01/2026     16:26            781 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1767814048
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        07/01/2026     16:27            330 manifest.json
+-a----        07/01/2026     16:27            781 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1767814091
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        07/01/2026     16:28            330 manifest.json
+-a----        07/01/2026     16:28            781 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1767814111
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        07/01/2026     16:28            330 manifest.json
+-a----        07/01/2026     16:28            781 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1767814117
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        07/01/2026     16:28            329 manifest.json
+-a----        07/01/2026     16:28            781 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1767814146
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        07/01/2026     16:29            330 manifest.json
+-a----        07/01/2026     16:29            781 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1767837101
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        07/01/2026     22:51            337 manifest.json
+-a----        07/01/2026     22:51         151034 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1768013280
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        09/01/2026     23:48            339 manifest.json
+-a----        09/01/2026     23:48        1192666 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1768013404
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        09/01/2026     23:50            336 manifest.json
+-a----        09/01/2026     23:50         202940 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1768152893
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        11/01/2026     14:34            339 manifest.json
+-a----        11/01/2026     14:34         655365 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1768157316
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        11/01/2026     15:48            339 manifest.json
+-a----        11/01/2026     15:48         957344 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1768163425
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        11/01/2026     17:30            338 manifest.json
+-a----        11/01/2026     17:30         723272 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1768166196
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        11/01/2026     18:16            339 manifest.json
+-a----        11/01/2026     18:16        2296333 passive_knowledge.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\PythonProject\snapshots\promoted\v_1768170008
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        11/01/2026     19:20            339 manifest.json
+-a----        11/01/2026     19:20        3960178 passive_knowledge.json

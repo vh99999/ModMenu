@@ -9,6 +9,10 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, Tuple, Optional, List
 from intent_space import Intent, MovementIntent
 from state_parser import StateParser
+from bt import BehaviorTree, Selector, Sequence, Leaf, Condition, NodeStatus
+from steering import SteeringBehaviors
+from prediction import TargetPredictor
+import numpy as np
 
 logger = logging.getLogger(__name__)
 
@@ -41,48 +45,349 @@ class LearnedPolicy(Policy):
 
 class HeuristicCombatPolicy(Policy):
     """
-    A rule-based policy that makes decisions based on semantic state.
-    Goal: Demonstrate a non-random, explainable, and deterministic decision process.
+    Advanced Behavior Tree + Steering + Kalman Filter policy.
     """
-    VERSION = "GOLDEN_HEURISTIC_v1.0.0"
+    VERSION = "BT_STEERING_KALMAN_v2.0.0"
 
-    def decide(self, state: Dict[str, Any], state_hash: Optional[str] = None) -> Tuple[str, float, Optional[str], str, int, Dict[str, Any]]:
-        # Extract semantic interpretations
-        derived = state.get("derived", {})
-        normalized = state.get("normalized", {})
+    def __init__(self):
+        self.pos_history = [] 
+        self.stuck_ticks = 0
+        self.target_stuck_ticks = {} # target_id -> ticks
+        self.target_blacklist = {} # target_id -> expiry_time
+        self.eating_until = 0
+        self.predictor = TargetPredictor()
+        self.last_target_id = -1
+        self.bt = self._build_bt()
+        self.blackboard = {}
+
+    def _build_bt(self):
+        root = Selector("Root")
         
+        # 1. Sustenance
+        sustenance = Sequence("Sustenance")
+        sustenance.add_child(Condition("Hungry", self._is_hungry))
+        sustenance.add_child(Leaf("Eat", self._action_eat))
+        root.add_child(sustenance)
+        
+        # 2. Emergency Recovery (Stuck)
+        emergency = Sequence("Emergency Stuck")
+        emergency.add_child(Condition("Stuck", self._is_stuck))
+        emergency.add_child(Leaf("Panic Move", self._action_panic))
+        root.add_child(emergency)
+
+        # 3. Navigation (Holes, Gaps)
+        navigation = Selector("Navigation")
+        
+        towering = Sequence("Towering")
+        towering.add_child(Condition("In Hole", lambda s: s['raw'].get('is_in_hole', False)))
+        towering.add_child(Condition("Has Blocks", lambda s: s['derived'].get('has_blocks', False)))
+        towering.add_child(Leaf("Tower Up", self._action_tower))
+        navigation.add_child(towering)
+        
+        gaps = Sequence("Gap Handling")
+        gaps.add_child(Condition("Dangerous Gap", lambda s: s['derived'].get('path_status') == "DANGEROUS_GAP"))
+        gaps.add_child(Leaf("Navigate Gap", self._action_gap))
+        navigation.add_child(gaps)
+        
+        root.add_child(navigation)
+        
+        # 4. Combat
+        combat = Sequence("Combat")
+        combat.add_child(Condition("Has Target", self._has_target))
+        combat.add_child(Leaf("Fight", self._action_fight))
+        root.add_child(combat)
+        
+        # 5. Idle
+        root.add_child(Leaf("Idle", self._action_idle))
+        
+        return BehaviorTree(root)
+
+    def _is_hungry(self, state):
+        energy = state['normalized'].get('energy', 1.0)
+        has_target = self._has_target(state)
+        # If fighting, only eat if critical (< 0.15) to avoid looking like a 'coward' during combat.
+        # Otherwise, maintain health at 0.3 threshold.
+        threshold = 0.15 if has_target else 0.3
+        return energy < threshold or time.time() < self.eating_until
+
+    def _is_stuck(self, state):
+        return self.stuck_ticks > 10
+
+    def _has_target(self, state):
+        now = time.time()
+        # Clean expired blacklist
+        self.target_blacklist = {tid: exp for tid, exp in self.target_blacklist.items() if exp > now}
+        
+        raw_target_id = state['raw'].get('target_id', -1)
+        priority_target_id = state['derived'].get('priority_target_id', -1)
+        
+        # Try to find a target that is NOT blacklisted
+        nearby = state['raw'].get('nearby_entities', [])
+        hostiles = [e for e in nearby if e.get("is_hostile") and e["id"] not in self.target_blacklist]
+        
+        if hostiles:
+            # If our current priority target is blacklisted, pick the next best one
+            if priority_target_id != -1 and priority_target_id in self.target_blacklist:
+                # Re-sort to find best non-blacklisted
+                def target_priority(e):
+                    p = 10
+                    t = e.get("type", "").lower()
+                    if "creeper" in t: p = 1
+                    elif "skeleton" in t: p = 2
+                    elif "zombie" in t: p = 3
+                    return (p, e.get("distance", 1000.0))
+                
+                hostiles.sort(key=target_priority)
+                state['derived']['priority_target_id'] = hostiles[0]["id"]
+                return True
+            
+            return True # Either target_id or priority_target_id might still be valid or we'll find one in _action_fight
+            
+        return raw_target_id != -1 and raw_target_id not in self.target_blacklist
+
+    def _action_eat(self, state):
+        derived = state.get("derived", {})
+        raw = state.get("raw", {})
+        has_food = derived.get("has_food", False)
+        best_food_slot = derived.get("best_food_slot", -1)
+        selected_slot = raw.get("selected_slot", 0)
+        
+        if not has_food: return NodeStatus.FAILURE
+        
+        if selected_slot != best_food_slot:
+            self.blackboard['result'] = Intent.SWITCH_ITEM.value, 0.9, self.VERSION, "AUTHORITATIVE", 1, {"slot": best_food_slot}
+        else:
+            now = time.time()
+            if now >= self.eating_until:
+                self.eating_until = now + 1.6
+            self.blackboard['result'] = Intent.HOLD.value, 0.95, self.VERSION, "AUTHORITATIVE", 1, {}
+        return NodeStatus.SUCCESS
+
+    def _action_panic(self, state):
+        raw = state.get("raw", {})
+        candidates = [([0.5, 0.0, 0.0], "is_colliding_ahead", "fall_distance_ahead"), ([-0.5, 0.0, 0.0], "is_colliding_behind", "fall_distance_behind"), ([0.0, 0.0, 0.5], "is_colliding_left", "fall_distance_left"), ([0.0, 0.0, -0.5], "is_colliding_right", "fall_distance_right")]
+        safe = [v for v, cl, f in candidates if not raw.get(cl, False) and raw.get(f, 0.0) <= 3.0]
+        import random; vec = random.choice(safe) if safe else [0.5 if random.random() > 0.5 else -0.5, 0.0, 1.0 if random.random() > 0.5 else -1.0]
+        self.blackboard["result"] = "JUMP", 0.99, self.VERSION, "OVERRIDE", 1, {"vector": vec, "sprinting": True}
+        return NodeStatus.SUCCESS
+
+    def _action_tower(self, state):
+        derived = state.get("derived", {})
+        raw = state.get("raw", {})
+        best_block_slot = derived.get("best_block_slot", -1)
+        selected_slot = raw.get("selected_slot", 0)
+        
+        if selected_slot != best_block_slot:
+            self.blackboard['result'] = Intent.SWITCH_ITEM.value, 0.9, self.VERSION, "AUTHORITATIVE", 1, {"slot": best_block_slot}
+        else:
+            tower_params = {"pitch": 90.0}
+            is_on_ground = raw.get("is_on_ground", True)
+            v_vel = raw.get("vertical_velocity", 0.0)
+            if is_on_ground:
+                self.blackboard['result'] = Intent.JUMP.value, 0.95, self.VERSION, "AUTHORITATIVE", 1, tower_params
+            elif v_vel > 0:
+                self.blackboard['result'] = Intent.PLACE_BLOCK.value, 0.95, self.VERSION, "AUTHORITATIVE", 1, tower_params
+            else:
+                return NodeStatus.FAILURE
+        return NodeStatus.SUCCESS
+
+    def _action_gap(self, state):
+        raw = state.get("raw", {})
+        derived = state.get("derived", {})
+        is_floor_far_ahead = raw.get("is_floor_far_ahead", True)
+        has_blocks = derived.get("has_blocks", False)
+        best_block_slot = derived.get("best_block_slot", -1)
+        selected_slot = raw.get("selected_slot", 0)
+
+        if is_floor_far_ahead:
+            self.blackboard['result'] = Intent.JUMP.value, 0.9, self.VERSION, "AUTHORITATIVE", 1, {}
+        elif has_blocks:
+            if selected_slot != best_block_slot:
+                self.blackboard['result'] = Intent.SWITCH_ITEM.value, 0.85, self.VERSION, "AUTHORITATIVE", 1, {"slot": best_block_slot}
+            else:
+                bridge_params = {"pitch": 80.0, "vector": [0.3, 0.0, 0.0], "sprinting": False}
+                self.blackboard['result'] = Intent.PLACE_BLOCK.value, 0.9, self.VERSION, "AUTHORITATIVE", 1, bridge_params
+        else:
+            strafe_dir = 1.0 if (time.time() % 2 > 1) else -1.0
+            self.blackboard['result'] = Intent.MOVE.value, 0.8, self.VERSION, "AUTHORITATIVE", 1, {"vector": [0.0, 0.0, strafe_dir]}
+        return NodeStatus.SUCCESS
+
+    def _action_fight(self, state):
+        raw = state.get("raw", {})
+        derived = state.get("derived", {})
+        
+        target_id = raw.get("target_id", -1)
+        priority_target_id = derived.get("priority_target_id", -1)
+        
+        # Respect blacklist
+        if priority_target_id != -1 and priority_target_id in self.target_blacklist:
+            priority_target_id = -1
+        if target_id != -1 and target_id in self.target_blacklist:
+            target_id = -1
+            
+        effective_target_id = priority_target_id if priority_target_id != -1 else target_id
+        
+        # If no target due to blacklist, find another hostile
+        if effective_target_id == -1:
+            hostiles = [e for e in raw.get("nearby_entities", []) if e.get("is_hostile") and e["id"] not in self.target_blacklist]
+            if hostiles:
+                effective_target_id = hostiles[0]["id"]
+        
+        if effective_target_id == -1:
+            return NodeStatus.FAILURE
+            
+        self.blackboard['target_id'] = effective_target_id
+        
+        target = None
+        for e in raw.get("nearby_entities", []):
+            if e["id"] == effective_target_id:
+                target = e
+                break
+        
+        if not target: return NodeStatus.FAILURE
+        
+        # 1. Update Predictor
+        if effective_target_id != self.last_target_id:
+            self.predictor = TargetPredictor()
+            self.last_target_id = effective_target_id
+        
+        target_pos = (target.get("pos_x", 0), target.get("pos_y", 0), target.get("pos_z", 0))
+        self.predictor.update(target_pos)
+        
+        # 2. Steering toward target
+        player_pos = (raw.get("pos_x", 0), raw.get("pos_y", 0), raw.get("pos_z", 0))
+        dist = target.get("distance", 10.0)
+        
+        behaviors = []
+        # Aggressive Seeking
+        seek_weight = 1.5 if dist > 2.0 else 0.5
+        behaviors.append((SteeringBehaviors.seek(player_pos, target_pos), seek_weight))
+        
+        if dist < 4.0:
+            # Controlled Strafe (Aggressive)
+            seek_force = SteeringBehaviors.seek(player_pos, target_pos)
+            strafe_dir = 1.0 if (time.time() % 4 > 2) else -1.0
+            strafe_force = np.array([-seek_force[2], 0, seek_force[0]]) * strafe_dir
+            behaviors.append((strafe_force, 0.4))
+            
+        # Obstacle avoidance (other entities)
+        obstacles = []
+        for e in raw.get("nearby_entities", []):
+            if e["id"] != effective_target_id:
+                obstacles.append((e.get("pos_x", 0), e.get("pos_y", 0), e.get("pos_z", 0), 0.5))
+        
+        if obstacles:
+            # Reduce avoidance weight during combat to prevent 'running away' from clusters
+            behaviors.append((SteeringBehaviors.avoid_obstacles(player_pos, obstacles), 0.6))
+            
+        final_vel = SteeringBehaviors.compute_combined_velocity(player_pos, behaviors)
+        
+        # 3. Combat Parameters (Kalman Prediction for Pitch/Yaw)
+        # Lead the target by 5 ticks for ranged
+        has_ranged = derived.get("has_ranged", False)
+        has_ammo = derived.get("has_ammo", False)
+        lead_ticks = 5 if has_ranged and has_ammo else 0
+        predicted_pos = self.predictor.predict(lead_ticks)
+        
+        # Calculate yaw/pitch to predicted pos
+        dx = predicted_pos[0] - player_pos[0]
+        dy = (predicted_pos[1] + target.get("target_height", 1.8) * 0.5) - (player_pos[1] + 1.62) # 1.62 is typical eye height
+        dz = predicted_pos[2] - player_pos[2]
+        
+        target_yaw = math.degrees(math.atan2(dz, dx)) - 90
+        horizontal_dist = math.sqrt(dx*dx + dz*dz)
+        target_pitch = -math.degrees(math.atan2(dy, horizontal_dist))
+        
+        params = {"yaw": target_yaw, "pitch": target_pitch}
+        
+        # Convert world-space final_vel to player-local forward/strafe
+        # MC coordinate system: X=East, Z=South. Yaw 0 = South (+Z), -90 = East (+X)
+        player_yaw_rad = math.radians(raw.get("yaw", 0))
+        cos_y = math.cos(player_yaw_rad)
+        sin_y = math.sin(player_yaw_rad)
+        
+        # Correct projection: 
+        # local_forward = vel dot forward_vec = -vel[0]*sin(yaw) + vel[2]*cos(yaw)
+        # local_strafe = vel dot left_vec = vel[0]*cos(yaw) + vel[2]*sin(yaw)
+        local_forward = -final_vel[0] * sin_y + final_vel[2] * cos_y
+        local_strafe = final_vel[0] * cos_y + final_vel[2] * sin_y
+        
+        params["vector"] = [local_forward, 0.0, local_strafe]
+        params["sprinting"] = dist > 2.0 # More aggressive sprinting
+        
+        # 4. Determine Action
         distance_cat = derived.get("distance_category", "FAR")
         can_attack = derived.get("can_attack", False)
-        is_threatened = derived.get("is_threatened", False)
-        is_obstructed = derived.get("is_obstructed", False)
+        best_weapon_slot = derived.get("best_weapon_slot", -1)
+        best_ranged_slot = derived.get("best_ranged_slot", -1)
+        selected_slot = raw.get("selected_slot", 0)
 
-        # 1. Critical Self-preservation: If threatened and close, evade
-        if is_threatened and distance_cat == "CLOSE":
-            # High confidence because it's a critical safety rule
-            return Intent.EVADE.value, 0.95, self.VERSION, "OVERRIDE", 1, {}
+        if distance_cat == "CLOSE":
+            if derived.get("has_weapon", False) and selected_slot != best_weapon_slot:
+                self.blackboard['result'] = Intent.SWITCH_ITEM.value, 0.95, self.VERSION, "AUTHORITATIVE", 1, {"slot": best_weapon_slot}
+            elif can_attack:
+                self.blackboard['result'] = Intent.PRIMARY_ATTACK.value, 0.9, self.VERSION, "AUTHORITATIVE", 1, params
+            else:
+                self.blackboard['result'] = Intent.MOVE.value, 0.8, self.VERSION, "AUTHORITATIVE", 1, params
+        elif distance_cat == "MEDIUM" and has_ranged and has_ammo:
+            if selected_slot != best_ranged_slot:
+                self.blackboard['result'] = Intent.SWITCH_ITEM.value, 0.95, self.VERSION, "AUTHORITATIVE", 1, {"slot": best_ranged_slot}
+            else:
+                self.blackboard['result'] = Intent.HOLD.value, 0.85, self.VERSION, "AUTHORITATIVE", 1, params
+        else:
+            self.blackboard['result'] = Intent.MOVE.value, 0.8, self.VERSION, "AUTHORITATIVE", 1, params
+            
+        return NodeStatus.SUCCESS
 
-        # 2. Obstruction Handling: If trying to move but hitting something, jump
-        if is_obstructed and distance_cat != "CLOSE":
-            return Intent.JUMP.value, 0.85, self.VERSION, "AUTHORITATIVE", 1, {}
+    def _action_idle(self, state):
+        self.blackboard['result'] = Intent.STOP.value, 1.0, self.VERSION, "AUTHORITATIVE", 1, {}
+        return NodeStatus.SUCCESS
 
-        # 3. Aggression: If close and have energy, attack
-        if distance_cat == "CLOSE" and can_attack:
-            return Intent.PRIMARY_ATTACK.value, 0.8, self.VERSION, "AUTHORITATIVE", 1, {}
+    def _is_moving(self, intent_name, params):
+        if intent_name in [Intent.MOVE.value, Intent.PRIMARY_ATTACK.value, Intent.EVADE.value, Intent.JUMP.value]:
+            return True
+        if "vector" in params:
+            v = params["vector"]
+            return abs(v[0]) > 0.1 or abs(v[2]) > 0.1
+        return False
 
-        # 4. Engagement: If far, move closer
-        if distance_cat == "FAR":
-            return Intent.MOVE.value, 0.75, self.VERSION, "AUTHORITATIVE", 1, {"vector": [1.0, 0.0, 0.0], "sprinting": True}
+    def decide(self, state, state_hash=None):
+        raw = state.get("raw", {})
+        pos = (raw.get("pos_x", 0), raw.get("pos_y", 0), raw.get("pos_z", 0))
+        self.pos_history.append(pos)
+        if len(self.pos_history) > 20: self.pos_history.pop(0)
 
-        # 5. Tactical Positioning: If medium distance
-        if distance_cat == "MEDIUM":
-            # If we have lots of energy, maybe jump to reposition or close in
-            if normalized.get("energy", 0.0) > 0.8:
-                return Intent.JUMP.value, 0.6, self.VERSION, "AUTHORITATIVE", 1, {}
-            # Otherwise hold and recover energy
-            return Intent.HOLD.value, 0.7, self.VERSION, "AUTHORITATIVE", 5, {}
+        # Tick BT
+        self.blackboard = {}
+        self.bt.tick(state)
+        res = self.blackboard.get('result')
 
-        # Default fallback: Stop
-        return Intent.STOP.value, 1.0, self.VERSION, "AUTHORITATIVE", 1, {}
+        # Fallback
+        if not res:
+            res = Intent.STOP.value, 1.0, self.VERSION, "AUTHORITATIVE", 1, {}
+
+        # Stuck detection
+        if self._is_moving(res[0], res[5]):
+            if len(self.pos_history) == 20:
+                p1 = self.pos_history[0]; p2 = self.pos_history[-1]
+                dist = math.sqrt(sum((a-b)**2 for a, b in zip(p1, p2)))
+                if dist < 0.5: self.stuck_ticks += 1
+                else: self.stuck_ticks = 0
+        else: self.stuck_ticks = 0
+
+        # Target-specific stuck detection and blacklisting
+        target_id = self.blackboard.get('target_id', -1)
+        if target_id != -1 and self._is_moving(res[0], res[5]):
+            if self.stuck_ticks > 0:
+                self.target_stuck_ticks[target_id] = self.target_stuck_ticks.get(target_id, 0) + 1
+                if self.target_stuck_ticks[target_id] > 200: # 10 seconds
+                    self.target_blacklist[target_id] = time.time() + 60 # 1 minute
+                    logger.info(f"TARGET_BLACKLIST: Target {target_id} unreachable for 10s. Blacklisting.")
+                    self.target_stuck_ticks[target_id] = 0
+            else:
+                self.target_stuck_ticks[target_id] = 0
+
+        return res
 
 class RandomWeightedPolicy(Policy):
     """
@@ -919,40 +1224,17 @@ class PolicyArbitrator:
         
         # If Heuristic is VERY confident (Safety rule triggered), it vetoes ML
         if h_conf >= 0.9:
-            if self.current_movement_intent:
-                logger.info(f"ACTIVE: Movement intent ENDED: HEURISTIC_VETO ({h_intent})")
-                self.current_movement_intent = None
-            return h_intent, h_conf, "HEURISTIC_VETO", h_auth, "SAFETY_RULE_TRIGGERED", h_ver, shadow_data, h_dur, h_params
+            return self._finalize_decision(state, h_intent, h_conf, "HEURISTIC_VETO", h_auth, "SAFETY_RULE_TRIGGERED", h_ver, shadow_data, h_dur, h_params)
 
         # 3. ML Suggestion (Active Path)
         # Soft Degrade Check: If in cooldown, bypass ML
         if self.ml_failure_cooldown > 0:
             self.ml_failure_cooldown -= 1
-            res = list(self._heuristic_fallback(h_intent, h_conf, h_ver, h_auth, "SOFT_DEGRADE_FALLBACK", "ML_FAILURE_COOLDOWN", state_hash=state_hash))
-            # res is (intent, conf, source, auth, reason, ver, dur, params) - 8 elements
-            # We need to insert shadow_data to match return type (9 elements)
+            res = list(self._heuristic_fallback(h_intent, h_conf, h_ver, h_auth, "SOFT_DEGRADE_FALLBACK", "ML_FAILURE_COOLDOWN", state_hash=state_hash, h_params=h_params))
             res.insert(6, shadow_data)
             
             final_intent, final_conf, final_source, final_auth, final_reason, final_ver, final_shadow_data, final_dur, final_params = tuple(res)
-            
-            if self.current_movement_intent:
-                intent_enum = Intent[final_intent] if final_intent in Intent.__members__ else None
-                move_priority = Intent.MOVE.metadata.get("priority", 0)
-                new_priority = intent_enum.metadata.get("priority", 0) if intent_enum else 0
-                
-                if new_priority > move_priority:
-                    logger.info(f"ACTIVE: Movement intent ENDED: HIGHER_PRIORITY_FALLBACK ({final_intent})")
-                    self.current_movement_intent = None
-                elif final_intent == Intent.STOP.value:
-                    logger.info(f"ACTIVE: Movement intent ENDED: EXPLICIT_STOP_FALLBACK")
-                    self.current_movement_intent = None
-                else:
-                    return Intent.MOVE.value, 1.0, "PERSISTENT_INTENT", "AUTHORITATIVE", None, final_ver, shadow_data, 1, {
-                        "vector": self.current_movement_intent.direction_vector,
-                        "sprinting": self.current_movement_intent.sprinting
-                    }
-            
-            return final_intent, final_conf, final_source, final_auth, final_reason, final_ver, shadow_data, final_dur, final_params
+            return self._finalize_decision(state, final_intent, final_conf, final_source, final_auth, final_reason, final_ver, final_shadow_data, final_dur, final_params)
 
         if self.ml_enabled:
             # Decide if we use Canary (Candidate) or Production
@@ -988,32 +1270,6 @@ class PolicyArbitrator:
             else:
                 final_intent, final_conf, final_ver, final_auth, final_dur, final_params = ml_intent, ml_conf, ml_ver, ml_auth, ml_dur, ml_params
             
-            # Persistent Intent Logic for ML Suggestion
-            if self.current_movement_intent:
-                intent_enum = Intent[final_intent] if final_intent in Intent.__members__ else None
-                move_priority = Intent.MOVE.metadata.get("priority", 0)
-                new_priority = intent_enum.metadata.get("priority", 0) if intent_enum else 0
-                
-                if new_priority > move_priority:
-                    logger.info(f"ACTIVE: Movement intent ENDED: HIGHER_PRIORITY_ACTION ({final_intent})")
-                    self.current_movement_intent = None
-                elif final_intent == Intent.STOP.value:
-                    logger.info(f"ACTIVE: Movement intent ENDED: EXPLICIT_STOP")
-                    self.current_movement_intent = None
-                else:
-                    # Replay
-                    return Intent.MOVE.value, 1.0, "PERSISTENT_INTENT", "AUTHORITATIVE", None, final_ver, shadow_data, 1, {
-                        "vector": self.current_movement_intent.direction_vector,
-                        "sprinting": self.current_movement_intent.sprinting
-                    }
-
-            # Start persistent intent
-            if final_intent == Intent.MOVE.value and not self.current_movement_intent:
-                vector = final_params.get("vector", [0,0,0])
-                sprinting = final_params.get("sprinting", False)
-                self.current_movement_intent = MovementIntent(vector, sprinting, self.ml_policy.tick_counter)
-                logger.info(f"ACTIVE: Movement intent STARTED: {vector} (sprint: {sprinting})")
-
             # Track calls
             m = self.shadow_metrics if is_shadow else self.active_metrics
             m["calls"] += 1
@@ -1024,18 +1280,18 @@ class PolicyArbitrator:
                 m["failures"] += 1
                 if not is_shadow:
                     self._trigger_soft_degrade("TIMEOUT")
-                res = list(self._heuristic_fallback(h_intent, h_conf, h_ver, h_auth, "ML_TIMEOUT_FALLBACK", "TIMEOUT_EXCEEDED", state_hash=state_hash))
+                res = list(self._heuristic_fallback(h_intent, h_conf, h_ver, h_auth, "ML_TIMEOUT_FALLBACK", "TIMEOUT_EXCEEDED", state_hash=state_hash, h_params=h_params))
                 res.insert(-2, shadow_data)
-                return tuple(res)
+                return self._finalize_decision(state, *tuple(res))
 
             # 3.2 UNCERTAINTY & ENTROPY CHECK
             ml_entropy = self._calculate_entropy(ml_probs)
             self.last_ml_entropy = ml_entropy
             if ml_entropy > 1.5: # Threshold for high uncertainty
                 logger.warning(f"ML UNCERTAINTY: High entropy ({ml_entropy:.3f}) detected for model {ml_ver}. Falling back.")
-                res = list(self._heuristic_fallback(h_intent, h_conf, h_ver, h_auth, "ML_ENTROPY_FALLBACK", "HIGH_UNCERTAINTY", state_hash=state_hash))
+                res = list(self._heuristic_fallback(h_intent, h_conf, h_ver, h_auth, "ML_ENTROPY_FALLBACK", "HIGH_UNCERTAINTY", state_hash=state_hash, h_params=h_params))
                 res.insert(-2, shadow_data)
-                return tuple(res)
+                return self._finalize_decision(state, *tuple(res))
 
             # 3.3 Confidence & Output Validation
             active_threshold = self.ml_threshold + 0.05 if self.ml_failure_cooldown > 0 else self.ml_threshold
@@ -1049,30 +1305,30 @@ class PolicyArbitrator:
                 if final_ver and (final_ver.startswith("PROMOTED_") or "KNOWLEDGE_" in final_ver):
                     final_source = f"{source_prefix}{final_ver}"
                 
-                return final_intent, final_conf, final_source, final_auth, None, final_ver, shadow_data, final_dur, final_params
+                return self._finalize_decision(state, final_intent, final_conf, final_source, final_auth, None, final_ver, shadow_data, final_dur, final_params)
             
             # ML was certain enough but didn't meet threshold
             if final_conf < 0.1: # Extreme uncertainty or rejection
                 m["failures"] += 1
-                res = list(self._heuristic_fallback(h_intent, h_conf, h_ver, h_auth, f"{source_prefix}REJECTION_FALLBACK", "LOW_CONFIDENCE", state_hash=state_hash))
+                res = list(self._heuristic_fallback(h_intent, h_conf, h_ver, h_auth, f"{source_prefix}REJECTION_FALLBACK", "LOW_CONFIDENCE", state_hash=state_hash, h_params=h_params))
                 res.insert(6, shadow_data)
-                return tuple(res)
+                return self._finalize_decision(state, *tuple(res))
 
-            res = list(self._heuristic_fallback(h_intent, h_conf, h_ver, h_auth, f"{source_prefix}LOW_CONFIDENCE_FALLBACK", "LOW_CONFIDENCE", state_hash=state_hash))
+            res = list(self._heuristic_fallback(h_intent, h_conf, h_ver, h_auth, f"{source_prefix}LOW_CONFIDENCE_FALLBACK", "LOW_CONFIDENCE", state_hash=state_hash, h_params=h_params))
             res.insert(6, shadow_data)
-            return tuple(res)
+            return self._finalize_decision(state, *tuple(res))
 
         # 4. Heuristic Fallback
-        res = list(self._heuristic_fallback(h_intent, h_conf, h_ver, h_auth, "HEURISTIC_FALLBACK", "ML_DISABLED", state_hash=state_hash))
+        res = list(self._heuristic_fallback(h_intent, h_conf, h_ver, h_auth, "HEURISTIC_FALLBACK", "ML_DISABLED", state_hash=state_hash, h_params=h_params))
         res.insert(6, shadow_data)
-        return tuple(res)
+        return self._finalize_decision(state, *tuple(res))
 
-    def _heuristic_fallback(self, h_intent: str, h_conf: float, h_ver: str, h_auth: str, source: str, reason: str, state_hash: Optional[str] = None) -> Tuple[str, float, str, str, str, str, int, Dict[str, Any]]:
+    def _heuristic_fallback(self, h_intent: str, h_conf: float, h_ver: str, h_auth: str, source: str, reason: str, state_hash: Optional[str] = None, h_params: Optional[Dict[str, Any]] = None) -> Tuple[str, float, str, str, str, str, int, Dict[str, Any]]:
         if h_conf >= 0.5:
-            # Heuristic might need params for MOVE
-            params = {}
-            if h_intent == Intent.MOVE.value:
-                params = {"vector": [1.0, 0.0, 0.0], "sprinting": True}
+            # Preserve heuristic params (like rotation)
+            params = h_params or {}
+            if h_intent == Intent.MOVE.value and "vector" not in params:
+                params.update({"vector": [1.0, 0.0, 0.0], "sprinting": True})
             return h_intent, h_conf, source, h_auth, reason, h_ver, 1, params
         
         # 4. Random Fallback
@@ -1117,6 +1373,38 @@ class PolicyArbitrator:
             if self.ml_enabled:
                 self.set_ml_enabled(False)
                 logger.critical("ARBITRATOR: SHADOW_QUARANTINE triggered by Monitor.")
+
+    def _finalize_decision(self, state: Dict[str, Any], intent: str, confidence: float, source: str, authority: str, reason: Optional[str], version: Optional[str], shadow_data: Optional[Dict[str, Any]], duration: int, params: Dict[str, Any]) -> Tuple[str, float, str, str, Optional[str], Optional[str], Optional[Dict[str, Any]], int, Dict[str, Any]]:
+        raw = state.get("raw", {})
+
+        # 1. Global steering: Face the target if it exists
+        if raw.get("target_id", -1) != -1:
+            target_yaw = raw.get("target_yaw", 0.0)
+            current_yaw = raw.get("yaw", 0.0)
+            # Ensure params is a dict we can modify
+            params = params.copy()
+            params["yaw"] = current_yaw + target_yaw
+            params["pitch"] = 0.0
+
+        # 2. Persistent movement: Merge with current intent
+        if self.current_movement_intent:
+            if intent == Intent.STOP.value or intent == Intent.EVADE.value:
+                logger.info(f"ACTIVE: Movement intent ENDED: {intent}")
+                self.current_movement_intent = None
+            else:
+                # Ensure params is a dict we can modify
+                params = params.copy()
+                params["vector"] = self.current_movement_intent.direction_vector
+                params["sprinting"] = self.current_movement_intent.sprinting
+
+        # 3. Start new persistent movement
+        if intent == Intent.MOVE.value and not self.current_movement_intent:
+            vector = params.get("vector", [0,0,0])
+            sprinting = params.get("sprinting", False)
+            self.current_movement_intent = MovementIntent(vector, sprinting, self.ml_policy.tick_counter)
+            logger.info(f"ACTIVE: Movement intent STARTED: {vector} (sprint: {sprinting})")
+
+        return intent, confidence, source, authority, reason, version, shadow_data, duration, params
 
     def get_online_metrics(self) -> Dict[str, Any]:
         """Calculates real-time performance metrics."""

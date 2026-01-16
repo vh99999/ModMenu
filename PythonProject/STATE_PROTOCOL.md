@@ -27,7 +27,16 @@ This document defines the formal protocol for state transmission between the Jav
 | `health` | float | % | 0.0 - 1.0 | Current entity health | 1.0 | Clamp to [0,1] |
 | `energy` | float | % | 0.0 - 1.0 | Current entity energy | 1.0 | Clamp to [0,1] |
 | `target_distance`| float | Units | 0.0 - 1000.0| Distance to target | 1000.0 | Clamp to [0,1000] |
+| `target_yaw` | float | Deg | -180.0 - 180.0| Relative yaw to target | 0.0 | Clamp |
+| `target_pitch` | float | Deg | -180.0 - 180.0| Relative pitch to target| 0.0 | Clamp |
+| `target_height` | float | Units | 0.0 - 10.0 | Height of target | 0.0 | Clamp |
 | `is_colliding` | bool | N/A | True/False | Collision status | False | False |
+| `is_on_ground` | bool | N/A | True/False | On ground status | True | True |
+| `is_floor_ahead` | bool | N/A | True/False | Floor 1 block ahead | True | True |
+| `fall_distance_ahead`| float | Units | 0.0 - 10.0 | Fall distance ahead | 0.0 | Clamp |
+| `selected_slot` | int | N/A | 0 - 8 | Active hotbar slot | 0 | Clamp |
+| `hotbar` | list | N/A | N/A | List of item objects | [] | [] |
+| `nearby_entities`| list | N/A | N/A | List of nearby entities| [] | [] |
 
 ## 4. Validation Flow (Step-by-Step)
 1. **Reception**: Receive raw TCP bytes.

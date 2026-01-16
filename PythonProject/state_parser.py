@@ -31,10 +31,34 @@ class StateParser:
         "energy": (float, 1.0, 0.0, 1.0, True),
         "target_distance": (float, 1000.0, 0.0, 1000.0, True),
         "target_yaw": (float, 0.0, -180.0, 180.0, True),
+        "target_pitch": (float, 0.0, -180.0, 180.0, True),
+        "target_height": (float, 0.0, 0.0, 10.0, True),
         "is_colliding": (bool, False, None, None, True),
+        "is_on_ground": (bool, True, None, None, True),
+        "is_floor_ahead": (bool, True, None, None, True),
+        "fall_distance_ahead": (float, 0.0, 0.0, 10.0, True),
+        "is_floor_far_ahead": (bool, True, None, None, True),
+        "fall_distance_far_ahead": (float, 0.0, 0.0, 10.0, True),
         "pos_x": (float, 0.0, None, None, True),
         "pos_y": (float, 0.0, None, None, True),
-        "pos_z": (float, 0.0, None, None, True)
+        "pos_z": (float, 0.0, None, None, True),
+        "yaw": (float, 0.0, -360.0, 360.0, True),
+        "pitch": (float, 0.0, -180.0, 180.0, True),
+        "attack_cooldown": (float, 1.0, 0.0, 1.0, True),
+        "selected_slot": (int, 0, 0, 8, True),
+        "hotbar": (list, [], None, None, False),
+        "vertical_velocity": (float, 0.0, -5.0, 5.0, False),
+        "is_underwater": (bool, False, None, None, False),
+        "is_in_hole": (bool, False, None, None, False),
+        "ammo_count": (int, 0, 0, 1000, False),
+        "nearby_entities": (list, [], None, None, False),
+        "fall_distance_behind": (float, 0.0, 0.0, 10.0, False),
+        "fall_distance_left": (float, 0.0, 0.0, 10.0, False),
+        "fall_distance_right": (float, 0.0, 0.0, 10.0, False),
+        "is_colliding_ahead": (bool, False, None, None, False),
+        "is_colliding_behind": (bool, False, None, None, False),
+        "is_colliding_left": (bool, False, None, None, False),
+        "is_colliding_right": (bool, False, None, None, False)
     }
 
     @classmethod
@@ -132,18 +156,35 @@ class StateParser:
             return None
 
     @classmethod
-    def get_feature_vector(cls, normalized_state: Dict[str, Any]) -> List[float]:
-        """
-        Converts a normalized state dictionary into a fixed-order feature vector
-        suitable for ML inference and training.
-        
-        Order: health, energy, target_distance, is_colliding
-        """
+    def get_feature_vector(cls, state: dict, discretize: bool = False):
+        if "normalized" in state:
+            norm = state["normalized"]
+            derived = state.get("derived", {})
+        else:
+            norm = state
+            derived = {}
+        def d(val, steps=20):
+            if not discretize: return float(val)
+            return round(float(val) * steps) / steps
+        has_w = derived.get("has_weapon", norm.get("has_weapon", False))
+        has_r = derived.get("has_ranged", norm.get("has_ranged", False))
+        has_a = derived.get("has_ammo", norm.get("has_ammo", False))
         return [
-            float(normalized_state.get("health", 0.0)),
-            float(normalized_state.get("energy", 0.0)),
-            float(normalized_state.get("target_distance", 0.0)),
-            float(1.0 if normalized_state.get("is_colliding") else 0.0)
+            d(norm.get("health", 0.0), 10),
+            d(norm.get("energy", 0.0), 10),
+            d(norm.get("target_distance", 0.0), 2000),
+            d(norm.get("target_yaw", 0.5), 36),
+            d(norm.get("target_pitch", 0.5), 36),
+            d(norm.get("target_height", 0.0), 20),
+            float(1.0 if norm.get("is_colliding") else 0.0),
+            float(1.0 if norm.get("is_on_ground") else 0.0),
+            float(1.0 if norm.get("is_floor_ahead") else 0.0),
+            float(1.0 if norm.get("is_floor_far_ahead") else 0.0),
+            d(norm.get("attack_cooldown", 1.0), 10),
+            d(float(norm.get("selected_slot", 0)) / 8.0, 9),
+            float(1.0 if has_w else 0.0),
+            float(1.0 if has_r else 0.0),
+            float(1.0 if has_a else 0.0)
         ]
 
     @classmethod
@@ -253,8 +294,7 @@ class StateParser:
         derived = {}
         
         # 5.1 Distance categories (Generic thresholds)
-        # target_distance is normalized based on 0-1000 range.
-        actual_dist = normalized["target_distance"] * 1000.0
+        actual_dist = raw.get("target_distance", 1000.0)
         
         if actual_dist < 3.0:
             derived["distance_category"] = "CLOSE"
@@ -274,9 +314,67 @@ class StateParser:
         else:
             derived["target_direction"] = "BACK"
 
+        # 5.1c Vertical Direction categories
+        actual_pitch = raw.get("target_pitch", 0.0)
+        if actual_pitch > 15:
+            derived["vertical_category"] = "DOWN"
+        elif actual_pitch < -15:
+            derived["vertical_category"] = "UP"
+        else:
+            derived["vertical_category"] = "LEVEL"
+
         # 5.2 Combat & Survival Semantics
         derived["can_attack"] = normalized["energy"] > 0.2
         derived["is_threatened"] = normalized["health"] < 0.5 or normalized["is_colliding"] > 0.5
         derived["is_obstructed"] = normalized["is_colliding"] > 0.5
         
+        # 5.3 Inventory Analysis
+        hotbar = raw.get("hotbar", [])
+        weapons = [item for item in hotbar if item.get("is_weapon")]
+        derived["has_weapon"] = len(weapons) > 0
+        derived["best_weapon_slot"] = weapons[0]["slot"] if weapons else -1
+        
+        foods = [item for item in hotbar if item.get("is_food")]
+        derived["has_food"] = len(foods) > 0
+        derived["best_food_slot"] = foods[0]["slot"] if foods else -1
+        
+        blocks = [item for item in hotbar if item.get("is_placeable")]
+        derived["has_blocks"] = len(blocks) > 0
+        derived["best_block_slot"] = blocks[0]["slot"] if blocks else -1
+        
+        ranged = [item for item in hotbar if item.get("is_ranged")]
+        derived["has_ranged"] = len(ranged) > 0
+        derived["best_ranged_slot"] = ranged[0]["slot"] if ranged else -1
+        derived["has_ammo"] = raw.get("ammo_count", 0) > 0
+        
+        # 5.4 Environment Analysis (Parkour)
+        fall_ahead = raw.get("fall_distance_ahead", 0.0)
+        if fall_ahead == 0:
+            derived["path_status"] = "CLEAR"
+        elif fall_ahead <= 3.0:
+            derived["path_status"] = "SAFE_FALL"
+        else:
+            derived["path_status"] = "DANGEROUS_GAP"
+            
+        # 5.5 Priority Targeting
+        nearby = raw.get("nearby_entities", [])
+        hostiles = [e for e in nearby if e.get("is_hostile")]
+        
+        if hostiles:
+            # Sort by priority: Creeper > others, then by distance
+            def target_priority(e):
+                p = 10
+                t = e.get("type", "").lower()
+                if "creeper" in t: p = 1
+                elif "skeleton" in t: p = 2
+                elif "zombie" in t: p = 3
+                return (p, e.get("distance", 1000.0))
+            
+            sorted_hostiles = sorted(hostiles, key=target_priority)
+            derived["priority_target"] = sorted_hostiles[0]
+            derived["priority_target_id"] = sorted_hostiles[0]["id"]
+        else:
+            derived["priority_target"] = None
+            derived["priority_target_id"] = -1
+            
         return derived

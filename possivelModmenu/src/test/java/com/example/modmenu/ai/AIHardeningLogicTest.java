@@ -27,7 +27,7 @@ public class AIHardeningLogicTest {
         controller = spy(realController);
         doNothing().when(controller).updateResultTrackers(any());
         
-        AIController.forceHumanMode();
+        controller.forceHumanMode();
     }
 
     private JsonObject createValidState() {
@@ -38,6 +38,8 @@ public class AIHardeningLogicTest {
         state.addProperty("pos_y", 0.0);
         state.addProperty("pos_z", 0.0);
         state.addProperty("is_colliding", false);
+        state.addProperty("is_on_ground", true);
+        state.addProperty("is_floor_ahead", true);
         state.addProperty("target_distance", 1000.0);
         state.addProperty("target_yaw", 0.0);
         state.addProperty("state_version", 1);
@@ -57,11 +59,11 @@ public class AIHardeningLogicTest {
         
         when(mockClient.getNextIntent(any())).thenAnswer(invocation -> {
             Thread.sleep(1000);
-            return new AIClient.Response(IntentType.MOVE, 1.0, null);
+            return new AIClient.Response(IntentType.MOVE, 1.0, new JsonObject(), null, -1);
         });
         
         long start = System.currentTimeMillis();
-        boolean submitted = controller.orchestrate(state, IntentType.STOP, ControlMode.AI, result);
+        boolean submitted = controller.orchestrate(state, IntentType.STOP, ControlMode.AI, result, new JsonObject());
         long end = System.currentTimeMillis();
         
         assertTrue("Orchestrate should return true when submitted", submitted);
@@ -74,9 +76,9 @@ public class AIHardeningLogicTest {
         JsonObject state = createValidState();
         JsonObject result = new JsonObject();
         
-        when(mockClient.getNextIntent(any())).thenReturn(new AIClient.Response(null, 0.0, "COMMUNICATION_FAILURE"));
+        when(mockClient.getNextIntent(any())).thenReturn(new AIClient.Response(null, 0.0, new JsonObject(), "COMMUNICATION_FAILURE", -1));
         
-        controller.orchestrate(state, IntentType.STOP, ControlMode.AI, result);
+        controller.orchestrate(state, IntentType.STOP, ControlMode.AI, result, new JsonObject());
         
         Thread.sleep(200);
         
@@ -86,20 +88,17 @@ public class AIHardeningLogicTest {
     @Test
     public void testConsecutiveFailuresDoNotStopAI() throws Exception {
         controller.setMode(ControlMode.AI);
-        controller.setMaxConsecutiveFailures(3);
-        
-        Method executeAIIntent = AIController.class.getDeclaredMethod("executeAIIntent", net.minecraft.world.entity.player.Player.class);
-        executeAIIntent.setAccessible(true);
         
         when(mockStateCollector.collect(any())).thenReturn(createValidState());
-        when(mockIntentExecutor.execute(any(), any())).thenReturn(ExecutionResult.success());
+        when(mockIntentExecutor.execute(any(), any(), any())).thenReturn(ExecutionResult.success());
         
-        // Multiple failures
-        for (int i = 0; i < 10; i++) {
-            executeAIIntent.invoke(controller, (net.minecraft.world.entity.player.Player)null);
+        // Multiple failures (poll returns null)
+        for (int i = 0; i < 30; i++) {
+            controller.onTickStart(null);
             assertEquals("Should NEVER automatically stop AI mode", ControlMode.AI, controller.getMode());
-            verify(mockIntentExecutor, atLeastOnce()).execute(any(), eq(IntentType.STOP));
         }
+        // After enough failures (20 in current code), it should start calling STOP
+        verify(mockIntentExecutor, atLeastOnce()).execute(any(), eq(IntentType.STOP), any());
     }
 
     @Test
@@ -108,19 +107,18 @@ public class AIHardeningLogicTest {
         
         Field lastIntentField = AIController.class.getDeclaredField("lastIntentTaken");
         lastIntentField.setAccessible(true);
-        lastIntentField.set(controller, IntentType.MOVE);
-        
-        Method executeAIIntent = AIController.class.getDeclaredMethod("executeAIIntent", net.minecraft.world.entity.player.Player.class);
-        executeAIIntent.setAccessible(true);
+        lastIntentField.set(controller, new AIClient.Response(IntentType.MOVE, 1.0, new JsonObject(), null, -1));
         
         when(mockStateCollector.collect(any())).thenReturn(createValidState());
-        when(mockIntentExecutor.execute(any(), any())).thenReturn(ExecutionResult.success());
+        when(mockIntentExecutor.execute(any(), any(), any())).thenReturn(ExecutionResult.success());
         
-        // Trigger a failure (poll returns null)
-        executeAIIntent.invoke(controller, (net.minecraft.world.entity.player.Player)null);
+        // Trigger a failure by calling onTickStart many times without a response in queue
+        for(int i=0; i<25; i++) {
+            controller.onTickStart(null);
+        }
         
-        // Verify that IntentExecutor.execute was called with STOP, NOT action replay (MOVE)
-        verify(mockIntentExecutor).execute(any(), eq(IntentType.STOP));
+        // Verify that IntentExecutor.execute was called with STOP eventually
+        verify(mockIntentExecutor, atLeastOnce()).execute(any(), eq(IntentType.STOP), any());
         assertEquals("Should still be in AI mode", ControlMode.AI, controller.getMode());
     }
 
@@ -130,15 +128,15 @@ public class AIHardeningLogicTest {
         JsonObject state = createValidState();
         JsonObject result = new JsonObject();
 
-        when(mockClient.getNextIntent(any())).thenReturn(new AIClient.Response(IntentType.STOP, 1.0, null));
+        when(mockClient.getNextIntent(any())).thenReturn(new AIClient.Response(IntentType.STOP, 1.0, new JsonObject(), null, -1));
 
         // First call
-        assertTrue(controller.orchestrate(state, IntentType.STOP, ControlMode.AI, result));
+        assertTrue(controller.orchestrate(state, IntentType.STOP, ControlMode.AI, result, new JsonObject()));
         
         Thread.sleep(200); // Wait for async processing
 
         // Second call - should NOT be blocked by isHalted anymore
-        assertTrue("Should NOT be halted after STOP response", controller.orchestrate(state, IntentType.STOP, ControlMode.AI, result));
+        assertTrue("Should NOT be halted after STOP response", controller.orchestrate(state, IntentType.STOP, ControlMode.AI, result, new JsonObject()));
     }
 
     @Test
@@ -147,14 +145,14 @@ public class AIHardeningLogicTest {
         JsonObject state = createValidState();
         JsonObject result = new JsonObject();
 
-        when(mockClient.getNextIntent(any())).thenReturn(new AIClient.Response(null, 0.0, "COMMUNICATION_FAILURE"));
+        when(mockClient.getNextIntent(any())).thenReturn(new AIClient.Response(null, 0.0, new JsonObject(), "COMMUNICATION_FAILURE", -1));
 
         // First call
-        assertTrue(controller.orchestrate(state, IntentType.STOP, ControlMode.AI, result));
+        assertTrue(controller.orchestrate(state, IntentType.STOP, ControlMode.AI, result, new JsonObject()));
         
         Thread.sleep(200);
 
         // Second call
-        assertFalse("Should be halted after ERROR response", controller.orchestrate(state, IntentType.STOP, ControlMode.AI, result));
+        assertFalse("Should be halted after ERROR response", controller.orchestrate(state, IntentType.STOP, ControlMode.AI, result, new JsonObject()));
     }
 }

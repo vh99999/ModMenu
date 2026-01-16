@@ -23,6 +23,9 @@ public class AIController {
     private static final Logger LOGGER = LogUtils.getLogger();
     
     private static volatile ControlMode controlMode = ControlMode.HUMAN;
+    private static volatile boolean autoPromoteEnabled = false;
+    private int promoteTimer = 0;
+    private static final int PROMOTE_INTERVAL_TICKS = 12000; // 10 minutes
     
     private final AIClient client;
     private final ExecutorService executor;
@@ -30,11 +33,11 @@ public class AIController {
     private final IntentExecutor intentExecutor;
     private final HumanIntentDetector humanDetector;
     
-    private final ConcurrentLinkedQueue<IntentType> intentQueue = new ConcurrentLinkedQueue<>();
+    private final ConcurrentLinkedQueue<AIClient.Response> intentQueue = new ConcurrentLinkedQueue<>();
     private final AtomicBoolean isProcessing = new AtomicBoolean(false);
     private final AtomicBoolean isHalted = new AtomicBoolean(false);
     
-    private IntentType lastIntentTaken = IntentType.STOP;
+    private AIClient.Response lastIntentTaken = new AIClient.Response(IntentType.STOP, 1.0, new JsonObject(), null, -1);
     private double lastConfidence = 1.0;
     private ExecutionResult lastExecutionResult = ExecutionResult.success();
 
@@ -80,15 +83,82 @@ public class AIController {
     }
 
     /**
-     * Orchestrates one full control cycle per tick.
+     * Actuation Phase: Override human inputs and apply AI intent (Phase.START)
      */
-    public void onTick(net.minecraft.world.entity.player.Player player) {
-        try {
-            if (controlMode == ControlMode.AI) {
-                blockHumanInput();
-                executeAIIntent(player);
+    public void onTickStart(net.minecraft.world.entity.player.Player player) {
+        if (controlMode == ControlMode.AI) {
+            AIClient.Response nextIntent = intentQueue.poll();
+            if (nextIntent != null) {
+                lastIntentTaken = nextIntent;
+                consecutiveFailures = 0;
+                if (isDegradedMode) {
+                    isDegradedMode = false;
+                    LOGGER.info("[DEGRADED_AI] AI recovered and synchronized.");
+                }
             } else {
-                blockAIIntent();
+                // No new intent this tick -> decide if we should fallback
+                if (consecutiveFailures > 20) { // Allow some slack for network
+                    lastIntentTaken = new AIClient.Response(FALLBACK_INTENT, 0.0, new JsonObject(), "DEGRADED_MODE", -1);
+                    if (!isDegradedMode) {
+                        isDegradedMode = true;
+                        logRateLimitedWarning("[DEGRADED_AI] AI response missing/late. Falling back to SAFE STOP.");
+                    }
+                }
+                consecutiveFailures++;
+            }
+
+            // FLUID ROTATION TRACKING: Update lastIntentTaken.params with latest target info
+            // This ensures we keep turning even if the server is slow to respond.
+            JsonObject latestState = stateCollector.collect(player);
+            
+            // Prioritize target from server, fallback to local target
+            int targetId = lastIntentTaken.targetId != -1 ? lastIntentTaken.targetId : (latestState.has("target_id") ? latestState.get("target_id").getAsInt() : -1);
+
+            if (targetId != -1) {
+                net.minecraft.world.entity.Entity target = player.level().getEntity(targetId);
+                if (target != null) {
+                    double dx = target.getX() - player.getX();
+                    double dy = (target.getY() + target.getBbHeight() * 0.5) - (player.getY() + player.getEyeHeight());
+                    double dz = target.getZ() - player.getZ();
+                    
+                    float yawAngle = (float) (net.minecraft.util.Mth.atan2(dz, dx) * 180.0 / Math.PI) - 90.0f;
+                    float pitchAngle = (float) -Math.toDegrees(Math.atan2(dy, Math.sqrt(dx*dx + dz*dz)));
+
+                    JsonObject updatedParams = lastIntentTaken.params.deepCopy();
+                    updatedParams.addProperty("yaw", yawAngle);
+                    updatedParams.addProperty("pitch", pitchAngle);
+                    
+                    // Update the response object with new params for execution
+                    lastIntentTaken = new AIClient.Response(
+                        lastIntentTaken.intent, 
+                        lastIntentTaken.confidence, 
+                        updatedParams, 
+                        lastIntentTaken.errorMessage,
+                        targetId
+                    );
+                }
+            }
+
+            lastExecutionResult = intentExecutor.execute(player, lastIntentTaken.intent, lastIntentTaken.params);
+        }
+    }
+
+    /**
+     * Perception Phase: Collect results and request next move (Phase.END)
+     */
+    public void onTickEnd(net.minecraft.world.entity.player.Player player) {
+        try {
+            if (autoPromoteEnabled) {
+                promoteTimer++;
+                if (promoteTimer >= PROMOTE_INTERVAL_TICKS) {
+                    promoteTimer = 0;
+                    triggerPromotion();
+                }
+            }
+
+            if (controlMode == ControlMode.AI) {
+                collectAndOrchestrateAI(player);
+            } else {
                 executeHumanInput(player);
             }
         } catch (Exception e) {
@@ -97,12 +167,7 @@ public class AIController {
         }
     }
 
-    private void blockHumanInput() {
-        // Enforce exclusive authority: release all human-bound inputs
-        intentExecutor.releaseAllInputs();
-    }
-
-    private void executeAIIntent(net.minecraft.world.entity.player.Player player) {
+    private void collectAndOrchestrateAI(net.minecraft.world.entity.player.Player player) {
         // 1. Collect Outcomes since last tick
         updateResultTrackers(player);
         JsonObject result = lastExecutionResult.toJsonObject();
@@ -110,55 +175,28 @@ public class AIController {
         outcomes.addProperty("damage_dealt", damageDealtAcc);
         outcomes.addProperty("damage_received", damageReceivedAcc);
         outcomes.addProperty("is_alive", player != null ? player.isAlive() : true);
-        outcomes.addProperty("action_wasted", false);
+        outcomes.addProperty("action_wasted", lastExecutionResult.status() == ExecutionStatus.FAILURE);
         result.add("outcomes", outcomes);
 
         // 1.1 Add Metadata
         JsonObject metadata = new JsonObject();
         metadata.addProperty("engine_timestamp", System.currentTimeMillis());
-        metadata.addProperty("execution_time_ms", 0.0); // Placeholder or track if needed
+        metadata.addProperty("execution_time_ms", 0.0);
         result.add("metadata", metadata);
 
         // 2. Collect State (Full snapshot)
         JsonObject state = stateCollector.collect(player);
 
         // 3. Orchestrate (Send exactly ONE request per tick)
-        if (orchestrate(state, lastIntentTaken, controlMode, result)) {
+        if (orchestrate(state, lastIntentTaken.intent, controlMode, result, lastIntentTaken.params)) {
             damageDealtAcc = 0;
             damageReceivedAcc = 0;
         }
-
-        // 4. Execute AI Intent
-        IntentType nextIntent = intentQueue.poll();
-        if (nextIntent != null) {
-            lastIntentTaken = nextIntent;
-            consecutiveFailures = 0;
-            if (isDegradedMode) {
-                isDegradedMode = false;
-                LOGGER.info("[DEGRADED_AI] AI recovered and synchronized.");
-            }
-        } else {
-            // No new intent this tick -> SAFE STOP Fallback
-            if (controlMode == ControlMode.AI) {
-                lastIntentTaken = FALLBACK_INTENT; 
-                consecutiveFailures++;
-                if (!isDegradedMode) {
-                    isDegradedMode = true;
-                    logRateLimitedWarning("[DEGRADED_AI] AI response missing/late. Falling back to SAFE STOP.");
-                }
-            }
-        }
-        
-        lastExecutionResult = intentExecutor.execute(player, lastIntentTaken);
-    }
-
-    private void blockAIIntent() {
-        // No-op
     }
 
     private void executeHumanInput(net.minecraft.world.entity.player.Player player) {
         // Shadow Learning path
-        IntentType humanIntent = humanDetector.detect();
+        ParameterizedIntent humanIntent = humanDetector.detect();
         updateResultTrackers(player);
         
         JsonObject result = ExecutionResult.success().toJsonObject();
@@ -177,12 +215,12 @@ public class AIController {
 
         JsonObject state = stateCollector.collect(player);
         
-        if (orchestrate(state, humanIntent, controlMode, result)) {
+        if (orchestrate(state, humanIntent.type(), controlMode, result, humanIntent.params())) {
             damageDealtAcc = 0;
             damageReceivedAcc = 0;
         }
         
-        lastIntentTaken = humanIntent;
+        lastIntentTaken = new AIClient.Response(humanIntent.type(), 1.0, humanIntent.params(), null, -1);
         lastExecutionResult = ExecutionResult.success();
     }
 
@@ -195,16 +233,107 @@ public class AIController {
         lastHealth = currentHealth;
     }
 
-    public static void forceHumanMode() {
+    public void forceHumanMode() {
         if (controlMode != ControlMode.HUMAN) {
             LOGGER.warn("FORCE FAIL-SAFE: Reverting to HUMAN control mode.");
-            controlMode = ControlMode.HUMAN;
+            setMode(ControlMode.HUMAN);
+            syncControlModeWithServer();
         }
     }
 
     public void attemptModeToggle() {
         setMode((controlMode == ControlMode.HUMAN) ? ControlMode.AI : ControlMode.HUMAN);
         LOGGER.info("Control mode toggled via GUI to: {}", controlMode);
+        syncControlModeWithServer();
+    }
+
+    public void toggleAutoPromote() {
+        autoPromoteEnabled = !autoPromoteEnabled;
+        LOGGER.info("Auto-Promote toggled via GUI to: {}", autoPromoteEnabled);
+        if (!autoPromoteEnabled) {
+            promoteTimer = 0;
+        }
+    }
+
+    public boolean isAutoPromoteEnabled() {
+        return autoPromoteEnabled;
+    }
+
+    public void triggerPromotion() {
+        executor.submit(() -> {
+            try {
+                JsonObject payload = createCommandPayload("PROMOTE_SHADOW");
+                LOGGER.info("[AI_CONTROLLER] Requesting auto-promotion from server");
+                JsonObject response = client.sendCommand(payload);
+                if (response.has("status") && "SUCCESS".equals(response.get("status").getAsString())) {
+                    LOGGER.info("[AI_CONTROLLER] Auto-promotion successful.");
+                } else {
+                    LOGGER.warn("[AI_CONTROLLER] Auto-promotion failed: {}", 
+                        response.has("error") ? response.get("error").getAsString() : "UNKNOWN");
+                }
+            } catch (Exception e) {
+                LOGGER.error("[AI_CONTROLLER] Failed to trigger auto-promotion", e);
+            }
+        });
+    }
+
+    public void syncControlModeWithServer() {
+        executor.submit(() -> {
+            try {
+                JsonObject payload = createCommandPayload("CONTROL_MODE");
+                payload.addProperty("mode", controlMode == ControlMode.AI ? "AI" : "HUMAN");
+                payload.addProperty("source", "GUI");
+                
+                LOGGER.info("[AI_CONTROLLER] Syncing control mode with server: {}", payload.get("mode").getAsString());
+                client.sendCommand(payload);
+            } catch (Exception e) {
+                LOGGER.error("[AI_CONTROLLER] Failed to sync control mode with server", e);
+            }
+        });
+    }
+
+    public void reloadKnowledge() {
+        executor.submit(() -> {
+            try {
+                JsonObject payload = createCommandPayload("RELOAD_KNOWLEDGE");
+                LOGGER.info("[AI_CONTROLLER] Requesting knowledge reload from server");
+                JsonObject response = client.sendCommand(payload);
+                if (response.has("status") && "SUCCESS".equals(response.get("status").getAsString())) {
+                    LOGGER.info("[AI_CONTROLLER] Knowledge reloaded successfully. Version: {}", 
+                        response.has("version") ? response.get("version").getAsString() : "UNKNOWN");
+                } else {
+                    LOGGER.warn("[AI_CONTROLLER] Knowledge reload failed or returned error");
+                }
+            } catch (Exception e) {
+                LOGGER.error("[AI_CONTROLLER] Failed to reload knowledge", e);
+            }
+        });
+    }
+
+    public void resetPassiveStore() {
+        executor.submit(() -> {
+            try {
+                JsonObject payload = createCommandPayload("RESET_PASSIVE_STORE");
+                LOGGER.info("[AI_CONTROLLER] Requesting passive store reset from server");
+                JsonObject response = client.sendCommand(payload);
+                if (response.has("status") && "SUCCESS".equals(response.get("status").getAsString())) {
+                    LOGGER.info("[AI_CONTROLLER] Passive store reset successfully.");
+                } else {
+                    LOGGER.warn("[AI_CONTROLLER] Passive store reset failed or returned error");
+                }
+            } catch (Exception e) {
+                LOGGER.error("[AI_CONTROLLER] Failed to reset passive store", e);
+            }
+        });
+    }
+
+    private JsonObject createCommandPayload(String type) {
+        JsonObject payload = new JsonObject();
+        payload.addProperty("type", type);
+        payload.addProperty("experience_id", "CMD-" + UUID.randomUUID().toString());
+        payload.addProperty("authority", Authority.AUTHORITATIVE.name());
+        payload.addProperty("protocol_version", 1);
+        return payload;
     }
 
     public void reset() {
@@ -213,7 +342,7 @@ public class AIController {
         consecutiveFailures = 0;
         isDegradedMode = false;
         intentQueue.clear();
-        lastIntentTaken = IntentType.STOP;
+        lastIntentTaken = new AIClient.Response(IntentType.STOP, 1.0, new JsonObject(), null, -1);
         lastConfidence = 1.0;
         LOGGER.info("[AI_CONTROLLER] Lifecycle Reset: Bridge unhalted and state cleared.");
     }
@@ -242,7 +371,7 @@ public class AIController {
     /**
      * Main orchestration entry point. 
      */
-    public boolean orchestrate(JsonObject state, IntentType intentTaken, ControlMode controller, JsonObject result) {
+    public boolean orchestrate(JsonObject state, IntentType intentTaken, ControlMode controller, JsonObject result, JsonObject intentParams) {
         if (isHalted.get()) {
             return false;
         }
@@ -261,6 +390,7 @@ public class AIController {
         payload.addProperty("experience_id", UUID.randomUUID().toString());
         payload.add("state", state);
         payload.addProperty("intent_taken", intentTaken != null ? intentTaken.name() : "STOP");
+        payload.add("intent_params", intentParams != null ? intentParams : new JsonObject());
         payload.addProperty("controller", controller.name());
         payload.addProperty("authority", authority.name());
         payload.addProperty("policy_authority", policyAuthority);
@@ -292,7 +422,7 @@ public class AIController {
                 if (response.isSuccess()) {
                     lastConfidence = response.confidence;
                     if (controlMode == ControlMode.AI) {
-                        intentQueue.add(response.intent);
+                        intentQueue.add(response);
                     }
                     
                     if (response.intent == IntentType.STOP) {
@@ -319,7 +449,7 @@ public class AIController {
     private boolean validatePayload(JsonObject payload) {
         try {
             // 1. Assert required root fields
-            String[] requiredRoot = {"experience_id", "state", "intent_taken", "controller", "authority", "policy_authority", "last_confidence", "result", "lineage", "protocol_version"};
+            String[] requiredRoot = {"experience_id", "state", "intent_taken", "intent_params", "controller", "authority", "policy_authority", "last_confidence", "result", "lineage", "protocol_version"};
             for (String field : requiredRoot) {
                 if (!payload.has(field) || payload.get(field).isJsonNull()) {
                     LOGGER.error("[VALIDATOR] Rejecting request: Missing root field '{}'.", field);
