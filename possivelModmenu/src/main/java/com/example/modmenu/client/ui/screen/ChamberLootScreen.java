@@ -7,6 +7,7 @@ import com.example.modmenu.client.ui.component.ResponsiveButton;
 import com.example.modmenu.network.ActionChamberPacket;
 import com.example.modmenu.network.PacketHandler;
 import com.example.modmenu.network.UpdateAbilityPacket;
+import com.example.modmenu.store.SkillManager;
 import com.example.modmenu.store.StorePriceManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -68,29 +69,122 @@ public class ChamberLootScreen extends BaseResponsiveLodestoneScreen {
         this.layoutRoot.addElement(new ResponsiveButton(bx, 10, 100, 20, Component.literal("Auto-Void Filter"), btn -> {
             if (chamberIndex >= 0 && chamberIndex < StorePriceManager.clientSkills.chambers.size()) {
                 StorePriceManager.ChamberData chamber = StorePriceManager.clientSkills.chambers.get(chamberIndex);
-                this.minecraft.setScreen(new ItemFilterScreen(this, chamber.voidFilter, "Chamber Void Filter") {
-                    @Override
-                    public boolean mouseClicked(double mx, double my, int button) {
-                        boolean result = super.mouseClicked(mx, my, button);
-                        // When closing or changing, we might want to sync. 
-                        // ItemFilterScreen's Back button already sends UpdateAbilityPacket, but that's for clientAbilities.
-                        // We need a way to sync chamber data. 
-                        // Let's just rely on the fact that we modified the live list in clientSkills.
-                        // We should send a packet to update the server's chamber filter.
-                        return result;
-                    }
-                    
-                    @Override
-                    public void removed() {
-                        super.removed();
-                        // Custom sync for chamber filter
-                        PacketHandler.sendToServer(new ActionChamberPacket(chamberIndex, chamber.voidFilter)); 
-                    }
-                });
+                if (SkillManager.getActiveRank(StorePriceManager.clientSkills, "VIRT_ADVANCED_FILTERING") > 0) {
+                    this.minecraft.setScreen(new AdvancedFilterScreen(this, chamberIndex));
+                } else {
+                    this.minecraft.setScreen(new ItemFilterScreen(this, chamber.voidFilter, "Chamber Void Filter") {
+                        @Override
+                        public void removed() {
+                            super.removed();
+                            PacketHandler.sendToServer(new ActionChamberPacket(chamberIndex, chamber.voidFilter)); 
+                        }
+                    });
+                }
             }
         }));
+        bx += 105;
 
-        grid = new ScrollableUIContainer(50, 40, this.width - 150, this.height - 50);
+        // Sliders and Toggles panel on the left
+        int leftX = 5;
+        int currentY = 40;
+        
+        if (chamberIndex >= 0 && chamberIndex < StorePriceManager.clientSkills.chambers.size()) {
+            StorePriceManager.ChamberData chamber = StorePriceManager.clientSkills.chambers.get(chamberIndex);
+            
+            // Simulation Speed Slider
+            int maxSpeed = SkillManager.getActiveRank(StorePriceManager.clientSkills, "VIRT_CLOCK_SPEED");
+            if (maxSpeed > 0) {
+                this.layoutRoot.addElement(new UIElement(leftX, currentY, 140, 30) {
+                    @Override
+                    public void render(GuiGraphics g, int mx, int my, float pt) {
+                        g.drawString(font, "Speed: " + chamber.speedSlider + "/" + maxSpeed, getX(), getY(), 0xFFFFFFFF);
+                        g.fill(getX(), getY() + 12, getX() + 100, getY() + 14, 0xFF444444);
+                        float progress = (chamber.speedSlider - 1) / 19.0f;
+                        g.fill(getX(), getY() + 12, getX() + (int)(100 * progress), getY() + 14, 0xFF00AAFF);
+                    }
+                    @Override
+                    public boolean mouseClicked(double mx, double my, int button) {
+                        if (mx >= getX() && mx <= getX() + 100 && my >= getY() + 10 && my <= getY() + 20) {
+                            int newVal = 1 + (int)((mx - getX()) / 100.0 * 19);
+                            chamber.speedSlider = Math.max(1, Math.min(maxSpeed, newVal));
+                            PacketHandler.sendToServer(new ActionChamberPacket(chamberIndex, 12, null, chamber.speedSlider));
+                            return true;
+                        }
+                        return false;
+                    }
+                });
+                currentY += 35;
+            }
+
+            // Multi-Threading Slider
+            int maxThread = SkillManager.getActiveRank(StorePriceManager.clientSkills, "VIRT_MULTI_THREAD");
+            if (maxThread > 0) {
+                this.layoutRoot.addElement(new UIElement(leftX, currentY, 140, 30) {
+                    @Override
+                    public void render(GuiGraphics g, int mx, int my, float pt) {
+                        g.drawString(font, "Threads: " + chamber.threadSlider + "/" + maxThread, getX(), getY(), 0xFFFFFFFF);
+                        g.fill(getX(), getY() + 12, getX() + 100, getY() + 14, 0xFF444444);
+                        float progress = (chamber.threadSlider - 1) / 19.0f;
+                        g.fill(getX(), getY() + 12, getX() + (int)(100 * progress), getY() + 14, 0xFF00AAFF);
+                    }
+                    @Override
+                    public boolean mouseClicked(double mx, double my, int button) {
+                        if (mx >= getX() && mx <= getX() + 100 && my >= getY() + 10 && my <= getY() + 20) {
+                            int newVal = 1 + (int)((mx - getX()) / 100.0 * 19);
+                            chamber.threadSlider = Math.max(1, Math.min(maxThread, newVal));
+                            PacketHandler.sendToServer(new ActionChamberPacket(chamberIndex, 13, null, chamber.threadSlider));
+                            return true;
+                        }
+                        return false;
+                    }
+                });
+                currentY += 35;
+            }
+
+            // Bartering Toggle
+            if (SkillManager.getActiveRank(StorePriceManager.clientSkills, "VIRT_BARTERING_PROTOCOL") > 0 && chamber.mobId.contains("piglin")) {
+                this.layoutRoot.addElement(new ResponsiveButton(leftX, currentY, 100, 20, Component.literal("Barter: " + (chamber.barteringMode ? "§aON" : "§cOFF")), btn -> {
+                    chamber.barteringMode = !chamber.barteringMode;
+                    btn.setText(Component.literal("Barter: " + (chamber.barteringMode ? "§aON" : "§cOFF")));
+                    PacketHandler.sendToServer(new ActionChamberPacket(chamberIndex, 9));
+                }));
+                currentY += 25;
+                
+                // Input Buffer Button
+                this.layoutRoot.addElement(new ResponsiveButton(leftX, currentY, 100, 20, Component.literal("Input: " + chamber.inputBuffer.size()), btn -> {
+                    PacketHandler.sendToServer(new ActionChamberPacket(chamberIndex, 16)); // Put held into input
+                }));
+                this.layoutRoot.addElement(new UIElement(leftX + 105, currentY, 20, 20) {
+                    @Override
+                    public void render(GuiGraphics g, int mx, int my, float pt) {
+                        g.fill(getX(), getY(), getX() + getWidth(), getY() + getHeight(), 0xFFFF0000);
+                        g.drawCenteredString(font, "X", getX() + 10, getY() + 6, 0xFFFFFFFF);
+                    }
+                    @Override
+                    public boolean mouseClicked(double mx, double my, int button) {
+                        if (mx >= getX() && mx < getX() + getWidth() && my >= getY() && my < getY() + getHeight()) {
+                            PacketHandler.sendToServer(new ActionChamberPacket(chamberIndex, 15)); // Clear input
+                            return true;
+                        }
+                        return false;
+                    }
+                });
+                currentY += 25;
+            }
+
+            // Condensation Mode
+            if (SkillManager.getActiveRank(StorePriceManager.clientSkills, "VIRT_LOOT_CONDENSATION") > 0) {
+                String[] modes = {"OFF", "SAFE", "ALL"};
+                this.layoutRoot.addElement(new ResponsiveButton(leftX, currentY, 100, 20, Component.literal("Condense: " + modes[chamber.condensationMode]), btn -> {
+                    chamber.condensationMode = (chamber.condensationMode + 1) % 3;
+                    btn.setText(Component.literal("Condense: " + modes[chamber.condensationMode]));
+                    PacketHandler.sendToServer(new ActionChamberPacket(chamberIndex, 10));
+                }));
+                currentY += 25;
+            }
+        }
+
+        grid = new ScrollableUIContainer(150, 40, this.width - 250, this.height - 50);
         this.layoutRoot.addElement(grid);
 
         PacketHandler.sendToServer(new com.example.modmenu.network.RequestChamberLootPacket(chamberIndex));
@@ -199,9 +293,12 @@ public class ChamberLootScreen extends BaseResponsiveLodestoneScreen {
         public boolean mouseClicked(double mx, double my, int button) {
             if (mx >= getX() && my >= getY() && mx < getX() + getWidth() && my < getY() + getHeight()) {
                 if (button == 0) { // Left click: Collect
-                    PacketHandler.sendToServer(new ActionChamberPacket(chamberIndex, 4, itemIndex));
+                    PacketHandler.sendToServer(new ActionChamberPacket(chamberIndex, 4, itemIndex, stack.getItem(), stack.getTag()));
                 } else if (button == 1) { // Right click: Void
-                    PacketHandler.sendToServer(new ActionChamberPacket(chamberIndex, 5, itemIndex));
+                    PacketHandler.sendToServer(new ActionChamberPacket(chamberIndex, 5, itemIndex, stack.getItem(), stack.getTag()));
+                } else if (button == 2) { // Middle click: Set Yield Target
+                    String id = ForgeRegistries.ITEMS.getKey(stack.getItem()).toString();
+                    Minecraft.getInstance().setScreen(new SetYieldTargetScreen(ChamberLootScreen.this, chamberIndex, id));
                 }
                 return true;
             }

@@ -113,13 +113,19 @@ public class ContainmentScreen extends BaseResponsiveLodestoneScreen {
                 InventoryScreen.renderEntityInInventoryFollowsMouse(g, getX() + 30, getY() + 70, 25, (float)(getX() + 30) - mx, (float)(getY() + 40) - my, renderEntity);
             }
 
-            String name = data.customName != null ? data.customName : data.mobId;
-            g.drawString(Minecraft.getInstance().font, "Mob: §6" + name, getX() + 60, getY() + 10, 0xFFFFFFFF);
+            String name = data.customName != null ? data.customName : (data.isExcavation ? data.lootTableId : data.mobId);
+            if (data.isExcavation) name = "Excavation: " + name.substring(name.lastIndexOf('/') + 1);
+            g.drawString(Minecraft.getInstance().font, "Target: §6" + name, getX() + 60, getY() + 10, 0xFFFFFFFF);
+            
             String status = data.paused ? "§cPAUSED" : "§aACTIVE";
+            if (data.barteringMode) status += " §e(BARTER)";
             g.drawString(Minecraft.getInstance().font, "Status: " + status, getX() + 60, getY() + 22, 0xFFFFFFFF);
+            
             String xpText = data.storedXP.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString();
             g.drawString(Minecraft.getInstance().font, "XP: §a" + xpText, getX() + 60, getY() + 34, 0xFFFFFFFF);
-            g.drawString(Minecraft.getInstance().font, "Loot: §e" + data.storedLoot.size(), getX() + 60, getY() + 46, 0xFFFFFFFF);
+            g.drawString(Minecraft.getInstance().font, "Loot: §e" + data.storedLoot.size() + " types", getX() + 60, getY() + 46, 0xFFFFFFFF);
+            
+            g.drawString(Minecraft.getInstance().font, "S:" + data.speedSlider + " T:" + data.threadSlider, getX() + 60, getY() + 58, 0xFFAAAAAA);
 
             if (!data.killerWeapon.isEmpty()) {
                 g.drawString(Minecraft.getInstance().font, "Weapon:", getX() + 160, getY() + 22, 0xFFFFFFFF);

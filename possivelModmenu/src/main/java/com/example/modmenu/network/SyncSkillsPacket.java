@@ -2,6 +2,7 @@ package com.example.modmenu.network;
 
 import com.example.modmenu.store.StorePriceManager;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.network.NetworkEvent;
 
 import java.util.*;
@@ -72,10 +73,6 @@ public class SyncSkillsPacket {
             chamber.isExact = buf.readBoolean();
             if (chamber.isExact) chamber.nbt = buf.readNbt();
             
-            // Stored loot is no longer sent in this packet to avoid overflow.
-            // It is requested per-chamber via RequestChamberLootPacket.
-            chamber.storedLoot.clear();
-            
             chamber.storedXP = new java.math.BigDecimal(buf.readUtf());
             chamber.lastHarvestTime = buf.readLong();
             if (buf.readBoolean()) {
@@ -94,6 +91,23 @@ public class SyncSkillsPacket {
                 chamber.voidFilter.add(buf.readUtf());
             }
             chamber.updateVersion = buf.readInt();
+
+            chamber.barteringMode = buf.readBoolean();
+            chamber.condensationMode = buf.readInt();
+            chamber.speedSlider = buf.readInt();
+            chamber.threadSlider = buf.readInt();
+            int advFilterSize = buf.readInt();
+            for (int j = 0; j < advFilterSize; j++) {
+                StorePriceManager.FilterRule rule = new StorePriceManager.FilterRule();
+                rule.matchType = buf.readUtf();
+                rule.matchValue = buf.readUtf();
+                if (buf.readBoolean()) rule.nbtSample = buf.readNbt();
+                rule.action = buf.readInt();
+                chamber.advancedFilters.add(rule);
+            }
+            chamber.isExcavation = buf.readBoolean();
+            if (buf.readBoolean()) chamber.lootTableId = buf.readUtf();
+
             this.data.chambers.add(chamber);
         }
     }
@@ -172,6 +186,22 @@ public class SyncSkillsPacket {
                 buf.writeUtf(filterId);
             }
             buf.writeInt(chamber.updateVersion);
+
+            buf.writeBoolean(chamber.barteringMode);
+            buf.writeInt(chamber.condensationMode);
+            buf.writeInt(chamber.speedSlider);
+            buf.writeInt(chamber.threadSlider);
+            buf.writeInt(chamber.advancedFilters.size());
+            for (StorePriceManager.FilterRule rule : chamber.advancedFilters) {
+                buf.writeUtf(rule.matchType);
+                buf.writeUtf(rule.matchValue);
+                buf.writeBoolean(rule.nbtSample != null);
+                if (rule.nbtSample != null) buf.writeNbt(rule.nbtSample);
+                buf.writeInt(rule.action);
+            }
+            buf.writeBoolean(chamber.isExcavation);
+            buf.writeBoolean(chamber.lootTableId != null);
+            if (chamber.lootTableId != null) buf.writeUtf(chamber.lootTableId);
         }
     }
 
@@ -211,7 +241,16 @@ public class SyncSkillsPacket {
                         c.lastOfflineProcessingTime = other.lastOfflineProcessingTime;
                         c.voidFilter.clear(); c.voidFilter.addAll(other.voidFilter);
                         c.updateVersion = other.updateVersion;
-                        // Stored loot is kept as is on client
+                        
+                        c.barteringMode = other.barteringMode;
+                        c.condensationMode = other.condensationMode;
+                        c.speedSlider = other.speedSlider;
+                        c.threadSlider = other.threadSlider;
+                        c.advancedFilters.clear(); c.advancedFilters.addAll(other.advancedFilters);
+                        c.isExcavation = other.isExcavation;
+                        c.lootTableId = other.lootTableId;
+                        // Stored loot, input buffer, and yield targets are kept as is on client
+                        // until SyncChamberLootPacket arrives
                     } else {
                         client.chambers.add(other);
                     }

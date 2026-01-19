@@ -889,8 +889,29 @@ public class ServerForgeEvents {
 
         // Virtual Containment Capture
         if (settings.captureActive && player.isShiftKeyDown()) {
-            // Shift-Right Click handled in onRightClickEntity for mobs? 
-            // Wait, this is RightClickBlock. Let's add onRightClickEntity.
+            net.minecraft.world.level.block.entity.BlockEntity be = player.level().getBlockEntity(event.getPos());
+            if (be instanceof net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity container) {
+                ResourceLocation lootTable = null;
+                try {
+                    // Use reflection to access protected lootTable field
+                    java.lang.reflect.Field field = net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity.class.getDeclaredField("f_59605_"); // SRG name for lootTable if needed, or just "lootTable"
+                    field.setAccessible(true);
+                    lootTable = (ResourceLocation) field.get(container);
+                } catch (Exception e) {
+                    try {
+                        java.lang.reflect.Field field = net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity.class.getDeclaredField("lootTable");
+                        field.setAccessible(true);
+                        lootTable = (ResourceLocation) field.get(container);
+                    } catch (Exception ex) {}
+                }
+
+                if (lootTable != null && SkillManager.getActiveRank(skillData, "VIRT_EXCAVATION_LOGIC") > 0) {
+                    // Open Capture GUI for Structure Loot
+                    com.example.modmenu.network.PacketHandler.sendToPlayer(new com.example.modmenu.network.OpenCaptureGuiPacket(lootTable.toString()), player);
+                    event.setCanceled(true);
+                    return;
+                }
+            }
         }
 
         if (settings.miningActive && player.isShiftKeyDown()) {

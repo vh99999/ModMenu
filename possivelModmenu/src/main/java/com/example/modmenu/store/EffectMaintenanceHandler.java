@@ -415,7 +415,8 @@ public class EffectMaintenanceHandler {
             }
         } catch (UnsupportedOperationException e) {
             try {
-                Field field = LevelEvent.PotentialSpawns.class.getDeclaredField("list");
+                // Use SRG name for compatibility: f_46513_ is 'list' in PotentialSpawns
+                Field field = net.minecraftforge.fml.util.ObfuscationReflectionHelper.findField(LevelEvent.PotentialSpawns.class, "f_46513_");
                 field.setAccessible(true);
                 list = new ArrayList<>(list);
                 field.set(event, list);

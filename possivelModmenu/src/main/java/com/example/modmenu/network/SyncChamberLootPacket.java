@@ -12,6 +12,8 @@ import java.util.function.Supplier;
 public class SyncChamberLootPacket {
     private final int index;
     private final List<ItemStack> loot;
+    private final List<ItemStack> input;
+    private final java.util.Map<String, Integer> yield;
     private final int version;
 
     public SyncChamberLootPacket(int index, StorePriceManager.ChamberData chamber) {
@@ -22,6 +24,11 @@ public class SyncChamberLootPacket {
                 this.loot.add(stack.copy());
             }
         }
+        this.input = new ArrayList<>();
+        for (ItemStack stack : chamber.inputBuffer) {
+            this.input.add(stack.copy());
+        }
+        this.yield = new java.util.HashMap<>(chamber.yieldTargets);
         this.version = chamber.updateVersion;
     }
 
@@ -41,6 +48,23 @@ public class SyncChamberLootPacket {
                 this.loot.add(ItemStack.EMPTY);
             }
         }
+        
+        int inputSize = buf.readInt();
+        this.input = new ArrayList<>(inputSize);
+        for (int i = 0; i < inputSize; i++) {
+            if (buf.readBoolean()) {
+                net.minecraft.world.item.Item item = net.minecraftforge.registries.ForgeRegistries.ITEMS.getValue(buf.readResourceLocation());
+                int count = buf.readInt();
+                net.minecraft.nbt.CompoundTag tag = buf.readNbt();
+                ItemStack stack = new ItemStack(item == null ? net.minecraft.world.item.Items.AIR : item, count);
+                stack.setTag(tag);
+                this.input.add(stack);
+            } else {
+                this.input.add(ItemStack.EMPTY);
+            }
+        }
+        
+        this.yield = buf.readMap(FriendlyByteBuf::readUtf, FriendlyByteBuf::readInt);
         this.version = buf.readInt();
     }
 
@@ -57,6 +81,20 @@ public class SyncChamberLootPacket {
                 buf.writeNbt(stack.getTag());
             }
         }
+        
+        buf.writeInt(input.size());
+        for (ItemStack stack : input) {
+            if (stack == null || stack.isEmpty()) {
+                buf.writeBoolean(false);
+            } else {
+                buf.writeBoolean(true);
+                buf.writeResourceLocation(net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(stack.getItem()));
+                buf.writeInt(stack.getCount());
+                buf.writeNbt(stack.getTag());
+            }
+        }
+        
+        buf.writeMap(yield, FriendlyByteBuf::writeUtf, FriendlyByteBuf::writeInt);
         buf.writeInt(version);
     }
 
@@ -68,6 +106,10 @@ public class SyncChamberLootPacket {
                     chamber.storedLoot.clear();
                     chamber.storedLoot.addAll(this.loot);
                 }
+                chamber.inputBuffer.clear();
+                chamber.inputBuffer.addAll(this.input);
+                chamber.yieldTargets.clear();
+                chamber.yieldTargets.putAll(this.yield);
                 chamber.updateVersion = this.version;
             }
         });

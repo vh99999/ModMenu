@@ -18,6 +18,7 @@ import net.minecraft.server.level.ServerLevel;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
+import java.util.Iterator;
 
 public class SkillManager {
     
@@ -70,6 +71,31 @@ public class SkillManager {
     private static Map<ResourceLocation, ResourceLocation> lootTableCache = new HashMap<>();
     private static Map<ResourceLocation, Integer> xpCache = new HashMap<>();
     private static Map<net.minecraft.world.item.Item, BigDecimal> itemPriceCache = new HashMap<>();
+
+    private static final Map<UUID, com.mojang.authlib.GameProfile> profileCache = new HashMap<>();
+    private static final Map<ResourceLocation, net.minecraft.world.entity.Entity> dummyEntityCache = new HashMap<>();
+
+    private static class CondensationRecipe {
+        final net.minecraft.world.item.Item result;
+        final int required;
+        final boolean reversible;
+        CondensationRecipe(net.minecraft.world.item.Item result, int required, boolean reversible) {
+            this.result = result;
+            this.required = required;
+            this.reversible = reversible;
+        }
+    }
+    private static final Map<net.minecraft.world.item.Item, CondensationRecipe> condensationCache = new HashMap<>();
+
+    public static void clearCaches() {
+        lootTableCache.clear();
+        xpCache.clear();
+        itemPriceCache.clear();
+        profileCache.clear();
+        dummyEntityCache.clear();
+        condensationCache.clear();
+        chunkValueCache.clear();
+    }
 
     public static int getActiveRank(StorePriceManager.SkillData data, String skillId) {
         if (!data.activeToggles.contains(skillId)) return 0;
@@ -367,19 +393,24 @@ public class SkillManager {
         if (data.chambers.isEmpty()) return;
         long time = player.level().getGameTime();
         
-        int systemOverclock = getActiveRank(data, "UTILITY_SYSTEM_OVERCLOCK");
-        int virtClockRank = getActiveRank(data, "VIRT_CLOCK_SPEED");
-        
-        long interval = (long) (1200 * Math.pow(0.8, virtClockRank) / (1 + systemOverclock));
-        if (virtClockRank >= 20) interval = 1;
-        if (interval < 1) interval = 1;
-        
-        int multiThreadRank = getActiveRank(data, "VIRT_MULTI_THREAD");
-        int batchSize = (int) Math.pow(2, multiThreadRank);
-        if (batchSize > 1000) batchSize = 1000;
+        int globalOverclock = getActiveRank(data, "UTILITY_SYSTEM_OVERCLOCK");
+        int maxClockRank = getActiveRank(data, "VIRT_CLOCK_SPEED");
+        int maxThreadRank = getActiveRank(data, "VIRT_MULTI_THREAD");
         
         for (StorePriceManager.ChamberData chamber : data.chambers) {
             if (chamber.paused) continue;
+            
+            // Use per-chamber sliders, capped by global unlocked rank
+            int effectiveClock = Math.min(chamber.speedSlider, maxClockRank);
+            int effectiveThread = Math.min(chamber.threadSlider, maxThreadRank);
+
+            long interval = (long) (1200 * Math.pow(0.8, effectiveClock) / (1 + globalOverclock));
+            if (effectiveClock >= 20) interval = 1;
+            if (interval < 1) interval = 1;
+            
+            int batchSize = (int) Math.pow(2, effectiveThread);
+            if (batchSize > 1000) batchSize = 1000;
+
             if (time - chamber.lastHarvestTime >= interval) {
                 long elapsed = time - chamber.lastHarvestTime;
                 long occurrences = elapsed / interval;
@@ -398,6 +429,11 @@ public class SkillManager {
                 }
                 acc.apply(player, data, chamber);
                 
+                // Condensation Logic
+                if (chamber.condensationMode > 0 && getActiveRank(data, "VIRT_LOOT_CONDENSATION") > 0) {
+                    applyLootCondensation(player.serverLevel(), chamber);
+                }
+
                 if (chamber.storedLoot.size() > 500) {
                     chamber.storedLoot.sort((a, b) -> {
                         BigDecimal valA = StorePriceManager.getSellPrice(a.getItem()).multiply(BigDecimal.valueOf(a.getCount()));
@@ -463,33 +499,75 @@ public class SkillManager {
         if (acc != null) acc.totalKills = acc.totalKills.add(scale);
         else data.totalKills = data.totalKills.add(scale);
 
-        ResourceLocation entityTypeLoc = ResourceLocation.tryParse(chamber.mobId);
-        if (entityTypeLoc == null) return;
-        
-        net.minecraft.world.entity.EntityType<?> type = ForgeRegistries.ENTITY_TYPES.getValue(entityTypeLoc);
-        if (type == null) return;
+        ResourceLocation lootTableLoc = null;
+        net.minecraft.world.entity.EntityType<?> type = null;
 
-        ResourceLocation lootTableLoc = lootTableCache.computeIfAbsent(entityTypeLoc, k -> {
-            net.minecraft.world.entity.Entity dummyTable = type.create(level);
-            if (dummyTable instanceof net.minecraft.world.entity.LivingEntity living) {
-                return living.getLootTable();
+        if (chamber.isExcavation) {
+            if (chamber.lootTableId != null) {
+                lootTableLoc = ResourceLocation.tryParse(chamber.lootTableId);
             }
-            return null;
-        });
+        } else {
+            ResourceLocation entityTypeLoc = ResourceLocation.tryParse(chamber.mobId);
+            if (entityTypeLoc == null) return;
+            
+            type = ForgeRegistries.ENTITY_TYPES.getValue(entityTypeLoc);
+            if (type == null) return;
+
+            lootTableLoc = lootTableCache.computeIfAbsent(entityTypeLoc, k -> {
+                net.minecraft.world.entity.Entity dummyTable = ForgeRegistries.ENTITY_TYPES.getValue(k).create(level);
+                if (dummyTable instanceof net.minecraft.world.entity.LivingEntity living) {
+                    return living.getLootTable();
+                }
+                return null;
+            });
+        }
         
         if (lootTableLoc == null) return;
 
-        FakePlayer fakePlayer = FakePlayerFactory.get(level, new com.mojang.authlib.GameProfile(player.getUUID(), player.getName().getString()));
+        com.mojang.authlib.GameProfile profile = profileCache.computeIfAbsent(player.getUUID(), id -> new com.mojang.authlib.GameProfile(id, player.getName().getString()));
+        FakePlayer fakePlayer = FakePlayerFactory.get(level, profile);
         ItemStack tool = chamber.killerWeapon != null && !chamber.killerWeapon.isEmpty() ? chamber.killerWeapon.copy() : ItemStack.EMPTY;
         
-        // Create a dummy entity for the loot context
-        net.minecraft.world.entity.Entity dummy = type.create(level);
-        if (dummy != null && chamber.isExact && chamber.nbt != null) {
-            dummy.load(chamber.nbt);
+        net.minecraft.world.entity.Entity dummy = null;
+        if (!chamber.isExcavation && type != null) {
+            ResourceLocation typeKey = ForgeRegistries.ENTITY_TYPES.getKey(type);
+            dummy = dummyEntityCache.computeIfAbsent(typeKey, k -> {
+                net.minecraft.world.entity.EntityType<?> et = ForgeRegistries.ENTITY_TYPES.getValue(k);
+                return et != null ? et.create(level) : null;
+            });
+            if (dummy != null && chamber.isExact && chamber.nbt != null) {
+                dummy.load(chamber.nbt);
+            }
+        }
+
+        // Virtual Bartering
+        boolean isBartering = false;
+        if (chamber.barteringMode && !chamber.isExcavation && type != null && type.toShortString().contains("piglin") && getActiveRank(data, "VIRT_BARTERING_PROTOCOL") > 0) {
+            // Check for Gold Ingot in input buffer
+            net.minecraft.tags.TagKey<net.minecraft.world.item.Item> barteringTag = net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.ITEM, ResourceLocation.tryParse("minecraft:piglin_bartering_items"));
+            ItemStack goldStack = chamber.inputBuffer.stream()
+                .filter(s -> s.is(barteringTag))
+                .findFirst().orElse(null);
+            
+            if (goldStack != null && goldStack.getCount() > 0) {
+                int toConsume = Math.min(goldStack.getCount(), scale.intValue());
+                if (toConsume <= 0) toConsume = 1;
+                
+                goldStack.shrink(toConsume);
+                if (toConsume < scale.intValue()) {
+                    scale = BigDecimal.valueOf(toConsume);
+                }
+                
+                chamber.inputBuffer.removeIf(ItemStack::isEmpty);
+                lootTableLoc = ResourceLocation.tryParse("minecraft:gameplay/piglin_bartering");
+                isBartering = true;
+            } else {
+                return; // No gold, no bartering simulation
+            }
         }
 
         int recursiveLooting = getActiveRank(data, "VIRT_RECURSIVE_LOOTING");
-        if (recursiveLooting > 0) {
+        if (recursiveLooting > 0 && !isBartering) {
             if (tool.isEmpty()) tool = new ItemStack(net.minecraft.world.item.Items.NETHERITE_SWORD);
             tool.enchant(net.minecraft.world.item.enchantment.Enchantments.MOB_LOOTING, recursiveLooting);
         }
@@ -508,7 +586,7 @@ public class SkillManager {
 
         if (dummy != null) {
             lootParamsBuilder.withParameter(LootContextParams.THIS_ENTITY, dummy);
-        } else {
+        } else if (!chamber.isExcavation && !isBartering) {
             return; // Cannot generate ENTITY-set loot without THIS_ENTITY
         }
 
@@ -517,20 +595,34 @@ public class SkillManager {
         }
 
         net.minecraft.world.level.storage.loot.LootTable lootTable = level.getServer().getLootData().getLootTable(lootTableLoc);
-        List<ItemStack> drops = lootTable.getRandomItems(lootParamsBuilder.create(LootContextParamSets.ENTITY));
+        List<ItemStack> drops = lootTable.getRandomItems(lootParamsBuilder.create(chamber.isExcavation ? net.minecraft.world.level.storage.loot.parameters.LootContextParamSets.CHEST : LootContextParamSets.ENTITY));
         
-        // Apply Void Filter
-        if (!chamber.voidFilter.isEmpty()) {
+        // Advanced Filtering
+        if (getActiveRank(data, "VIRT_ADVANCED_FILTERING") > 0 && !chamber.advancedFilters.isEmpty()) {
+            applyAdvancedFilters(chamber, drops, acc, player.getUUID());
+        } else if (!chamber.voidFilter.isEmpty()) {
             drops.removeIf(stack -> chamber.voidFilter.contains(net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(stack.getItem()).toString()));
         }
 
         int marketLink = getActiveRank(data, "VIRT_MARKET_LINK");
-        if (marketLink > 0) {
-            for (ItemStack drop : drops) {
-                if (drop.isEmpty()) continue;
-                BigDecimal countBD = BigDecimal.valueOf(drop.getCount()).multiply(scale);
-                if (countBD.compareTo(BigDecimal.ZERO) <= 0) continue;
-                
+        for (ItemStack drop : drops) {
+            if (drop.isEmpty()) continue;
+            
+            String itemId = ForgeRegistries.ITEMS.getKey(drop.getItem()).toString();
+            
+            // Yield Targets
+            if (chamber.yieldTargets.containsKey(itemId)) {
+                int target = chamber.yieldTargets.get(itemId);
+                int current = chamber.storedLoot.stream()
+                    .filter(s -> ForgeRegistries.ITEMS.getKey(s.getItem()).toString().equals(itemId))
+                    .mapToInt(ItemStack::getCount).sum();
+                if (current >= target) continue;
+            }
+
+            BigDecimal countBD = BigDecimal.valueOf(drop.getCount()).multiply(scale);
+            if (countBD.compareTo(BigDecimal.ZERO) <= 0) continue;
+            
+            if (marketLink > 0) {
                 BigDecimal sellPrice = StorePriceManager.getSellPrice(drop.getItem());
                 if (data.activeToggles.contains("WEALTH_KEYSTONE_MONOPOLY")) {
                     sellPrice = sellPrice.multiply(BigDecimal.valueOf(1.01));
@@ -540,13 +632,7 @@ public class SkillManager {
                 else StorePriceManager.addMoney(player.getUUID(), gain);
                 
                 StorePriceManager.recordSale(drop.getItem(), countBD);
-            }
-        } else {
-            for (ItemStack drop : drops) {
-                if (drop.isEmpty()) continue;
-                BigDecimal countBD = BigDecimal.valueOf(drop.getCount()).multiply(scale);
-                if (countBD.compareTo(BigDecimal.ZERO) <= 0) continue;
-                
+            } else {
                 boolean merged = false;
                 for (ItemStack existing : chamber.storedLoot) {
                     if (ItemStack.isSameItemSameTags(existing, drop)) {
@@ -568,49 +654,152 @@ public class SkillManager {
             }
         }
         
-        int xp = xpCache.computeIfAbsent(entityTypeLoc, k -> {
-            net.minecraft.world.entity.Entity dummyEnt = type.create(level);
-            if (dummyEnt instanceof net.minecraft.world.entity.LivingEntity living) {
-                return living.getExperienceReward();
-            }
-            return 5;
-        });
-        
-        BigDecimal totalXP = BigDecimal.valueOf(xp).multiply(scale);
-        if (acc != null) acc.xpGain = acc.xpGain.add(totalXP);
-        else {
-            int neuralRank = getActiveRank(data, "VIRT_NEURAL_CONDENSATION");
-            if (neuralRank > 0) {
-                BigDecimal spCost = BigDecimal.valueOf(10000 / neuralRank);
-                chamber.storedXP = chamber.storedXP.add(totalXP);
-                if (chamber.storedXP.compareTo(spCost) >= 0) {
-                    data.totalSP = data.totalSP.add(chamber.storedXP.divide(spCost, 0, RoundingMode.FLOOR));
-                    chamber.storedXP = chamber.storedXP.remainder(spCost);
+        if (!chamber.isExcavation && !isBartering && type != null) {
+            ResourceLocation entityTypeLoc = ForgeRegistries.ENTITY_TYPES.getKey(type);
+            int xp = xpCache.computeIfAbsent(entityTypeLoc, k -> {
+                net.minecraft.world.entity.Entity dummyEnt = ForgeRegistries.ENTITY_TYPES.getValue(k).create(level);
+                if (dummyEnt instanceof net.minecraft.world.entity.LivingEntity living) {
+                    return living.getExperienceReward();
                 }
-            } else {
-                chamber.storedXP = chamber.storedXP.add(totalXP);
+                return 5;
+            });
+            
+            BigDecimal totalXP = BigDecimal.valueOf(xp).multiply(scale);
+            if (acc != null) acc.xpGain = acc.xpGain.add(totalXP);
+            else {
+                int neuralRank = getActiveRank(data, "VIRT_NEURAL_CONDENSATION");
+                if (neuralRank > 0) {
+                    BigDecimal spCost = BigDecimal.valueOf(10000 / neuralRank);
+                    chamber.storedXP = chamber.storedXP.add(totalXP);
+                    if (chamber.storedXP.compareTo(spCost) >= 0) {
+                        data.totalSP = data.totalSP.add(chamber.storedXP.divide(spCost, 0, RoundingMode.FLOOR));
+                        chamber.storedXP = chamber.storedXP.remainder(spCost);
+                    }
+                } else {
+                    chamber.storedXP = chamber.storedXP.add(totalXP);
+                }
             }
-        }
-        
-        if (getActiveRank(data, "VIRT_ISOLATED_SANDBOX") <= 0) {
-            float currentSatiety = data.mobSatiety.getOrDefault(chamber.mobId, 0f);
-            data.mobSatiety.put(chamber.mobId, (float) Math.min(15.0f, currentSatiety + (0.1f * scale.floatValue()))); 
-        }
+            
+            if (getActiveRank(data, "VIRT_ISOLATED_SANDBOX") <= 0) {
+                float currentSatiety = data.mobSatiety.getOrDefault(chamber.mobId, 0f);
+                data.mobSatiety.put(chamber.mobId, (float) Math.min(15.0f, currentSatiety + (0.1f * scale.floatValue()))); 
+            }
 
-        int soulReap = getActiveRank(data, "COMBAT_SOUL_REAP");
-        if (soulReap > 0) {
-            BigDecimal hpGainBD = BigDecimal.valueOf(0.033 * soulReap).multiply(scale);
-            BigDecimal dmgGainBD = BigDecimal.valueOf(0.016 * soulReap).multiply(scale);
-            if (acc != null) {
-                acc.hpGain = acc.hpGain.add(hpGainBD);
-                acc.dmgGain = acc.dmgGain.add(dmgGainBD);
-            } else {
-                data.permanentAttributes.put("minecraft:generic.max_health", data.permanentAttributes.getOrDefault("minecraft:generic.max_health", BigDecimal.ZERO).add(hpGainBD));
-                data.permanentAttributes.put("minecraft:generic.attack_damage", data.permanentAttributes.getOrDefault("minecraft:generic.attack_damage", BigDecimal.ZERO).add(dmgGainBD));
+            int soulReap = getActiveRank(data, "COMBAT_SOUL_REAP");
+            if (soulReap > 0) {
+                BigDecimal hpGainBD = BigDecimal.valueOf(0.033 * soulReap).multiply(scale);
+                BigDecimal dmgGainBD = BigDecimal.valueOf(0.016 * soulReap).multiply(scale);
+                if (acc != null) {
+                    acc.hpGain = acc.hpGain.add(hpGainBD);
+                    acc.dmgGain = acc.dmgGain.add(dmgGainBD);
+                } else {
+                    data.permanentAttributes.put("minecraft:generic.max_health", data.permanentAttributes.getOrDefault("minecraft:generic.max_health", BigDecimal.ZERO).add(hpGainBD));
+                    data.permanentAttributes.put("minecraft:generic.attack_damage", data.permanentAttributes.getOrDefault("minecraft:generic.attack_damage", BigDecimal.ZERO).add(dmgGainBD));
+                }
             }
         }
 
         if (acc == null) {
+            chamber.updateVersion++;
+        }
+    }
+
+    private static void applyAdvancedFilters(StorePriceManager.ChamberData chamber, List<ItemStack> drops, SimulationAccumulator acc, UUID playerUuid) {
+        Iterator<ItemStack> it = drops.iterator();
+        while (it.hasNext()) {
+            ItemStack stack = it.next();
+            if (stack.isEmpty()) continue;
+
+            for (StorePriceManager.FilterRule rule : chamber.advancedFilters) {
+                boolean match = false;
+                switch (rule.matchType) {
+                    case "ID" -> match = ForgeRegistries.ITEMS.getKey(stack.getItem()).toString().equals(rule.matchValue);
+                    case "TAG" -> match = stack.getTags().anyMatch(t -> t.location().toString().equals(rule.matchValue));
+                    case "NBT" -> match = rule.nbtSample != null && net.minecraft.nbt.NbtUtils.compareNbt(rule.nbtSample, stack.getTag(), true);
+                }
+
+                if (match) {
+                    if (rule.action == 1) { // VOID
+                        it.remove();
+                    } else if (rule.action == 2) { // LIQUIDATE
+                        BigDecimal sellPrice = StorePriceManager.getSellPrice(stack.getItem());
+                        BigDecimal gain = sellPrice.multiply(BigDecimal.valueOf(stack.getCount()));
+                        if (acc != null) acc.moneyGain = acc.moneyGain.add(gain);
+                        else StorePriceManager.addMoney(playerUuid, gain);
+                        StorePriceManager.recordSale(stack.getItem(), BigDecimal.valueOf(stack.getCount()));
+                        it.remove();
+                    }
+                    break; // Rule applied
+                }
+            }
+        }
+    }
+
+    private static void applyLootCondensation(ServerLevel level, StorePriceManager.ChamberData chamber) {
+        // Try to condense items in storedLoot using cached recipes
+        boolean changed = false;
+        List<ItemStack> loot = chamber.storedLoot;
+        
+        for (int i = 0; i < loot.size(); i++) {
+            ItemStack stack = loot.get(i);
+            if (stack.isEmpty()) continue;
+
+            CondensationRecipe recipe = condensationCache.computeIfAbsent(stack.getItem(), item -> {
+                net.minecraft.world.item.crafting.RecipeManager rm = level.getRecipeManager();
+                for (net.minecraft.world.item.crafting.CraftingRecipe r : rm.getAllRecipesFor(net.minecraft.world.item.crafting.RecipeType.CRAFTING)) {
+                    if (r.getIngredients().size() == 9 || r.getIngredients().size() == 4) {
+                        boolean allSame = true;
+                        for (net.minecraft.world.item.crafting.Ingredient ing : r.getIngredients()) {
+                            if (!ing.test(new ItemStack(item))) { allSame = false; break; }
+                        }
+                        
+                        if (allSame) {
+                            int req = r.getIngredients().size();
+                            ItemStack res = r.getResultItem(level.registryAccess());
+                            if (!res.isEmpty()) {
+                                boolean rev = false;
+                                for (net.minecraft.world.item.crafting.CraftingRecipe deR : rm.getAllRecipesFor(net.minecraft.world.item.crafting.RecipeType.CRAFTING)) {
+                                    if (deR.getIngredients().size() == 1 && deR.getIngredients().get(0).test(res)) {
+                                        ItemStack deRes = deR.getResultItem(level.registryAccess());
+                                        if (deRes.is(item) && deRes.getCount() == req) {
+                                            rev = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                                return new CondensationRecipe(res.getItem(), req, rev);
+                            }
+                        }
+                    }
+                }
+                return null;
+            });
+
+            if (recipe != null) {
+                if (chamber.condensationMode == 1 && !recipe.reversible) continue;
+                
+                if (stack.getCount() >= recipe.required) {
+                    int craftCount = stack.getCount() / recipe.required;
+                    stack.shrink(craftCount * recipe.required);
+                    ItemStack result = new ItemStack(recipe.result, craftCount);
+                    
+                    boolean merged = false;
+                    for (ItemStack existing : loot) {
+                        if (ItemStack.isSameItemSameTags(existing, result)) {
+                            long newCount = (long)existing.getCount() + result.getCount();
+                            existing.setCount(newCount > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int)newCount);
+                            merged = true;
+                            break;
+                        }
+                    }
+                    if (!merged) loot.add(result);
+                    changed = true;
+                }
+            }
+        }
+        
+        if (changed) {
+            loot.removeIf(ItemStack::isEmpty);
             chamber.updateVersion++;
         }
     }

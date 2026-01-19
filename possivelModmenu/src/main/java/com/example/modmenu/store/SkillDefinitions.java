@@ -141,12 +141,16 @@ public class SkillDefinitions {
         add("VIRT_CLOCK_SPEED", "Clock Speed Injection", "Reduces simulation interval down to as low as 1 tick (20 kills/s).", 20, Branch.CONTAINMENT, "VIRT_MULTI_THREAD", 1, 200, 200);
         add("VIRT_ISOLATED_SANDBOX", "Isolated Sandbox", "Prevents diminishing returns from virtualization kills.", 1, Branch.CONTAINMENT, "VIRT_CLOCK_SPEED", 1, 300, 300);
         add("VIRT_LOOT_INJECTION", "Loot Table Injection", "Guarantees Rare/Epic loot triggers significantly more often.", 20, Branch.CONTAINMENT, "VIRT_ISOLATED_SANDBOX", 1, 400, 400);
+        add("VIRT_EXCAVATION_LOGIC", "Virtual Excavation", "Sample structure loot tables from chests. Allows simulating structure loot in specialized chambers.", 1, Branch.CONTAINMENT, "VIRT_LOOT_INJECTION", 1, 500, 400);
         add("VIRT_RECURSIVE_LOOTING", "Recursive Looting", "Simulates virtual Looting X or higher on weapons.", 20, Branch.CONTAINMENT, "VIRT_LOOT_INJECTION", 1, 500, 500);
+        add("VIRT_BARTERING_PROTOCOL", "Virtual Bartering", "Allows chambers to simulate Piglin bartering if an input material (Gold) is provided.", 1, Branch.CONTAINMENT, "VIRT_RECURSIVE_LOOTING", 1, 600, 500);
         add("VIRT_MARKET_LINK", "Market-Linkage Protocol", "Generated items are instantly converted into cash at market rate.", 1, Branch.CONTAINMENT, "VIRT_RECURSIVE_LOOTING", 1, 600, 600);
+        add("VIRT_ADVANCED_FILTERING", "Advanced Filtering", "Enables precise per-chamber filters with ID, Tag, and NBT matching. Supports Keep, Void, and Liquidate actions.", 1, Branch.CONTAINMENT, "VIRT_MARKET_LINK", 1, 700, 600);
         add("VIRT_NEURAL_CONDENSATION", "Neural Condensation", "Automatically transmutes virtual XP into Skill Points (SP).", 20, Branch.CONTAINMENT, "VIRT_MARKET_LINK", 1, 700, 700);
+        add("VIRT_LOOT_CONDENSATION", "Intelligent Condensation", "Internal auto-crafting for chamber buffers. Can be set to reversible-only mode to preserve material utility.", 1, Branch.CONTAINMENT, "VIRT_NEURAL_CONDENSATION", 1, 800, 700);
 
         // Virtualization Keystones
-        add("VIRT_KEYSTONE_PERSISTENCE", "Persistent Simulation", "ULTIMATE KEYSTONE: Processes time elapsed while offline upon login.", 1, Branch.CONTAINMENT, "VIRT_NEURAL_CONDENSATION", 1, 800, 800);
+        add("VIRT_KEYSTONE_PERSISTENCE", "Persistent Simulation", "ULTIMATE KEYSTONE: Processes time elapsed while offline upon login.", 1, Branch.CONTAINMENT, "VIRT_NEURAL_CONDENSATION", 1, 900, 900);
     }
 
     private static void add(String id, String name, String desc, int maxRank, Branch branch, int x, int y) {

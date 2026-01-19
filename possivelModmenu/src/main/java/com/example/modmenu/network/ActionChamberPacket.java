@@ -1,8 +1,10 @@
 package com.example.modmenu.network;
 
 import com.example.modmenu.store.StorePriceManager;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -16,8 +18,13 @@ import java.util.function.Supplier;
 public class ActionChamberPacket {
     private final int index;
     private final int action; // 0: Harvest XP, 1: Collect All Loot, 2: Void All Loot, 3: Set Weapon, 4: Collect Single, 5: Void Single, 6: Unlock Chamber, 7: Toggle Pause, 8: Sync Filter
+    // 9: Toggle Bartering, 10: Cycle Condensation, 11: Set Yield Target, 12: Set Speed, 13: Set Thread, 14: Update Advanced Filter, 15: Clear Input
     private final int itemIndex;
     private List<String> filterData;
+    private String stringData;
+    private int intData;
+    private net.minecraft.nbt.CompoundTag nbtData;
+    private net.minecraft.world.item.Item itemData;
 
     public ActionChamberPacket(int index, int action) {
         this(index, action, -1);
@@ -27,6 +34,27 @@ public class ActionChamberPacket {
         this.index = index;
         this.action = action;
         this.itemIndex = itemIndex;
+    }
+
+    public ActionChamberPacket(int index, int action, int itemIndex, net.minecraft.world.item.Item item, net.minecraft.nbt.CompoundTag nbt) {
+        this.index = index;
+        this.action = action;
+        this.itemIndex = itemIndex;
+        this.itemData = item;
+        this.nbtData = nbt;
+    }
+
+    public ActionChamberPacket(int index, int action, String stringData, int intData, net.minecraft.nbt.CompoundTag nbt) {
+        this.index = index;
+        this.action = action;
+        this.itemIndex = -1;
+        this.stringData = stringData;
+        this.intData = intData;
+        this.nbtData = nbt;
+    }
+
+    public ActionChamberPacket(int index, int action, String stringData, int intData) {
+        this(index, action, stringData, intData, null);
     }
 
     public ActionChamberPacket(int index, List<String> filterData) {
@@ -46,6 +74,13 @@ public class ActionChamberPacket {
             for (int i = 0; i < size; i++) {
                 this.filterData.add(buf.readUtf());
             }
+        } else if (action == 11 || action == 12 || action == 13 || action == 14) {
+            this.stringData = buf.readUtf();
+            this.intData = buf.readInt();
+            if (buf.readBoolean()) this.nbtData = buf.readNbt();
+        } else if (action == 4 || action == 5) {
+            if (buf.readBoolean()) this.itemData = buf.readRegistryIdSafe(net.minecraft.world.item.Item.class);
+            if (buf.readBoolean()) this.nbtData = buf.readNbt();
         }
     }
 
@@ -58,6 +93,16 @@ public class ActionChamberPacket {
             for (String s : filterData) {
                 buf.writeUtf(s);
             }
+        } else if (action == 11 || action == 12 || action == 13 || action == 14) {
+            buf.writeUtf(stringData != null ? stringData : "");
+            buf.writeInt(intData);
+            buf.writeBoolean(nbtData != null);
+            if (nbtData != null) buf.writeNbt(nbtData);
+        } else if (action == 4 || action == 5) {
+            buf.writeBoolean(itemData != null);
+            if (itemData != null) buf.writeRegistryId(ForgeRegistries.ITEMS, itemData);
+            buf.writeBoolean(nbtData != null);
+            if (nbtData != null) buf.writeNbt(nbtData);
         }
     }
 
@@ -126,17 +171,25 @@ public class ActionChamberPacket {
                         }
                         case 4 -> {
                             if (itemIndex >= 0 && itemIndex < chamber.storedLoot.size()) {
-                                ItemStack stack = chamber.storedLoot.remove(itemIndex);
-                                if (!player.getInventory().add(stack)) {
-                                    player.drop(stack, false);
+                                ItemStack stack = chamber.storedLoot.get(itemIndex);
+                                // Verify identity
+                                if (itemData != null && stack.getItem() == itemData && net.minecraft.nbt.NbtUtils.compareNbt(nbtData, stack.getTag(), true)) {
+                                    chamber.storedLoot.remove(itemIndex);
+                                    if (!player.getInventory().add(stack)) {
+                                        player.drop(stack, false);
+                                    }
+                                    chamber.updateVersion++;
                                 }
-                                chamber.updateVersion++;
                             }
                         }
                         case 5 -> {
                             if (itemIndex >= 0 && itemIndex < chamber.storedLoot.size()) {
-                                chamber.storedLoot.remove(itemIndex);
-                                chamber.updateVersion++;
+                                ItemStack stack = chamber.storedLoot.get(itemIndex);
+                                // Verify identity
+                                if (itemData != null && stack.getItem() == itemData && net.minecraft.nbt.NbtUtils.compareNbt(nbtData, stack.getTag(), true)) {
+                                    chamber.storedLoot.remove(itemIndex);
+                                    chamber.updateVersion++;
+                                }
                             }
                         }
                         case 7 -> {
@@ -146,7 +199,63 @@ public class ActionChamberPacket {
                         case 8 -> {
                             if (filterData != null) {
                                 chamber.voidFilter.clear();
-                                chamber.voidFilter.addAll(filterData);
+                                chamber.voidFilter.addAll(filterData.subList(0, Math.min(filterData.size(), 100))); // Cap generic filter too
+                            }
+                        }
+                        case 9 -> chamber.barteringMode = !chamber.barteringMode;
+                        case 10 -> chamber.condensationMode = (chamber.condensationMode + 1) % 3;
+                        case 11 -> {
+                            if (stringData != null) {
+                                if (intData <= 0) chamber.yieldTargets.remove(stringData);
+                                else if (chamber.yieldTargets.size() < 50 || chamber.yieldTargets.containsKey(stringData)) {
+                                    chamber.yieldTargets.put(stringData, intData);
+                                }
+                            }
+                        }
+                        case 12 -> chamber.speedSlider = Math.max(1, Math.min(20, intData));
+                        case 13 -> chamber.threadSlider = Math.max(1, Math.min(20, intData));
+                        case 14 -> { // Advanced filter update
+                            int matchTypeIdx = (intData >> 16) & 0xFFFF;
+                            int filterAction = (short)(intData & 0xFFFF); // Use short to allow -1
+                            
+                            if (filterAction == -1) {
+                                String type = matchTypeIdx == 0 ? "ID" : (matchTypeIdx == 1 ? "TAG" : "NBT");
+                                chamber.advancedFilters.removeIf(r -> r.matchType.equals(type) && r.matchValue.equals(stringData));
+                            } else if (chamber.advancedFilters.size() < 50) {
+                                String[] types = {"ID", "TAG", "NBT"};
+                                StorePriceManager.FilterRule rule = new StorePriceManager.FilterRule();
+                                rule.matchType = types[Math.min(2, matchTypeIdx)];
+                                rule.matchValue = stringData;
+                                rule.action = filterAction;
+                                rule.nbtSample = nbtData != null ? nbtData.copy() : null;
+                                
+                                boolean ruleExists = false;
+                                for (StorePriceManager.FilterRule r : chamber.advancedFilters) {
+                                    if (r.matchType.equals(rule.matchType) && r.matchValue.equals(rule.matchValue)) {
+                                        r.action = rule.action;
+                                        r.nbtSample = rule.nbtSample;
+                                        ruleExists = true;
+                                        break;
+                                    }
+                                }
+                                if (!ruleExists) chamber.advancedFilters.add(rule);
+                            }
+                        }
+                        case 15 -> {
+                            for (ItemStack stack : chamber.inputBuffer) {
+                                if (!player.getInventory().add(stack)) player.drop(stack, false);
+                            }
+                            chamber.inputBuffer.clear();
+                        }
+                        case 16 -> { // Put held item into input buffer
+                            if (chamber.inputBuffer.size() >= 32) {
+                                player.displayClientMessage(net.minecraft.network.chat.Component.literal("§cInput buffer is full!"), true);
+                                return;
+                            }
+                            ItemStack held = player.getMainHandItem();
+                            if (!held.isEmpty()) {
+                                chamber.inputBuffer.add(held.copy());
+                                held.setCount(0);
                             }
                         }
                     }

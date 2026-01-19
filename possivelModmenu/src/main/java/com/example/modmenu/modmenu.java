@@ -46,6 +46,7 @@ public class modmenu
         com.example.modmenu.network.PacketHandler.register();
         com.example.modmenu.store.StorePriceManager.load();
         com.example.modmenu.worldgen.WorldGenRegistry.register(modEventBus);
+        com.example.modmenu.registry.ItemRegistry.register(modEventBus);
     }
 
     private void commonSetup(final FMLCommonSetupEvent event)
@@ -85,6 +86,7 @@ public class modmenu
     {
         com.example.modmenu.store.StorePriceManager.save();
         com.example.modmenu.store.StorePriceManager.clearWorldData();
+        com.example.modmenu.store.SkillManager.clearCaches();
     }
 
     // You can use EventBusSubscriber to automatically register all static methods in the class annotated with @SubscribeEvent

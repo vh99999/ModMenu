@@ -290,6 +290,22 @@ public class StorePriceManager {
         }
     }
 
+    public static class FilterRule {
+        public String matchType = "ID"; // "ID", "TAG", "NBT"
+        public String matchValue = "";
+        public net.minecraft.nbt.CompoundTag nbtSample;
+        public int action = 0; // 0: KEEP, 1: VOID, 2: LIQUIDATE
+
+        public FilterRule snapshot() {
+            FilterRule snap = new FilterRule();
+            snap.matchType = this.matchType;
+            snap.matchValue = this.matchValue;
+            snap.nbtSample = this.nbtSample != null ? this.nbtSample.copy() : null;
+            snap.action = this.action;
+            return snap;
+        }
+    }
+
     public static class ChamberData {
         public String mobId;
         public String customName;
@@ -304,6 +320,17 @@ public class StorePriceManager {
         public long lastOfflineProcessingTime = 0;
         public List<String> voidFilter = new ArrayList<>();
         public int updateVersion = 0;
+
+        // New Advanced Features
+        public boolean barteringMode = false;
+        public List<ItemStack> inputBuffer = new ArrayList<>();
+        public int condensationMode = 0; // 0: OFF, 1: SAFE, 2: ALL
+        public Map<String, Integer> yieldTargets = new HashMap<>();
+        public int speedSlider = 1;
+        public int threadSlider = 1;
+        public List<FilterRule> advancedFilters = new ArrayList<>();
+        public boolean isExcavation = false;
+        public String lootTableId = null;
 
         public ChamberData snapshot() {
             ChamberData snap = new ChamberData();
@@ -322,6 +349,20 @@ public class StorePriceManager {
             snap.lastOfflineProcessingTime = this.lastOfflineProcessingTime;
             snap.voidFilter.addAll(this.voidFilter);
             snap.updateVersion = this.updateVersion;
+
+            snap.barteringMode = this.barteringMode;
+            for (ItemStack stack : this.inputBuffer) {
+                snap.inputBuffer.add(stack.copy());
+            }
+            snap.condensationMode = this.condensationMode;
+            snap.yieldTargets.putAll(this.yieldTargets);
+            snap.speedSlider = this.speedSlider;
+            snap.threadSlider = this.threadSlider;
+            for (FilterRule rule : this.advancedFilters) {
+                snap.advancedFilters.add(rule.snapshot());
+            }
+            snap.isExcavation = this.isExcavation;
+            snap.lootTableId = this.lootTableId;
             return snap;
         }
     }
@@ -656,9 +697,19 @@ public class StorePriceManager {
             int singularityRank = SkillManager.getActiveRank(skillData, "WEALTH_SINGULARITY");
             if (singularityRank > 0) {
                 BigDecimal balance = getMoney(uuid);
-                // multiplier: e.g., $10B = 5x income (at rank 5)
-                BigDecimal divisor = new BigDecimal("10000000000");
-                BigDecimal multiplier = BigDecimal.ONE.add(balance.divide(divisor, 10, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(singularityRank)));
+                BigDecimal divisor = new BigDecimal("10000000000"); // 10B
+                BigDecimal threshold = new BigDecimal("100000000000000"); // 100T
+                
+                BigDecimal multiplier;
+                if (balance.compareTo(threshold) <= 0) {
+                    multiplier = BigDecimal.ONE.add(balance.divide(divisor, 10, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(singularityRank)));
+                } else {
+                    // Beyond 100T, slow down using square root
+                    BigDecimal multiplierAtThreshold = BigDecimal.ONE.add(threshold.divide(divisor, 10, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(singularityRank)));
+                    BigDecimal excess = balance.subtract(threshold);
+                    double excessSqrt = Math.sqrt(excess.divide(divisor, 10, RoundingMode.HALF_UP).doubleValue());
+                    multiplier = multiplierAtThreshold.add(BigDecimal.valueOf(excessSqrt).multiply(BigDecimal.valueOf(singularityRank)));
+                }
                 amount = amount.multiply(multiplier);
             }
             // 2. Wealth Overflow (Interest Keystone)
@@ -970,6 +1021,18 @@ public class StorePriceManager {
         }
         if (abilities.growCropsActive) {
             totalCost = totalCost.add(formulas.growCropsMaintenance);
+        }
+
+        // Virtual Containment Drain
+        for (ChamberData chamber : skillData.chambers) {
+            if (chamber.paused) continue;
+            BigDecimal chamberBaseDrain = chamber.isExcavation ? BigDecimal.valueOf(5000) : BigDecimal.valueOf(100);
+            
+            // Scale by speed and threads
+            double speedFactor = Math.pow(1.5, chamber.speedSlider - 1);
+            double threadFactor = Math.pow(1.2, chamber.threadSlider - 1);
+            
+            totalCost = totalCost.add(chamberBaseDrain.multiply(BigDecimal.valueOf(speedFactor)).multiply(BigDecimal.valueOf(threadFactor)));
         }
 
         // Efficiency Core (Branch B)

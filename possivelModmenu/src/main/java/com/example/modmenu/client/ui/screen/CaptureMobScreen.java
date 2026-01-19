@@ -14,16 +14,29 @@ import net.minecraft.world.entity.LivingEntity;
 public class CaptureMobScreen extends BaseResponsiveLodestoneScreen {
     private final int entityId;
     private final Entity entity;
+    private final String lootTableId;
     private boolean isExact = false;
 
     public CaptureMobScreen(int entityId) {
         super(Component.literal("Capture Mob"));
         this.entityId = entityId;
         this.entity = Minecraft.getInstance().level.getEntity(entityId);
+        this.lootTableId = null;
+    }
+
+    public CaptureMobScreen(String lootTableId) {
+        super(Component.literal("Virtual Excavation"));
+        this.entityId = -1;
+        this.entity = null;
+        this.lootTableId = lootTableId;
     }
 
     public static void open(int entityId) {
         Minecraft.getInstance().setScreen(new CaptureMobScreen(entityId));
+    }
+
+    public static void open(String lootTableId) {
+        Minecraft.getInstance().setScreen(new CaptureMobScreen(lootTableId));
     }
 
     @Override
@@ -33,13 +46,19 @@ public class CaptureMobScreen extends BaseResponsiveLodestoneScreen {
         int cx = this.width / 2;
         int cy = this.height / 2;
 
-        this.layoutRoot.addElement(new ResponsiveButton(cx - bw - 5, cy + 40, bw, bh, Component.literal("Mode: Generic"), btn -> {
-            isExact = !isExact;
-            btn.setText(Component.literal("Mode: " + (isExact ? "§eExact" : "§7Generic")));
-        }));
+        if (lootTableId == null) {
+            this.layoutRoot.addElement(new ResponsiveButton(cx - bw - 5, cy + 40, bw, bh, Component.literal("Mode: Generic"), btn -> {
+                isExact = !isExact;
+                btn.setText(Component.literal("Mode: " + (isExact ? "§eExact" : "§7Generic")));
+            }));
+        }
 
         this.layoutRoot.addElement(new ResponsiveButton(cx + 5, cy + 40, bw, bh, Component.literal("§aCapture"), btn -> {
-            PacketHandler.sendToServer(new CaptureMobPacket(entityId, isExact));
+            if (lootTableId != null) {
+                PacketHandler.sendToServer(new CaptureMobPacket(lootTableId));
+            } else {
+                PacketHandler.sendToServer(new CaptureMobPacket(entityId, isExact));
+            }
             this.minecraft.setScreen(null);
         }));
 
@@ -51,7 +70,11 @@ public class CaptureMobScreen extends BaseResponsiveLodestoneScreen {
     @Override
     public void render(GuiGraphics g, int mx, int my, float pt) {
         super.render(g, mx, my, pt);
-        if (entity instanceof LivingEntity living) {
+        if (lootTableId != null) {
+            g.drawCenteredString(font, "Initialize Excavation Protocol?", this.width / 2, this.height / 2 - 20, 0xFFFFFFFF);
+            g.drawCenteredString(font, "Loot Table: §b" + lootTableId, this.width / 2, this.height / 2, 0xFFFFFFFF);
+            g.drawCenteredString(font, "Cost: §d10,000 SP", this.width / 2, this.height / 2 + 15, 0xFFFFFFFF);
+        } else if (entity instanceof LivingEntity living) {
             String name = living.getName().getString();
             java.math.BigDecimal cost = java.math.BigDecimal.valueOf(living.getMaxHealth()).multiply(java.math.BigDecimal.valueOf(isExact ? 100 : 10));
             g.drawCenteredString(font, "Capture " + name + "?", this.width / 2, this.height / 2 - 20, 0xFFFFFFFF);
