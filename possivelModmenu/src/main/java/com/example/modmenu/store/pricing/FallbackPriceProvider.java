@@ -1,12 +1,13 @@
 package com.example.modmenu.store.pricing;
 
 import net.minecraft.world.item.Item;
+import java.math.BigDecimal;
 import java.util.Optional;
 
 public class FallbackPriceProvider implements PriceProvider {
     @Override
-    public Optional<Long> getPrice(Item item, PricingContext context) {
-        return Optional.of(1_000_000L);
+    public Optional<BigDecimal> getPrice(Item item, PricingContext context) {
+        return Optional.of(BigDecimal.valueOf(1_000_000L));
     }
 
     @Override

@@ -4,25 +4,26 @@ import com.example.modmenu.store.StorePriceManager;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
 
+import java.math.BigDecimal;
 import java.util.function.Supplier;
 
 public class UpdateEffectPricePacket {
     private final String effectId;
-    private final int price;
+    private final BigDecimal price;
 
-    public UpdateEffectPricePacket(String effectId, int price) {
+    public UpdateEffectPricePacket(String effectId, BigDecimal price) {
         this.effectId = effectId;
         this.price = price;
     }
 
     public UpdateEffectPricePacket(FriendlyByteBuf buf) {
         this.effectId = buf.readUtf();
-        this.price = buf.readInt();
+        this.price = new BigDecimal(buf.readUtf());
     }
 
     public void encode(FriendlyByteBuf buf) {
         buf.writeUtf(effectId);
-        buf.writeInt(price);
+        buf.writeUtf(price.toString());
     }
 
     public void handle(Supplier<NetworkEvent.Context> ctx) {

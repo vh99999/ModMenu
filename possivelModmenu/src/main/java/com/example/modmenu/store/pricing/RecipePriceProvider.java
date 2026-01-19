@@ -6,6 +6,8 @@ import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraftforge.registries.ForgeRegistries;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.Optional;
 
@@ -18,7 +20,7 @@ public class RecipePriceProvider implements PriceProvider {
     }
 
     @Override
-    public Optional<Long> getPrice(Item item, PricingContext context) {
+    public Optional<BigDecimal> getPrice(Item item, PricingContext context) {
         if (graph == null) {
             graph = new RecipeDependencyGraph();
             graph.build(context);
@@ -29,51 +31,51 @@ public class RecipePriceProvider implements PriceProvider {
         
         if (recipes.isEmpty()) return Optional.empty();
 
-        long minCost = Long.MAX_VALUE;
+        BigDecimal minCost = null;
         boolean foundValidRecipe = false;
 
         for (Recipe<?> recipe : recipes) {
-            long recipeCost = 0;
+            BigDecimal recipeCost = BigDecimal.ZERO;
             boolean allIngredientsPriced = true;
             
-            StringBuilder chain = new StringBuilder();
             for (Ingredient ingredient : recipe.getIngredients()) {
                 if (ingredient.isEmpty()) continue;
                 
-                long bestIngredientPrice = -1;
-                String bestIngredientId = "unknown";
+                BigDecimal bestIngredientPrice = null;
                 for (ItemStack stack : ingredient.getItems()) {
-                    long price = engine.resolvePrice(stack.getItem(), context);
-                    if (price > 0) {
-                        if (bestIngredientPrice == -1 || price < bestIngredientPrice) {
+                    BigDecimal price = engine.resolvePrice(stack.getItem(), context);
+                    if (price.compareTo(BigDecimal.ZERO) > 0) {
+                        if (bestIngredientPrice == null || price.compareTo(bestIngredientPrice) < 0) {
                             bestIngredientPrice = price;
-                            bestIngredientId = ForgeRegistries.ITEMS.getKey(stack.getItem()).toString();
                         }
                     }
                 }
                 
-                if (bestIngredientPrice > 0) {
-                    recipeCost += bestIngredientPrice;
-                    if (chain.length() > 0) chain.append(", ");
-                    chain.append(bestIngredientId).append("(").append(bestIngredientPrice).append(")");
+                if (bestIngredientPrice != null) {
+                    recipeCost = recipeCost.add(bestIngredientPrice);
                 } else {
                     allIngredientsPriced = false;
                     break;
                 }
             }
 
-            if (allIngredientsPriced && recipeCost > 0) {
+            if (allIngredientsPriced && recipeCost.compareTo(BigDecimal.ZERO) > 0) {
                 ItemStack result = recipe.getResultItem(context.getRegistryAccess());
-                long perItemCost = recipeCost / result.getCount();
-                if (perItemCost < minCost) {
+                if (result.isEmpty()) continue;
+                
+                BigDecimal perItemCost = recipeCost.divide(BigDecimal.valueOf(result.getCount()), 10, java.math.RoundingMode.HALF_UP);
+                
+                // Add processing cost (heuristic)
+                perItemCost = perItemCost.add(BigDecimal.valueOf(5)); // Flat processing fee
+                
+                if (minCost == null || perItemCost.compareTo(minCost) < 0) {
                     minCost = perItemCost;
                     foundValidRecipe = true;
-                    // We can log the chain here or store it in context/engine
                 }
             }
         }
 
-        return foundValidRecipe ? Optional.of(minCost) : Optional.empty();
+        return foundValidRecipe ? Optional.of(minCost.setScale(0, java.math.RoundingMode.HALF_UP)) : Optional.empty();
     }
 
     @Override

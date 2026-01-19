@@ -9,6 +9,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.registries.ForgeRegistries;
 
+import java.math.BigDecimal;
 import java.util.function.Supplier;
 
 public class SellPacket {
@@ -38,17 +39,17 @@ public class SellPacket {
                     player.displayClientMessage(Component.literal("§cYou cannot sell ore blocks! Only buying is allowed."), true);
                     return;
                 }
-                int pricePerItem = StorePriceManager.getPrice(item);
+                BigDecimal pricePerItem = StorePriceManager.getSellPrice(item);
                 
                 // Find how many the player actually has
                 int totalInInventory = 0;
                 for (ItemStack stack : player.getInventory().items) {
-                    if (stack.getItem() == item) {
+                    if (stack.getItem() == item && stack.getOrCreateTag().getInt("modmenu_lock_state") == 0) {
                         totalInInventory += stack.getCount();
                     }
                 }
                 for (ItemStack stack : player.getInventory().offhand) {
-                    if (stack.getItem() == item) {
+                    if (stack.getItem() == item && stack.getOrCreateTag().getInt("modmenu_lock_state") == 0) {
                         totalInInventory += stack.getCount();
                     }
                 }
@@ -57,7 +58,7 @@ public class SellPacket {
                 int actualQty = Math.min(quantity, totalInInventory);
 
                 if (actualQty <= 0) {
-                    player.displayClientMessage(Component.literal("§cYou don't have any " + item.getDescription().getString() + " to sell!"), true);
+                    player.displayClientMessage(Component.literal("§cYou don't have any unprotected " + item.getDescription().getString() + " to sell!"), true);
                     return;
                 }
 
@@ -65,7 +66,7 @@ public class SellPacket {
                 int remainingToRemove = actualQty;
                 for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
                     ItemStack stack = player.getInventory().getItem(i);
-                    if (stack.getItem() == item) {
+                    if (stack.getItem() == item && stack.getOrCreateTag().getInt("modmenu_lock_state") == 0) {
                         int toRemove = Math.min(remainingToRemove, stack.getCount());
                         stack.shrink(toRemove);
                         remainingToRemove -= toRemove;
@@ -73,8 +74,9 @@ public class SellPacket {
                     }
                 }
 
-                long totalGain = (long) actualQty * pricePerItem;
+                BigDecimal totalGain = pricePerItem.multiply(BigDecimal.valueOf(actualQty));
                 StorePriceManager.addMoney(player.getUUID(), totalGain);
+                StorePriceManager.recordSale(item, BigDecimal.valueOf(actualQty));
 
                 player.displayClientMessage(Component.literal("§aSold " + actualQty + "x " + item.getDescription().getString() + " for §e$" + StorePriceManager.formatCurrency(totalGain)), true);
 

@@ -1,21 +1,22 @@
 package com.example.modmenu.store.pricing;
 
+import java.math.BigDecimal;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class MultiLayerCache {
-    private final Map<String, Long> persistentCache = new ConcurrentHashMap<>();
-    private final Map<String, Long> sessionCache = new ConcurrentHashMap<>();
+    private final Map<String, BigDecimal> persistentCache = new ConcurrentHashMap<>();
+    private final Map<String, BigDecimal> sessionCache = new ConcurrentHashMap<>();
 
-    public void putPersistent(String itemId, long price) {
+    public void putPersistent(String itemId, BigDecimal price) {
         persistentCache.put(itemId, price);
     }
 
-    public void putSession(String itemId, long price) {
+    public void putSession(String itemId, BigDecimal price) {
         sessionCache.put(itemId, price);
     }
 
-    public Long get(String itemId) {
+    public BigDecimal get(String itemId) {
         if (persistentCache.containsKey(itemId)) {
             return persistentCache.get(itemId);
         }
@@ -31,7 +32,7 @@ public class MultiLayerCache {
         sessionCache.clear();
     }
 
-    public Map<String, Long> getPersistentCache() {
+    public Map<String, BigDecimal> getPersistentCache() {
         return persistentCache;
     }
 }

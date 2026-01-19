@@ -1,5 +1,6 @@
 package com.example.modmenu.client.ui.component;
 
+import com.example.modmenu.client.ui.base.BaseResponsiveLodestoneScreen;
 import com.example.modmenu.client.ui.base.UIElement;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.Minecraft;
@@ -65,6 +66,20 @@ public class InventoryComponent extends UIElement {
             guiGraphics.renderFakeItem(stack, 0, 0);
             guiGraphics.renderItemDecorations(Minecraft.getInstance().font, stack, 0, 0);
             guiGraphics.pose().popPose();
+            
+            // Render Lock Indicator
+            int lockState = stack.getOrCreateTag().getInt("modmenu_lock_state");
+            if (lockState >= 1) {
+                int color = lockState == 1 ? 0xFFFF0000 : 0xFF00AAFF;
+                guiGraphics.pose().pushPose();
+                guiGraphics.pose().translate(0, 0, 300);
+                guiGraphics.fill(x + 1, y + 1, x + 5, y + 5, color);
+                guiGraphics.pose().popPose();
+            }
+
+            if (hovered && Minecraft.getInstance().screen instanceof BaseResponsiveLodestoneScreen screen) {
+                screen.addPostRenderTask(g -> g.renderTooltip(Minecraft.getInstance().font, stack, screen.absMouseX, screen.absMouseY));
+            }
         }
     }
 
@@ -80,6 +95,8 @@ public class InventoryComponent extends UIElement {
         Player player = Minecraft.getInstance().player;
         if (player == null) return false;
 
+        boolean isShift = net.minecraft.client.gui.screens.Screen.hasShiftDown();
+
         int slotSize = 22;
         int padding = 4;
         int totalWidth = 9 * slotSize + 8 * padding;
@@ -92,7 +109,13 @@ public class InventoryComponent extends UIElement {
                 int slotY = startY + row * (slotSize + padding);
                 if (mouseX >= slotX && mouseY >= slotY && mouseX < slotX + 22 && mouseY < slotY + 22) {
                     int slotIndex = col + (row + 1) * 9;
-                    onItemSelected.accept(player.getInventory().items.get(slotIndex), slotIndex);
+                    ItemStack stack = player.getInventory().items.get(slotIndex);
+                    if (isShift && button == 1) { // Right Click
+                        com.example.modmenu.network.PacketHandler.sendToServer(new com.example.modmenu.network.ToggleItemLockPacket(slotIndex));
+                        return true;
+                    }
+                    if (!stack.isEmpty() && stack.getOrCreateTag().getInt("modmenu_lock_state") == 2) return true; // Frozen
+                    onItemSelected.accept(stack, slotIndex);
                     return true;
                 }
             }
@@ -102,7 +125,13 @@ public class InventoryComponent extends UIElement {
         for (int col = 0; col < 9; col++) {
             int slotX = startX + col * (slotSize + padding);
             if (mouseX >= slotX && mouseY >= hotbarY && mouseX < slotX + 22 && mouseY < hotbarY + 22) {
-                onItemSelected.accept(player.getInventory().items.get(col), col);
+                ItemStack stack = player.getInventory().items.get(col);
+                if (isShift && button == 1) { // Right Click
+                    com.example.modmenu.network.PacketHandler.sendToServer(new com.example.modmenu.network.ToggleItemLockPacket(col));
+                    return true;
+                }
+                if (!stack.isEmpty() && stack.getOrCreateTag().getInt("modmenu_lock_state") == 2) return true; // Frozen
+                onItemSelected.accept(stack, col);
                 return true;
             }
         }

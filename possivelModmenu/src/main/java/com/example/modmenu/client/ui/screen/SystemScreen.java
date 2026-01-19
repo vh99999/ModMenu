@@ -7,8 +7,6 @@ import com.example.modmenu.client.ui.component.ResponsiveButton;
 import com.example.modmenu.network.PacketHandler;
 import com.example.modmenu.network.AttributeUpgradePacket;
 import com.example.modmenu.store.StorePriceManager;
-import com.example.modmenu.ai.ControlMode;
-import com.example.modmenu.ai.AIHandler;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -37,6 +35,10 @@ public class SystemScreen extends BaseResponsiveLodestoneScreen {
             this.minecraft.setScreen(parent);
         }));
 
+        this.layoutRoot.addElement(new ResponsiveButton(70, 10, 150, 20, Component.literal("Executive Protocols"), btn -> {
+            this.minecraft.setScreen(new ExecutiveProtocolsScreen(this));
+        }));
+
         list = new ScrollableUIContainer(50, 40, this.width - 100, this.height - 50);
         this.layoutRoot.addElement(list);
         
@@ -49,10 +51,6 @@ public class SystemScreen extends BaseResponsiveLodestoneScreen {
         
         int rowHeight = 40;
         int currentY = 0;
-
-        // Add AI Control Toggle at the top
-        list.addElement(new AIControlRowComponent(0, currentY, list.getWidth() - 10, rowHeight - 5));
-        currentY += rowHeight;
 
         List<AttributeData> attributes = new ArrayList<>();
         
@@ -154,96 +152,4 @@ public class SystemScreen extends BaseResponsiveLodestoneScreen {
         }
     }
 
-    private class AIControlRowComponent extends UIElement {
-        public AIControlRowComponent(int x, int y, int width, int height) {
-            super(x, y, width, height);
-        }
-
-        @Override
-        public void render(GuiGraphics g, int mx, int my, float pt) {
-            boolean hovered = mx >= getX() && my >= getY() && mx < getX() + getWidth() && my < getY() + getHeight();
-            g.fill(getX(), getY(), getX() + getWidth(), getY() + getHeight(), hovered ? 0xCC2D2D3A : 0xCC1A1A1A);
-            
-            int borderColor = hovered ? 0xFF00AAFF : 0xFF444444;
-            g.fill(getX(), getY(), getX() + getWidth(), getY() + 1, borderColor);
-            g.fill(getX(), getY() + getHeight() - 1, getX() + getWidth(), getY() + getHeight(), borderColor);
-            g.fill(getX(), getY(), getX() + 1, getY() + getHeight(), borderColor);
-            g.fill(getX() + getWidth() - 1, getY(), getX() + getWidth(), getY() + getHeight(), borderColor);
-
-            g.drawString(Minecraft.getInstance().font, "§lAI AUTHORITY BRIDGE", getX() + 10, getY() + 10, 0xFFFFFFFF);
-            
-            ControlMode mode = AIHandler.getController().getMode();
-            boolean autoPromote = AIHandler.getController().isAutoPromoteEnabled();
-            
-            int toggleBtnWidth = 70;
-            int toggleBtnX = getX() + getWidth() - toggleBtnWidth - 10;
-            int btnY = getY() + 10;
-            int btnHeight = 20;
-
-            boolean toggleHovered = mx >= toggleBtnX && my >= btnY && mx < toggleBtnX + toggleBtnWidth && my < btnY + btnHeight;
-            int toggleColor = mode == ControlMode.AI ? (toggleHovered ? 0xFF00CC00 : 0xFF00AA00) : (toggleHovered ? 0xFFCC0000 : 0xFFAA0000);
-            g.fill(toggleBtnX, btnY, toggleBtnX + toggleBtnWidth, btnY + btnHeight, toggleColor);
-            
-            String toggleText = mode == ControlMode.AI ? "AI: ON" : "AI: OFF";
-            g.drawCenteredString(Minecraft.getInstance().font, toggleText, toggleBtnX + toggleBtnWidth / 2, btnY + (btnHeight - 8) / 2, 0xFFFFFFFF);
-
-            // Auto-Promote Toggle
-            int promoteBtnWidth = 90;
-            int promoteBtnX = toggleBtnX - promoteBtnWidth - 5;
-            boolean promoteHovered = mx >= promoteBtnX && my >= btnY && mx < promoteBtnX + promoteBtnWidth && my < btnY + btnHeight;
-            int promoteColor = autoPromote ? (promoteHovered ? 0xFF00CCFF : 0xFF00AAFF) : (promoteHovered ? 0xFF555555 : 0xFF333333);
-            g.fill(promoteBtnX, btnY, promoteBtnX + promoteBtnWidth, btnY + btnHeight, promoteColor);
-            String promoteText = autoPromote ? "PROMOTE: ON" : "PROMOTE: OFF";
-            g.drawCenteredString(Minecraft.getInstance().font, promoteText, promoteBtnX + promoteBtnWidth / 2, btnY + (btnHeight - 8) / 2, 0xFFFFFFFF);
-            
-            int reloadBtnWidth = 50;
-            int reloadBtnX = promoteBtnX - reloadBtnWidth - 5;
-            boolean reloadHovered = mx >= reloadBtnX && my >= btnY && mx < reloadBtnX + reloadBtnWidth && my < btnY + btnHeight;
-            g.fill(reloadBtnX, btnY, reloadBtnX + reloadBtnWidth, btnY + btnHeight, reloadHovered ? 0xFF555555 : 0xFF333333);
-            g.drawCenteredString(Minecraft.getInstance().font, "RELOAD", reloadBtnX + reloadBtnWidth / 2, btnY + (btnHeight - 8) / 2, 0xFFFFFFFF);
-
-            int clearBtnWidth = 40;
-            int clearBtnX = reloadBtnX - clearBtnWidth - 5;
-            boolean clearHovered = mx >= clearBtnX && my >= btnY && mx < clearBtnX + clearBtnWidth && my < btnY + btnHeight;
-            g.fill(clearBtnX, btnY, clearBtnX + clearBtnWidth, btnY + btnHeight, clearHovered ? 0xFFCC5555 : 0xFF993333);
-            g.drawCenteredString(Minecraft.getInstance().font, "CLEAR", clearBtnX + clearBtnWidth / 2, btnY + (btnHeight - 8) / 2, 0xFFFFFFFF);
-
-            g.drawString(Minecraft.getInstance().font, "Exclusive AI Authority", getX() + 10, getY() + 22, 0xFFCCCCCC);
-        }
-
-        @Override
-        public boolean mouseClicked(double mx, double my, int button) {
-            int toggleBtnWidth = 70;
-            int toggleBtnX = getX() + getWidth() - toggleBtnWidth - 10;
-            int btnY = getY() + 10;
-            int btnHeight = 20;
-
-            if (mx >= toggleBtnX && mx < toggleBtnX + toggleBtnWidth && my >= btnY && my < btnY + btnHeight) {
-                AIHandler.getController().attemptModeToggle();
-                return true;
-            }
-
-            int promoteBtnWidth = 90;
-            int promoteBtnX = toggleBtnX - promoteBtnWidth - 5;
-            if (mx >= promoteBtnX && mx < promoteBtnX + promoteBtnWidth && my >= btnY && my < btnY + btnHeight) {
-                AIHandler.getController().toggleAutoPromote();
-                return true;
-            }
-
-            int reloadBtnWidth = 50;
-            int reloadBtnX = promoteBtnX - reloadBtnWidth - 5;
-            if (mx >= reloadBtnX && mx < reloadBtnX + reloadBtnWidth && my >= btnY && my < btnY + btnHeight) {
-                AIHandler.getController().reloadKnowledge();
-                return true;
-            }
-
-            int clearBtnWidth = 40;
-            int clearBtnX = reloadBtnX - clearBtnWidth - 5;
-            if (mx >= clearBtnX && mx < clearBtnX + clearBtnWidth && my >= btnY && my < btnY + btnHeight) {
-                AIHandler.getController().resetPassiveStore();
-                return true;
-            }
-            return false;
-        }
-    }
 }

@@ -10,6 +10,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.registries.ForgeRegistries;
 
+import java.math.BigDecimal;
 import java.util.UUID;
 import java.util.function.Supplier;
 
@@ -37,13 +38,13 @@ public class AttributeUpgradePacket {
             ServerPlayer player = ctx.get().getSender();
             if (player != null) {
                 double currentBonus = StorePriceManager.getAttributeBonuses(player.getUUID()).getOrDefault(attributeId, 0.0);
-                long cost = 1000000; // 1M per level
+                BigDecimal cost = BigDecimal.valueOf(1000000); // 1M per level
                 
                 if (increase) {
-                    if (StorePriceManager.getMoney(player.getUUID()) >= cost) {
-                        StorePriceManager.addMoney(player.getUUID(), -cost);
+                    if (StorePriceManager.canAfford(player.getUUID(), cost)) {
+                        StorePriceManager.addMoney(player.getUUID(), cost.negate());
                         StorePriceManager.setAttributeBonus(player.getUUID(), attributeId, currentBonus + 1.0);
-                        StorePriceManager.applyAttribute(player, attributeId, currentBonus + 1.0);
+                        StorePriceManager.applyAttribute(player, attributeId, currentBonus + 1.0, false);
                         if (attributeId.equals("minecraft:generic.max_health")) {
                             if (player.getHealth() > player.getMaxHealth()) player.setHealth(player.getMaxHealth());
                         }
@@ -52,7 +53,7 @@ public class AttributeUpgradePacket {
                 } else {
                     if (currentBonus > 0) {
                         StorePriceManager.setAttributeBonus(player.getUUID(), attributeId, currentBonus - 1.0);
-                        StorePriceManager.applyAttribute(player, attributeId, currentBonus - 1.0);
+                        StorePriceManager.applyAttribute(player, attributeId, currentBonus - 1.0, false);
                         if (attributeId.equals("minecraft:generic.max_health")) {
                             if (player.getHealth() > player.getMaxHealth()) player.setHealth(player.getMaxHealth());
                         }

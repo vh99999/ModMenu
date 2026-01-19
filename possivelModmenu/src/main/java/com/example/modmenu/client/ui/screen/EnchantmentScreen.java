@@ -89,12 +89,12 @@ public class EnchantmentScreen extends BaseResponsiveLodestoneScreen {
 
         if (selectedItem.isEmpty()) return;
 
-        Map<String, Integer> prices = StorePriceManager.getAllEnchantPrices();
+        Map<String, java.math.BigDecimal> prices = StorePriceManager.getAllEnchantPrices();
         int spacing = 4;
         int rowHeight = 35;
         VerticalLayoutContainer list = new VerticalLayoutContainer(0, 0, enchantmentList.getWidth() - 15, 0, spacing);
         
-        for (Map.Entry<String, Integer> entry : prices.entrySet()) {
+        for (Map.Entry<String, java.math.BigDecimal> entry : prices.entrySet()) {
             ResourceLocation id = ResourceLocation.tryParse(entry.getKey());
             if (id == null) continue;
             

@@ -98,5 +98,11 @@ public class modmenu
             LOGGER.info("HELLO FROM CLIENT SETUP");
             LOGGER.info("MINECRAFT NAME >> {}", Minecraft.getInstance().getUser().getName());
         }
+
+        @SubscribeEvent
+        public static void onRegisterKeyMappings(net.minecraftforge.client.event.RegisterKeyMappingsEvent event) {
+            event.register(com.example.modmenu.client.KeyMappings.OPEN_MENU_KEY);
+            event.register(com.example.modmenu.client.KeyMappings.REMOTE_ACCESS_KEY);
+        }
     }
 }

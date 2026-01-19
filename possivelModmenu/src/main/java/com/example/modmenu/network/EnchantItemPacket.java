@@ -11,6 +11,7 @@ import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.registries.ForgeRegistries;
 
+import java.math.BigDecimal;
 import java.util.Map;
 import java.util.function.Supplier;
 
@@ -47,17 +48,17 @@ public class EnchantItemPacket {
                 ItemStack stack = player.getInventory().getItem(slotIndex);
                 if (stack.isEmpty()) return;
 
-                int basePrice = StorePriceManager.getEnchantPrice(enchantment);
-                long currentMoney = StorePriceManager.getMoney(player.getUUID());
+                BigDecimal basePrice = StorePriceManager.getEnchantPrice(enchantment);
+                BigDecimal currentMoney = StorePriceManager.getMoney(player.getUUID());
 
                 if (level > 0) {
-                    long cost = (long) (basePrice * Math.pow(2.0, level - 1));
-                    if (currentMoney >= cost) {
+                    BigDecimal cost = basePrice.multiply(BigDecimal.valueOf(2).pow(level - 1));
+                    if (currentMoney.compareTo(cost) >= 0) {
                         Map<Enchantment, Integer> enchants = EnchantmentHelper.getEnchantments(stack);
                         enchants.put(enchantment, level);
                         EnchantmentHelper.setEnchantments(enchants, stack);
 
-                        StorePriceManager.setMoney(player.getUUID(), currentMoney - cost);
+                        StorePriceManager.setMoney(player.getUUID(), currentMoney.subtract(cost));
                         player.displayClientMessage(Component.literal("§aEnchanted with " + enchantment.getFullname(level).getString() + " for §e$" + StorePriceManager.formatCurrency(cost)), true);
                     } else {
                         player.displayClientMessage(Component.literal("§cNot enough money!"), true);
@@ -65,13 +66,13 @@ public class EnchantItemPacket {
                 } else {
                     int currentLvl = EnchantmentHelper.getItemEnchantmentLevel(enchantment, stack);
                     if (currentLvl > 0) {
-                        long cost = (long) (basePrice * Math.pow(2.0, currentLvl - 1));
-                        if (currentMoney >= cost) {
+                        BigDecimal cost = basePrice.multiply(BigDecimal.valueOf(2).pow(currentLvl - 1));
+                        if (currentMoney.compareTo(cost) >= 0) {
                             Map<Enchantment, Integer> enchants = EnchantmentHelper.getEnchantments(stack);
                             enchants.remove(enchantment);
                             EnchantmentHelper.setEnchantments(enchants, stack);
 
-                            StorePriceManager.setMoney(player.getUUID(), currentMoney - cost);
+                            StorePriceManager.setMoney(player.getUUID(), currentMoney.subtract(cost));
                             player.displayClientMessage(Component.literal("§cRemoved " + enchantment.getFullname(currentLvl).getString() + " for §e$" + StorePriceManager.formatCurrency(cost)), true);
                         } else {
                             player.displayClientMessage(Component.literal("§cNot enough money to remove!"), true);

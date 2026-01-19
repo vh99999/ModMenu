@@ -12,6 +12,7 @@ import net.minecraft.world.item.crafting.SmeltingRecipe;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.registries.ForgeRegistries;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -27,8 +28,8 @@ public class SmeltAllPacket {
             ServerPlayer player = ctx.get().getSender();
             if (player != null) {
                 StorePriceManager.AbilitySettings settings = StorePriceManager.getAbilities(player.getUUID());
-                int coalPrice = StorePriceManager.getPrice(Items.COAL);
-                if (coalPrice <= 0) coalPrice = 128;
+                BigDecimal coalPrice = StorePriceManager.getPrice(Items.COAL);
+                if (coalPrice.compareTo(BigDecimal.ZERO) <= 0) coalPrice = BigDecimal.valueOf(128);
                 
                 int totalCoalNeeded = 0;
                 List<Integer> slotsToSmelt = new ArrayList<>();
@@ -58,13 +59,13 @@ public class SmeltAllPacket {
                 }
                 
                 if (!slotsToSmelt.isEmpty()) {
-                    long coalCost = (long) totalCoalNeeded * coalPrice;
-                    long fee = coalCost; // 100% fee
-                    long totalCost = coalCost + fee;
+                    BigDecimal coalCost = BigDecimal.valueOf(totalCoalNeeded).multiply(coalPrice);
+                    BigDecimal fee = coalCost; // 100% fee
+                    BigDecimal totalCost = coalCost.add(fee);
                     
-                    long currentMoney = StorePriceManager.getMoney(player.getUUID());
-                    if (currentMoney >= totalCost) {
-                        StorePriceManager.setMoney(player.getUUID(), currentMoney - totalCost);
+                    BigDecimal currentMoney = StorePriceManager.getMoney(player.getUUID());
+                    if (currentMoney.compareTo(totalCost) >= 0) {
+                        StorePriceManager.setMoney(player.getUUID(), currentMoney.subtract(totalCost));
                         
                         for (int i = 0; i < slotsToSmelt.size(); i++) {
                             player.getInventory().setItem(slotsToSmelt.get(i), results.get(i));

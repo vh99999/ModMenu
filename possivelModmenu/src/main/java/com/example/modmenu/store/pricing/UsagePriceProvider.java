@@ -6,6 +6,8 @@ import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
 import net.minecraftforge.registries.ForgeRegistries;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.*;
 
 public class UsagePriceProvider implements PriceProvider {
@@ -30,7 +32,7 @@ public class UsagePriceProvider implements PriceProvider {
     }
 
     @Override
-    public Optional<Long> getPrice(Item item, PricingContext context) {
+    public Optional<BigDecimal> getPrice(Item item, PricingContext context) {
         if (!builtUsages) {
             buildUsages(context);
         }
@@ -40,7 +42,7 @@ public class UsagePriceProvider implements PriceProvider {
         
         if (usages == null || usages.isEmpty()) return Optional.empty();
 
-        long totalValue = 0;
+        BigDecimal totalValue = BigDecimal.ZERO;
         int count = 0;
 
         for (Recipe<?> recipe : usages) {
@@ -48,19 +50,20 @@ public class UsagePriceProvider implements PriceProvider {
             if (resultStack.isEmpty()) continue;
 
             // To avoid infinite recursion, we only use already resolved prices or basic prices
-            Long resultPrice = context.getCache().get(ForgeRegistries.ITEMS.getKey(resultStack.getItem()).toString());
-            if (resultPrice != null && resultPrice > 0) {
+            BigDecimal resultPrice = context.getCache().get(ForgeRegistries.ITEMS.getKey(resultStack.getItem()).toString());
+            if (resultPrice != null && resultPrice.compareTo(BigDecimal.ZERO) > 0) {
                 // Estimate ingredient value: result price / number of ingredients
                 int ingredientCount = recipe.getIngredients().size();
                 if (ingredientCount > 0) {
-                    totalValue += (resultPrice * resultStack.getCount()) / ingredientCount;
+                    totalValue = totalValue.add(resultPrice.multiply(BigDecimal.valueOf(resultStack.getCount()))
+                            .divide(BigDecimal.valueOf(ingredientCount), 10, java.math.RoundingMode.HALF_UP));
                     count++;
                 }
             }
         }
 
         if (count > 0) {
-            return Optional.of(totalValue / count);
+            return Optional.of(totalValue.divide(BigDecimal.valueOf(count), 0, java.math.RoundingMode.HALF_UP));
         }
 
         return Optional.empty();

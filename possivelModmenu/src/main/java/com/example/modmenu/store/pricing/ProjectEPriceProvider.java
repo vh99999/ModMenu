@@ -5,6 +5,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.fml.ModList;
 import net.minecraftforge.registries.ForgeRegistries;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 
 public class ProjectEPriceProvider implements PriceProvider {
@@ -15,7 +16,7 @@ public class ProjectEPriceProvider implements PriceProvider {
     }
 
     @Override
-    public Optional<Long> getPrice(Item item, PricingContext context) {
+    public Optional<BigDecimal> getPrice(Item item, PricingContext context) {
         if (!projectELoaded) return Optional.empty();
 
         // In a real scenario, we would call ProjectE API here.

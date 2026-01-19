@@ -8,14 +8,15 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraftforge.registries.ForgeRegistries;
 
+import java.math.BigDecimal;
 import java.util.function.BiConsumer;
 
 public class EffectRowComponent extends UIElement {
     private final String effectId;
-    private final int basePrice;
+    private final BigDecimal basePrice;
     private final BiConsumer<String, Integer> onToggle;
 
-    public EffectRowComponent(int x, int y, int width, int height, String effectId, int basePrice, BiConsumer<String, Integer> onToggle) {
+    public EffectRowComponent(int x, int y, int width, int height, String effectId, BigDecimal basePrice, BiConsumer<String, Integer> onToggle) {
         super(x, y, width, height);
         this.effectId = effectId;
         this.basePrice = basePrice;
@@ -50,11 +51,8 @@ public class EffectRowComponent extends UIElement {
         
         renderBtn(guiGraphics, valX + 15, getY() + 10, 20, 16, "+", mouseX, mouseY);
 
-        long nextPrice = (long) (basePrice * Math.pow(2, Math.max(0, activeLevel - 1)));
-        if (activeLevel == 0) nextPrice = basePrice;
-        else nextPrice = (long) (basePrice * Math.pow(2, activeLevel));
-
-        String priceText = "$" + StorePriceManager.formatCurrency(activeLevel > 0 ? (long)(basePrice * Math.pow(2, activeLevel-1)) : basePrice) + "/s";
+        BigDecimal currentPrice = activeLevel > 0 ? basePrice.multiply(BigDecimal.valueOf(2).pow(activeLevel - 1)) : basePrice;
+        String priceText = "$" + StorePriceManager.formatCurrency(currentPrice) + "/s";
         guiGraphics.drawString(Minecraft.getInstance().font, priceText, getX() + 8, getY() + 18, 0xFFFFFF55);
     }
 

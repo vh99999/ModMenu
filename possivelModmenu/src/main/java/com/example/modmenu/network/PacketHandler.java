@@ -127,6 +127,126 @@ public class PacketHandler {
                 .encoder(AttributeUpgradePacket::encode)
                 .consumerMainThread(AttributeUpgradePacket::handle)
                 .add();
+
+        INSTANCE.messageBuilder(SyncSkillsPacket.class, packetId++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(SyncSkillsPacket::new)
+                .encoder(SyncSkillsPacket::encode)
+                .consumerMainThread(SyncSkillsPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(SkillUpgradePacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(SkillUpgradePacket::new)
+                .encoder(SkillUpgradePacket::encode)
+                .consumerMainThread(SkillUpgradePacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(ToggleSkillPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(ToggleSkillPacket::new)
+                .encoder(ToggleSkillPacket::encode)
+                .consumerMainThread(ToggleSkillPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(PurgeSatietyPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(PurgeSatietyPacket::new)
+                .encoder(PurgeSatietyPacket::encode)
+                .consumerMainThread(PurgeSatietyPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(TotalChunkLiquidationPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(TotalChunkLiquidationPacket::new)
+                .encoder(TotalChunkLiquidationPacket::encode)
+                .consumerMainThread(TotalChunkLiquidationPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(AtmosphericControlPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(AtmosphericControlPacket::new)
+                .encoder(AtmosphericControlPacket::encode)
+                .consumerMainThread(AtmosphericControlPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(WormholePacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(WormholePacket::new)
+                .encoder(WormholePacket::encode)
+                .consumerMainThread(WormholePacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(SetSkillRankPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(SetSkillRankPacket::new)
+                .encoder(SetSkillRankPacket::encode)
+                .consumerMainThread(SetSkillRankPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(ActionChamberPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(ActionChamberPacket::new)
+                .encoder(ActionChamberPacket::encode)
+                .consumerMainThread(ActionChamberPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(OpenCaptureGuiPacket.class, packetId++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(OpenCaptureGuiPacket::new)
+                .encoder(OpenCaptureGuiPacket::encode)
+                .consumerMainThread(OpenCaptureGuiPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(CaptureMobPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(CaptureMobPacket::new)
+                .encoder(CaptureMobPacket::encode)
+                .consumerMainThread(CaptureMobPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(OpenLootRecalibrationPacket.class, packetId++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(OpenLootRecalibrationPacket::new)
+                .encoder(OpenLootRecalibrationPacket::encode)
+                .consumerMainThread(OpenLootRecalibrationPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(RerollLootPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(RerollLootPacket::new)
+                .encoder(RerollLootPacket::encode)
+                .consumerMainThread(RerollLootPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(ExecuteProtocolPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(ExecuteProtocolPacket::new)
+                .encoder(ExecuteProtocolPacket::encode)
+                .consumerMainThread(ExecuteProtocolPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(SynthesisPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(SynthesisPacket::new)
+                .encoder(SynthesisPacket::encode)
+                .consumerMainThread(SynthesisPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(ExchangePacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(ExchangePacket::new)
+                .encoder(ExchangePacket::encode)
+                .consumerMainThread(ExchangePacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(AcceptLootPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(AcceptLootPacket::new)
+                .encoder(AcceptLootPacket::encode)
+                .consumerMainThread(AcceptLootPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(RequestChamberLootPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(RequestChamberLootPacket::new)
+                .encoder(RequestChamberLootPacket::encode)
+                .consumerMainThread(RequestChamberLootPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(SyncChamberLootPacket.class, packetId++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(SyncChamberLootPacket::new)
+                .encoder(SyncChamberLootPacket::encode)
+                .consumerMainThread(SyncChamberLootPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(ToggleItemLockPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(ToggleItemLockPacket::new)
+                .encoder(ToggleItemLockPacket::encode)
+                .consumerMainThread(ToggleItemLockPacket::handle)
+                .add();
     }
 
     public static void sendToServer(Object msg) {

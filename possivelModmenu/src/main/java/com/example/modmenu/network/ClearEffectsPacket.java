@@ -5,6 +5,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
 
+import java.math.BigDecimal;
 import java.util.Map;
 import java.util.function.Supplier;
 
@@ -32,14 +33,14 @@ public class ClearEffectsPacket {
             ServerPlayer player = ctx.get().getSender();
             if (player != null) {
                 Map<String, Integer> active = StorePriceManager.getActiveEffects(player.getUUID());
-                long cost = 0;
+                BigDecimal cost = BigDecimal.ZERO;
                 for (int lvl : active.values()) {
-                    cost += (long) (2000 * Math.pow(2, lvl - 1));
+                    cost = cost.add(BigDecimal.valueOf(2000).multiply(BigDecimal.valueOf(2).pow(lvl - 1)));
                 }
                 
-                long currentMoney = StorePriceManager.getMoney(player.getUUID());
-                if (currentMoney >= cost) {
-                    StorePriceManager.setMoney(player.getUUID(), currentMoney - cost);
+                BigDecimal currentMoney = StorePriceManager.getMoney(player.getUUID());
+                if (currentMoney.compareTo(cost) >= 0) {
+                    StorePriceManager.setMoney(player.getUUID(), currentMoney.subtract(cost));
                     active.clear();
                     if (clearEverything) {
                         StorePriceManager.setAbilities(player.getUUID(), new StorePriceManager.AbilitySettings());

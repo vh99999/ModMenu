@@ -4,20 +4,21 @@ import com.example.modmenu.store.StorePriceManager;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraftforge.network.NetworkEvent;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
 public class SyncMoneyPacket {
-    private final long money;
+    private final BigDecimal money;
     private final boolean isEditor;
     private final Map<String, Integer> activeEffects;
-    private final long drain;
+    private final BigDecimal drain;
     private final StorePriceManager.AbilitySettings abilities;
     private final java.util.Set<String> unlockedHouses;
     private final Map<String, Double> attributeBonuses;
 
-    public SyncMoneyPacket(long money, boolean isEditor, Map<String, Integer> activeEffects, long drain, StorePriceManager.AbilitySettings abilities, java.util.Set<String> unlockedHouses, Map<String, Double> attributeBonuses) {
+    public SyncMoneyPacket(BigDecimal money, boolean isEditor, Map<String, Integer> activeEffects, BigDecimal drain, StorePriceManager.AbilitySettings abilities, java.util.Set<String> unlockedHouses, Map<String, Double> attributeBonuses) {
         this.money = money;
         this.isEditor = isEditor;
         this.activeEffects = activeEffects;
@@ -28,10 +29,10 @@ public class SyncMoneyPacket {
     }
 
     public SyncMoneyPacket(FriendlyByteBuf buf) {
-        this.money = buf.readLong();
+        this.money = new BigDecimal(buf.readUtf());
         this.isEditor = buf.readBoolean();
         this.activeEffects = buf.readMap(FriendlyByteBuf::readUtf, FriendlyByteBuf::readInt);
-        this.drain = buf.readLong();
+        this.drain = new BigDecimal(buf.readUtf());
         
         this.abilities = new StorePriceManager.AbilitySettings();
         this.abilities.miningActive = buf.readBoolean();
@@ -58,6 +59,7 @@ public class SyncMoneyPacket {
         this.abilities.autoSellerWhitelist = buf.readCollection(java.util.ArrayList::new, FriendlyByteBuf::readUtf);
         this.abilities.sellAllWhitelistActive = buf.readBoolean();
         this.abilities.sellAllWhitelist = buf.readCollection(java.util.ArrayList::new, FriendlyByteBuf::readUtf);
+        this.abilities.sellAllBlacklist = buf.readCollection(java.util.ArrayList::new, FriendlyByteBuf::readUtf);
         
         this.abilities.smelterWhitelist = buf.readCollection(java.util.ArrayList::new, FriendlyByteBuf::readUtf);
         
@@ -82,6 +84,7 @@ public class SyncMoneyPacket {
         this.abilities.flightActive = buf.readBoolean();
         this.abilities.sureKillActive = buf.readBoolean();
         this.abilities.noAggroActive = buf.readBoolean();
+        this.abilities.captureActive = buf.readBoolean();
         this.abilities.spawnBoostActive = buf.readBoolean();
         this.abilities.spawnBoostMultiplier = buf.readDouble();
         this.abilities.spawnBoostTargets = buf.readCollection(java.util.ArrayList::new, FriendlyByteBuf::readUtf);
@@ -94,10 +97,10 @@ public class SyncMoneyPacket {
     }
 
     public void encode(FriendlyByteBuf buf) {
-        buf.writeLong(money);
+        buf.writeUtf(money.toString());
         buf.writeBoolean(isEditor);
         buf.writeMap(activeEffects, FriendlyByteBuf::writeUtf, FriendlyByteBuf::writeInt);
-        buf.writeLong(drain);
+        buf.writeUtf(drain.toString());
         
         buf.writeBoolean(abilities.miningActive);
         buf.writeInt(abilities.miningRange);
@@ -123,6 +126,7 @@ public class SyncMoneyPacket {
         buf.writeCollection(abilities.autoSellerWhitelist, FriendlyByteBuf::writeUtf);
         buf.writeBoolean(abilities.sellAllWhitelistActive);
         buf.writeCollection(abilities.sellAllWhitelist, FriendlyByteBuf::writeUtf);
+        buf.writeCollection(abilities.sellAllBlacklist, FriendlyByteBuf::writeUtf);
         
         buf.writeCollection(abilities.smelterWhitelist, FriendlyByteBuf::writeUtf);
         
@@ -148,6 +152,7 @@ public class SyncMoneyPacket {
         buf.writeBoolean(abilities.flightActive);
         buf.writeBoolean(abilities.sureKillActive);
         buf.writeBoolean(abilities.noAggroActive);
+        buf.writeBoolean(abilities.captureActive);
         buf.writeBoolean(abilities.spawnBoostActive);
         buf.writeDouble(abilities.spawnBoostMultiplier);
         buf.writeCollection(abilities.spawnBoostTargets, FriendlyByteBuf::writeUtf);

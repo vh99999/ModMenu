@@ -10,15 +10,16 @@ import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraftforge.registries.ForgeRegistries;
 
+import java.math.BigDecimal;
 import java.util.function.BiConsumer;
 
 public class EnchantmentRowComponent extends UIElement {
     private final ResourceLocation enchantId;
-    private final int basePrice;
+    private final BigDecimal basePrice;
     private final int currentLevel;
     private final BiConsumer<ResourceLocation, Integer> onUpdate;
 
-    public EnchantmentRowComponent(int x, int y, int width, int height, ResourceLocation enchantId, int basePrice, int currentLevel, BiConsumer<ResourceLocation, Integer> onUpdate) {
+    public EnchantmentRowComponent(int x, int y, int width, int height, ResourceLocation enchantId, BigDecimal basePrice, int currentLevel, BiConsumer<ResourceLocation, Integer> onUpdate) {
         super(x, y, width, height);
         this.enchantId = enchantId;
         this.basePrice = basePrice;
@@ -54,8 +55,8 @@ public class EnchantmentRowComponent extends UIElement {
         renderBtn(guiGraphics, valX + 15, getY() + 5, 20, 16, "+", mouseX, mouseY);
 
         // Price info - hide if basePrice is 0 (for mining enchants)
-        if (basePrice > 0) {
-            long cost = currentLevel > 0 ? (long) (basePrice * Math.pow(2, currentLevel - 1)) : basePrice;
+        if (basePrice.compareTo(java.math.BigDecimal.ZERO) > 0) {
+            java.math.BigDecimal cost = currentLevel > 0 ? basePrice.multiply(java.math.BigDecimal.valueOf(2).pow(currentLevel - 1)) : basePrice;
             String priceText = "$" + StorePriceManager.formatCurrency(cost);
             guiGraphics.drawString(Minecraft.getInstance().font, priceText, getX() + 8, getY() + 18, currentLevel > 0 ? 0xFFFFFF55 : 0xFF888844);
         }

@@ -66,6 +66,7 @@ public class UpdateAbilityPacket {
         this.settings.flightActive = buf.readBoolean();
         this.settings.sureKillActive = buf.readBoolean();
         this.settings.noAggroActive = buf.readBoolean();
+        this.settings.captureActive = buf.readBoolean();
         this.settings.spawnBoostActive = buf.readBoolean();
         this.settings.spawnBoostMultiplier = buf.readDouble();
         this.settings.spawnBoostTargets = buf.readCollection(ArrayList::new, FriendlyByteBuf::readUtf);
@@ -125,6 +126,7 @@ public class UpdateAbilityPacket {
         buf.writeBoolean(settings.flightActive);
         buf.writeBoolean(settings.sureKillActive);
         buf.writeBoolean(settings.noAggroActive);
+        buf.writeBoolean(settings.captureActive);
         buf.writeBoolean(settings.spawnBoostActive);
         buf.writeDouble(settings.spawnBoostMultiplier);
         buf.writeCollection(settings.spawnBoostTargets, FriendlyByteBuf::writeUtf);

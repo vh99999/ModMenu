@@ -3,6 +3,7 @@ package com.example.modmenu.store.pricing;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.core.RegistryAccess;
+import java.math.BigDecimal;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -12,7 +13,7 @@ public class PricingContext {
     private final Level level;
     private final RecipeManager recipeManager;
     private final RegistryAccess registryAccess;
-    private final Map<String, Long> resolvedPrices;
+    private final Map<String, BigDecimal> resolvedPrices;
     private final Set<String> visiting;
     private final MultiLayerCache cache;
 
@@ -50,7 +51,7 @@ public class PricingContext {
         return registryAccess;
     }
 
-    public Map<String, Long> getResolvedPrices() {
+    public Map<String, BigDecimal> getResolvedPrices() {
         return resolvedPrices;
     }
 

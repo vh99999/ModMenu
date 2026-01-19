@@ -6,9 +6,8 @@ import net.minecraft.world.level.Level;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
+import java.math.BigDecimal;
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class PricingEngine {
     private static final Logger LOGGER = LogManager.getLogger();
@@ -16,7 +15,7 @@ public class PricingEngine {
     private final MultiLayerCache cache = new MultiLayerCache();
     private final Map<String, String> priceSources = new HashMap<>();
     private final Map<String, List<String>> dependencyChains = new HashMap<>();
-    private final Map<String, Double> appliedMultipliers = new HashMap<>();
+    private final Map<String, BigDecimal> appliedMultipliers = new HashMap<>();
     private final Map<String, Boolean> usedFallback = new HashMap<>();
 
     public PricingEngine() {
@@ -47,29 +46,29 @@ public class PricingEngine {
         LOGGER.info("Pricing engine completed. Priced {} items.", cache.getPersistentCache().size());
     }
 
-    public long resolvePrice(Item item, PricingContext context) {
+    public BigDecimal resolvePrice(Item item, PricingContext context) {
         String id = ForgeRegistries.ITEMS.getKey(item).toString();
         
-        Long cached = cache.get(id);
+        BigDecimal cached = cache.get(id);
         if (cached != null) return cached;
 
         if (context.isVisiting(id)) {
             // Loop detected
-            return -1;
+            return BigDecimal.valueOf(-1);
         }
 
         if (!context.push()) {
             // Depth overflow
-            return -1;
+            return BigDecimal.valueOf(-1);
         }
 
         context.startVisiting(id);
         try {
             for (PriceProvider provider : providers) {
-                Optional<Long> price = provider.getPrice(item, context);
+                Optional<BigDecimal> price = provider.getPrice(item, context);
                 if (price.isPresent()) {
-                    double multiplier = getMultiplier(item);
-                    long finalPrice = (long) (price.get() * multiplier);
+                    BigDecimal multiplier = BigDecimal.valueOf(getMultiplier(item));
+                    BigDecimal finalPrice = price.get().multiply(multiplier).setScale(0, java.math.RoundingMode.HALF_UP);
                     
                     cache.putPersistent(id, finalPrice);
                     priceSources.put(id, provider.getName());
@@ -87,7 +86,7 @@ public class PricingEngine {
             context.pop();
         }
 
-        return -1;
+        return BigDecimal.valueOf(-1);
     }
 
     private double getMultiplier(Item item) {
@@ -116,8 +115,8 @@ public class PricingEngine {
         return multiplier;
     }
 
-    private long applyModifiers(Item item, long basePrice) {
-        return (long) (basePrice * getMultiplier(item));
+    private BigDecimal applyModifiers(Item item, BigDecimal basePrice) {
+        return basePrice.multiply(BigDecimal.valueOf(getMultiplier(item))).setScale(0, java.math.RoundingMode.HALF_UP);
     }
 
     private boolean isTool(Item item) {
@@ -129,7 +128,7 @@ public class PricingEngine {
         return id.contains("generator") || id.contains("creative") || id.contains("debug") || id.contains("dupe");
     }
 
-    public Map<String, Long> getPrices() {
+    public Map<String, BigDecimal> getPrices() {
         return cache.getPersistentCache();
     }
 

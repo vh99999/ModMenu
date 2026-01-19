@@ -79,14 +79,14 @@ public class EMCDumpCommand {
         try {
             source.sendSuccess(() -> Component.literal("Applying EMC values to store prices..."), false);
             java.io.FileReader reader = new java.io.FileReader(file);
-            Map<String, Double> emcValues = GSON.fromJson(reader, new com.google.gson.reflect.TypeToken<Map<String, Double>>(){}.getType());
+            Map<String, java.math.BigDecimal> emcValues = GSON.fromJson(reader, new com.google.gson.reflect.TypeToken<Map<String, java.math.BigDecimal>>(){}.getType());
             reader.close();
 
             int count = 0;
-            for (Map.Entry<String, Double> entry : emcValues.entrySet()) {
+            for (Map.Entry<String, java.math.BigDecimal> entry : emcValues.entrySet()) {
                 String id = entry.getKey();
-                int price = (int) Math.round(entry.getValue());
-                if (price > 0) {
+                java.math.BigDecimal price = entry.getValue();
+                if (price.compareTo(java.math.BigDecimal.ZERO) > 0) {
                     Item item = BuiltInRegistries.ITEM.get(net.minecraft.resources.ResourceLocation.tryParse(id));
                     if (item != null && item != net.minecraft.world.item.Items.AIR) {
                         StorePriceManager.getAllBuyPrices().put(id, price);
@@ -104,6 +104,7 @@ public class EMCDumpCommand {
             if (source.getServer() != null) {
                 for (net.minecraft.server.level.ServerPlayer player : source.getServer().getPlayerList().getPlayers()) {
                     StorePriceManager.sync(player);
+                    StorePriceManager.syncPrices(player);
                 }
             }
 

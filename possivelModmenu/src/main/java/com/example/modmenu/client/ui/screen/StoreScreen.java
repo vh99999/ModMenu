@@ -20,7 +20,9 @@ import net.minecraft.world.item.Items;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class StoreScreen extends BaseResponsiveLodestoneScreen {
@@ -37,6 +39,7 @@ public class StoreScreen extends BaseResponsiveLodestoneScreen {
     
     private EditBox priceEditBox;
     private Item itemToEdit;
+    private Map<String, Long> lastSoldVolume = new HashMap<>();
 
     public StoreScreen(Screen parent) {
         super(Component.literal("Store"));
@@ -92,6 +95,11 @@ public class StoreScreen extends BaseResponsiveLodestoneScreen {
         // Sell All Button
         topBar.addElement(new ResponsiveButton(0, 0, 70, 18, Component.literal("SELL ALL"), btn -> {
             PacketHandler.sendToServer(new SellAllPacket("ALL"));
+        }));
+
+        // Saturated Button
+        topBar.addElement(new ResponsiveButton(0, 0, 80, 18, Component.literal("Saturated"), btn -> {
+            this.minecraft.setScreen(new SaturatedItemsScreen(this));
         }));
 
         // Editor: Reset Defaults
@@ -233,7 +241,7 @@ public class StoreScreen extends BaseResponsiveLodestoneScreen {
                 (it, sid) -> {
                     int qty = getQuantity();
                     if (isSetPriceMode) {
-                        if (it != null) PacketHandler.sendToServer(new com.example.modmenu.network.UpdatePricePacket(it, qty));
+                        if (it != null) PacketHandler.sendToServer(new com.example.modmenu.network.UpdatePricePacket(it, java.math.BigDecimal.valueOf(qty)));
                         return;
                     }
                     if (isSellMode) {
@@ -267,7 +275,7 @@ public class StoreScreen extends BaseResponsiveLodestoneScreen {
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (priceEditBox.isVisible() && (keyCode == 257 || keyCode == 335)) { // ENTER
             try {
-                int newPrice = Integer.parseInt(priceEditBox.getValue());
+                java.math.BigDecimal newPrice = new java.math.BigDecimal(priceEditBox.getValue());
                 if (itemToEdit != null) {
                     PacketHandler.sendToServer(new com.example.modmenu.network.UpdatePricePacket(itemToEdit, newPrice));
                 }
@@ -288,6 +296,10 @@ public class StoreScreen extends BaseResponsiveLodestoneScreen {
 
     @Override
     public void render(net.minecraft.client.gui.GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        if (!lastSoldVolume.equals(StorePriceManager.clientSoldVolume)) {
+            lastSoldVolume = new HashMap<>(StorePriceManager.clientSoldVolume);
+            refreshGrid();
+        }
         super.render(guiGraphics, mouseX, mouseY, partialTick);
         searchBox.render(guiGraphics, mouseX, mouseY, partialTick);
         quantityBox.render(guiGraphics, mouseX, mouseY, partialTick);

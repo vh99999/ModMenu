@@ -7,6 +7,8 @@ import com.example.modmenu.store.StorePriceManager;
 import net.minecraft.network.chat.Component;
 
 public class MainMenuScreen extends BaseResponsiveLodestoneScreen {
+    private boolean lastHouseState = false;
+    private boolean lastSystemState = false;
     
     public MainMenuScreen() {
         super(Component.literal("Main Menu"));
@@ -14,10 +16,19 @@ public class MainMenuScreen extends BaseResponsiveLodestoneScreen {
 
     @Override
     protected void setupLayout() {
+        // Initialize states on first setup to avoid immediate re-init loop
+        this.lastHouseState = StorePriceManager.clientUnlockedHouses.contains("mining_dimension");
+        this.lastSystemState = StorePriceManager.clientUnlockedHouses.contains("system_screen");
+
         // Uniform button sizing calculated based on screen width
         int buttonWidth = Math.max(160, (int)(this.width * 0.35f));
         int buttonHeight = 22;
         int spacing = 6; // Fixed spacing reused everywhere
+
+        // Informations button top left
+        this.layoutRoot.addElement(new ResponsiveButton(10, 10, 100, 20, Component.literal("Informations"), btn -> {
+            this.minecraft.setScreen(new WikiScreen(this));
+        }));
         
         // Single vertical layout container centered both horizontally and vertically
         VerticalLayoutContainer menuLayout = new VerticalLayoutContainer(0, 0, this.width, this.height, spacing);
@@ -41,6 +52,22 @@ public class MainMenuScreen extends BaseResponsiveLodestoneScreen {
         menuLayout.addElement(new ResponsiveButton(0, 0, buttonWidth, buttonHeight, Component.literal("Abilities"), btn -> {
             this.minecraft.setScreen(new AbilitiesScreen(this));
         }));
+
+        // 4.2 Containment
+        menuLayout.addElement(new ResponsiveButton(0, 0, buttonWidth, buttonHeight, Component.literal("Virtual Containment"), btn -> {
+            this.minecraft.setScreen(new ContainmentScreen(this));
+        }));
+
+        // 4.5 Skill Tree
+        menuLayout.addElement(new ResponsiveButton(0, 0, buttonWidth, buttonHeight, Component.literal("Skill Tree"), btn -> {
+            this.minecraft.setScreen(new SkillTreeScreen(this));
+        }));
+
+        // 4.7 Diagnostics
+        menuLayout.addElement(new ResponsiveButton(0, 0, buttonWidth, buttonHeight, Component.literal("System Diagnostics"), btn -> {
+            this.minecraft.setScreen(new DiagnosticsScreen(this));
+        }));
+
         
         // 5. House (Locked/Travel)
         boolean houseUnlocked = StorePriceManager.clientUnlockedHouses.contains("mining_dimension");
@@ -49,7 +76,7 @@ public class MainMenuScreen extends BaseResponsiveLodestoneScreen {
             if (houseUnlocked) {
                 com.example.modmenu.network.PacketHandler.sendToServer(new com.example.modmenu.network.TeleportToMiningDimensionPacket());
             } else {
-                com.example.modmenu.network.PacketHandler.sendToServer(new com.example.modmenu.network.UnlockFeaturePacket("mining_dimension", 100000000));
+                com.example.modmenu.network.PacketHandler.sendToServer(new com.example.modmenu.network.UnlockFeaturePacket("mining_dimension", java.math.BigDecimal.valueOf(100000000)));
             }
         });
         menuLayout.addElement(houseButton);
@@ -61,7 +88,7 @@ public class MainMenuScreen extends BaseResponsiveLodestoneScreen {
             if (systemUnlocked) {
                 this.minecraft.setScreen(new SystemScreen(this));
             } else {
-                com.example.modmenu.network.PacketHandler.sendToServer(new com.example.modmenu.network.UnlockFeaturePacket("system_screen", 100000000));
+                com.example.modmenu.network.PacketHandler.sendToServer(new com.example.modmenu.network.UnlockFeaturePacket("system_screen", java.math.BigDecimal.valueOf(100000000)));
             }
         });
         menuLayout.addElement(systemButton);
@@ -76,6 +103,17 @@ public class MainMenuScreen extends BaseResponsiveLodestoneScreen {
 
     @Override
     public void render(net.minecraft.client.gui.GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        // Dynamic Update Check: if unlocked status changed, rebuild layout
+        boolean houseUnlocked = StorePriceManager.clientUnlockedHouses.contains("mining_dimension");
+        boolean systemUnlocked = StorePriceManager.clientUnlockedHouses.contains("system_screen");
+        
+        // Use hash or simple state check
+        if (lastHouseState != houseUnlocked || lastSystemState != systemUnlocked) {
+            this.init(); // Re-initialize layout
+            lastHouseState = houseUnlocked;
+            lastSystemState = systemUnlocked;
+        }
+
         super.render(guiGraphics, mouseX, mouseY, partialTick);
         
         // Render Title with a nice font effect

@@ -1,218 +1,2566 @@
-WARNING: A restricted method in java.lang.System has been called
-WARNING: java.lang.System::load has been called by net.rubygrapefruit.platform.internal.NativeLibraryLoader in an unnamed module (file:/C:/Users/prang/.gradle/wrapper/dists/gradle-8.8-bin/dl7vupf4psengwqhwktix4v1/gradle-8.8/lib/native-platform-0.22-milestone-26.jar)
-WARNING: Use --enable-native-access=ALL-UNNAMED to avoid a warning for callers in this module
-WARNING: Restricted methods will be blocked in a future release unless native access is enabled
-To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.8/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
-Daemon will be stopped at the end of the build
-> Configure project :
-MixinGradle did not locate the diffplug APT plugin, skipping eclipse task configuration
-Java: 25.0.1, JVM: 25.0.1+8-LTS-27 (Oracle Corporation), Arch: amd64
-> Task :dependencies
-------------------------------------------------------------
-Root project 'possivelModmenu'
-------------------------------------------------------------
-compileClasspath - Compile classpath for source set 'main'.
-+--- top.theillusivec4.curios:curios-forge:{strictly 5.9.1+1.20.1_mapped_official_1.20.1} -> 5.9.1+1.20.1_mapped_official_1.20.1
-+--- team.lodestar.lodestone:lodestone:{strictly 1.20.1-1.6.4.1.257_mapped_official_1.20.1} -> 1.20.1-1.6.4.1.257_mapped_official_1.20.1
-\--- net.minecraftforge:forge:1.20.1-47.4.10_mapped_official_1.20.1
-     +--- net.minecraft:client:1.20.1
-     |    +--- com.github.oshi:oshi-core:6.2.2
-     |    |    +--- net.java.dev.jna:jna:5.12.1
-     |    |    +--- net.java.dev.jna:jna-platform:5.12.1
-     |    |    |    \--- net.java.dev.jna:jna:5.12.1
-     |    |    \--- org.slf4j:slf4j-api:1.7.36 -> 2.0.1
-     |    +--- com.google.code.gson:gson:2.10
-     |    +--- com.google.guava:failureaccess:1.0.1
-     |    +--- com.google.guava:guava:31.1-jre
-     |    |    +--- com.google.guava:failureaccess:1.0.1
-     |    |    +--- com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava
-     |    |    +--- com.google.code.findbugs:jsr305:3.0.2
-     |    |    +--- org.checkerframework:checker-qual:3.12.0
-     |    |    +--- com.google.errorprone:error_prone_annotations:2.11.0
-     |    |    \--- com.google.j2objc:j2objc-annotations:1.3
-     |    +--- com.ibm.icu:icu4j:71.1
-     |    +--- com.mojang:authlib:4.0.43
-     |    +--- com.mojang:blocklist:1.0.10
-     |    +--- com.mojang:brigadier:1.1.8
-     |    +--- com.mojang:datafixerupper:6.0.8
-     |    +--- com.mojang:logging:1.1.1
-     |    +--- com.mojang:patchy:2.2.10
-     |    +--- com.mojang:text2speech:1.17.9
-     |    +--- commons-codec:commons-codec:1.15
-     |    +--- commons-io:commons-io:2.11.0
-     |    +--- commons-logging:commons-logging:1.2
-     |    +--- io.netty:netty-buffer:4.1.82.Final
-     |    |    \--- io.netty:netty-common:4.1.82.Final
-     |    +--- io.netty:netty-codec:4.1.82.Final
-     |    |    +--- io.netty:netty-common:4.1.82.Final
-     |    |    +--- io.netty:netty-buffer:4.1.82.Final (*)
-     |    |    \--- io.netty:netty-transport:4.1.82.Final
-     |    |         +--- io.netty:netty-common:4.1.82.Final
-     |    |         +--- io.netty:netty-buffer:4.1.82.Final (*)
-     |    |         \--- io.netty:netty-resolver:4.1.82.Final
-     |    |              \--- io.netty:netty-common:4.1.82.Final
-     |    +--- io.netty:netty-common:4.1.82.Final
-     |    +--- io.netty:netty-handler:4.1.82.Final
-     |    |    +--- io.netty:netty-common:4.1.82.Final
-     |    |    +--- io.netty:netty-resolver:4.1.82.Final (*)
-     |    |    +--- io.netty:netty-buffer:4.1.82.Final (*)
-     |    |    +--- io.netty:netty-transport:4.1.82.Final (*)
-     |    |    +--- io.netty:netty-transport-native-unix-common:4.1.82.Final
-     |    |    |    +--- io.netty:netty-common:4.1.82.Final
-     |    |    |    +--- io.netty:netty-buffer:4.1.82.Final (*)
-     |    |    |    \--- io.netty:netty-transport:4.1.82.Final (*)
-     |    |    \--- io.netty:netty-codec:4.1.82.Final (*)
-     |    +--- io.netty:netty-resolver:4.1.82.Final (*)
-     |    +--- io.netty:netty-transport-classes-epoll:4.1.82.Final
-     |    |    +--- io.netty:netty-common:4.1.82.Final
-     |    |    +--- io.netty:netty-buffer:4.1.82.Final (*)
-     |    |    +--- io.netty:netty-transport:4.1.82.Final (*)
-     |    |    \--- io.netty:netty-transport-native-unix-common:4.1.82.Final (*)
-     |    +--- io.netty:netty-transport-native-unix-common:4.1.82.Final (*)
-     |    +--- io.netty:netty-transport:4.1.82.Final (*)
-     |    +--- it.unimi.dsi:fastutil:8.5.9
-     |    +--- net.java.dev.jna:jna-platform:5.12.1 (*)
-     |    +--- net.java.dev.jna:jna:5.12.1
-     |    +--- net.sf.jopt-simple:jopt-simple:5.0.4
-     |    +--- org.apache.commons:commons-compress:1.21
-     |    +--- org.apache.commons:commons-lang3:3.12.0
-     |    +--- org.apache.httpcomponents:httpclient:4.5.13
-     |    |    +--- org.apache.httpcomponents:httpcore:4.4.13 -> 4.4.15
-     |    |    +--- commons-logging:commons-logging:1.2
-     |    |    \--- commons-codec:commons-codec:1.11 -> 1.15
-     |    +--- org.apache.httpcomponents:httpcore:4.4.15
-     |    +--- org.apache.logging.log4j:log4j-api:2.19.0
-     |    +--- org.apache.logging.log4j:log4j-core:2.19.0
-     |    |    \--- org.apache.logging.log4j:log4j-api:2.19.0
-     |    +--- org.apache.logging.log4j:log4j-slf4j2-impl:2.19.0
-     |    |    +--- org.slf4j:slf4j-api:2.0.0 -> 2.0.1
-     |    |    \--- org.apache.logging.log4j:log4j-api:2.19.0
-     |    +--- org.joml:joml:1.10.5
-     |    +--- org.lwjgl:lwjgl-glfw:3.3.1
-     |    |    \--- org.lwjgl:lwjgl:3.3.1
-     |    +--- org.lwjgl:lwjgl-jemalloc:3.3.1
-     |    |    \--- org.lwjgl:lwjgl:3.3.1
-     |    +--- org.lwjgl:lwjgl-openal:3.3.1
-     |    |    \--- org.lwjgl:lwjgl:3.3.1
-     |    +--- org.lwjgl:lwjgl-opengl:3.3.1
-     |    |    \--- org.lwjgl:lwjgl:3.3.1
-     |    +--- org.lwjgl:lwjgl-stb:3.3.1
-     |    |    \--- org.lwjgl:lwjgl:3.3.1
-     |    +--- org.lwjgl:lwjgl-tinyfd:3.3.1
-     |    |    \--- org.lwjgl:lwjgl:3.3.1
-     |    +--- org.lwjgl:lwjgl:3.3.1
-     |    +--- org.slf4j:slf4j-api:2.0.1
-     |    +--- com.google.code.findbugs:jsr305:3.0.2
-     |    +--- ca.weblite:java-objc-bridge:1.1
-     |    |    \--- net.java.dev.jna:jna:5.10.0 -> 5.12.1
-     |    \--- org.jetbrains:annotations:24.0.1
-     +--- com.google.code.findbugs:jsr305:3.0.2
-     +--- ca.weblite:java-objc-bridge:1.1 (*)
-     +--- net.minecraftforge:mergetool:1.1.5
-     +--- org.jetbrains:annotations:24.0.1
-     +--- cpw.mods:securejarhandler:2.1.10
-     |    +--- org.ow2.asm:asm:9.3 -> 9.8
-     |    +--- org.ow2.asm:asm-tree:9.3 -> 9.8
-     |    |    \--- org.ow2.asm:asm:9.8
-     |    \--- org.ow2.asm:asm-commons:9.3 -> 9.8
-     |         +--- org.ow2.asm:asm:9.8
-     |         \--- org.ow2.asm:asm-tree:9.8 (*)
-     +--- org.ow2.asm:asm:9.8
-     +--- org.ow2.asm:asm-commons:9.8 (*)
-     +--- org.ow2.asm:asm-tree:9.8 (*)
-     +--- org.ow2.asm:asm-util:9.8
-     |    +--- org.ow2.asm:asm:9.8
-     |    +--- org.ow2.asm:asm-tree:9.8 (*)
-     |    \--- org.ow2.asm:asm-analysis:9.8
-     |         \--- org.ow2.asm:asm-tree:9.8 (*)
-     +--- org.ow2.asm:asm-analysis:9.8 (*)
-     +--- net.minecraftforge:accesstransformers:8.0.4
-     |    \--- org.antlr:antlr4:4.9.1
-     |         +--- org.antlr:antlr4-runtime:4.9.1
-     |         +--- org.antlr:antlr-runtime:3.5.2
-     |         +--- org.antlr:ST4:4.3
-     |         |    \--- org.antlr:antlr-runtime:3.5.2
-     |         +--- org.abego.treelayout:org.abego.treelayout.core:1.0.3
-     |         +--- org.glassfish:javax.json:1.0.4
-     |         \--- com.ibm.icu:icu4j:61.1 -> 71.1
-     +--- org.antlr:antlr4-runtime:4.9.1
-     +--- net.minecraftforge:eventbus:6.0.5
-     |    \--- net.jodah:typetools:0.6.+ -> 0.6.3
-     +--- net.minecraftforge:forgespi:7.0.1
-     |    \--- net.minecraftforge:mergetool:1.1.5
-     +--- net.minecraftforge:coremods:5.2.4
-     |    +--- org.ow2.asm:asm:9.7.1 -> 9.8
-     |    +--- org.ow2.asm:asm-tree:9.7.1 -> 9.8 (*)
-     |    \--- org.ow2.asm:asm-commons:9.7.1 -> 9.8 (*)
-     +--- cpw.mods:modlauncher:10.0.9
-     |    +--- org.ow2.asm:asm:9.3 -> 9.8
-     |    +--- org.ow2.asm:asm-tree:9.3 -> 9.8 (*)
-     |    \--- org.ow2.asm:asm-commons:9.3 -> 9.8 (*)
-     +--- net.minecraftforge:unsafe:0.2.0
-     +--- com.electronwill.night-config:core:3.6.4
-     +--- com.electronwill.night-config:toml:3.6.4
-     |    \--- com.electronwill.night-config:core:3.6.4
-     +--- org.apache.maven:maven-artifact:3.8.5
-     |    +--- org.codehaus.plexus:plexus-utils:3.3.0
-     |    \--- org.apache.commons:commons-lang3:3.8.1 -> 3.12.0
-     +--- net.jodah:typetools:0.6.3
-     +--- net.minecrell:terminalconsoleappender:1.2.0
-     |    +--- org.apache.logging.log4j:log4j-core:2.8.1 -> 2.19.0 (*)
-     |    \--- org.jline:jline-reader:3.12.1
-     |         \--- org.jline:jline-terminal:3.12.1
-     +--- org.jline:jline-reader:3.12.1 (*)
-     +--- org.jline:jline-terminal:3.12.1
-     +--- org.spongepowered:mixin:0.8.5
-     +--- org.openjdk.nashorn:nashorn-core:15.4
-     |    +--- org.ow2.asm:asm:7.3.1 -> 9.8
-     |    +--- org.ow2.asm:asm-commons:7.3.1 -> 9.8 (*)
-     |    +--- org.ow2.asm:asm-tree:7.3.1 -> 9.8 (*)
-     |    \--- org.ow2.asm:asm-util:7.3.1 -> 9.8 (*)
-     +--- net.minecraftforge:JarJarSelector:0.3.19
-     |    +--- net.minecraftforge:JarJarMetadata:0.3.19
-     |    |    +--- org.apache.maven:maven-artifact:3.8.1 -> 3.8.5 (*)
-     |    |    +--- com.google.code.gson:gson:2.8.5 -> 2.10
-     |    |    +--- com.google.guava:guava:31.0.1-jre -> 31.1-jre (*)
-     |    |    +--- com.machinezoo.noexception:noexception:1.7.1
-     |    |    |    \--- org.slf4j:slf4j-api:1.7.30 -> 2.0.1
-     |    |    \--- org.slf4j:slf4j-api:1.7.30 -> 2.0.1
-     |    +--- org.apache.maven:maven-artifact:3.8.1 -> 3.8.5 (*)
-     |    +--- com.google.code.gson:gson:2.8.5 -> 2.10
-     |    +--- com.google.guava:guava:31.0.1-jre -> 31.1-jre (*)
-     |    +--- com.machinezoo.noexception:noexception:1.7.1 (*)
-     |    \--- org.slf4j:slf4j-api:1.7.30 -> 2.0.1
-     +--- net.minecraftforge:JarJarMetadata:0.3.19 (*)
-     +--- cpw.mods:bootstraplauncher:1.1.2
-     +--- net.minecraftforge:JarJarFileSystems:0.3.19
-     +--- net.minecraftforge:fmlcore:1.20.1-47.4.10
-     |    \--- net.minecraftforge:eventbus:6.0.5 (*)
-     +--- net.minecraftforge:fmlloader:1.20.1-47.4.10
-     |    +--- org.ow2.asm:asm:9.8
-     |    +--- org.ow2.asm:asm-tree:9.8 (*)
-     |    +--- org.ow2.asm:asm-commons:9.8 (*)
-     |    +--- net.minecraftforge:forgespi:7.0.1 (*)
-     |    +--- net.minecraftforge:mergetool:1.1.5
-     |    +--- org.apache.logging.log4j:log4j-api:2.19.0
-     |    +--- org.slf4j:slf4j-api:1.8.0-beta4 -> 2.0.1
-     |    +--- com.google.guava:guava:31.1-jre (*)
-     |    +--- com.google.code.gson:gson:2.10
-     |    +--- org.apache.maven:maven-artifact:3.8.5 (*)
-     |    +--- org.apache.commons:commons-lang3:3.12.0
-     |    +--- com.electronwill.night-config:core:3.6.4
-     |    +--- com.electronwill.night-config:toml:3.6.4 (*)
-     |    +--- cpw.mods:modlauncher:10.0.9 (*)
-     |    +--- net.minecraftforge:coremods:5.2.4 (*)
-     |    +--- com.mojang:logging:1.1.1
-     |    +--- net.minecraftforge:JarJarSelector:0.3.19 (*)
-     |    \--- net.minecraftforge:JarJarMetadata:0.3.19 (*)
-     +--- net.minecraftforge:fmlearlydisplay:1.20.1-47.4.10
-     +--- net.minecraftforge:javafmllanguage:1.20.1-47.4.10
-     +--- net.minecraftforge:lowcodelanguage:1.20.1-47.4.10
-     \--- net.minecraftforge:mclanguage:1.20.1-47.4.10
-(*) - Indicates repeated occurrences of a transitive dependency subtree. Gradle expands transitive dependency subtrees only once per project; repeat occurrences only display the root of the subtree, followed by this annotation.
-A web-based, searchable dependency report is available by adding the --scan option.
-Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
-You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
-For more on this, please refer to https://docs.gradle.org/8.8/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
-BUILD SUCCESSFUL in 13s
-1 actionable task: 1 executed
+
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:31                .gradle
+d-----        11/01/2026     23:00                .idea
+d-----        16/01/2026     17:55                build
+d-----        07/01/2026     12:47                failures
+d-----        01/01/2026     06:31                gradle
+da----        11/01/2026     17:43                logs
+d-----        03/01/2026     06:05                META-INF
+d-----        06/01/2026     23:25                models
+d-----        01/01/2026     06:37                run
+d-----        01/01/2026     06:41                run-data
+d-----        01/01/2026     06:31                src
+-a----        31/12/2025     22:12            256 .gitattributes
+-a----        31/12/2025     22:12            188 .gitignore
+-a----        03/01/2026     06:08          12593 .output.txt
+-a----        07/01/2026     12:47          10758 build.gradle
+-a----        31/12/2025     22:12          74048 changelog.txt
+-a----        07/01/2026     12:47           1914 CONTROL_AUTHORITY_BRIDGE.md
+-a----        31/12/2025     22:12           3317 CREDITS.txt
+-a----        11/01/2026     19:30            174 fix_java.py
+-a----        03/01/2026     05:19           3457 gradle.properties
+-a----        31/12/2025     22:12           8496 gradlew
+-a----        31/12/2025     22:12           2776 gradlew.bat
+-a----        05/01/2026     16:08           1824 LEARNING_CONTROL_PROTOCOL.md
+-a----        31/12/2025     22:12          27732 LICENSE.txt
+-a----        31/12/2025     22:12           2184 README.txt
+-a----        03/01/2026     05:18            569 settings.gradle
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\.gradle
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:31                8.8
+d-----        01/01/2026     06:31                buildOutputCleanup
+d-----        01/01/2026     06:31                vcs-1
+-a----        16/01/2026     17:57              8 file-system.probe
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\.gradle\8.8
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:31                checksums
+d-----        01/01/2026     06:31                dependencies-accessors
+d-----        01/01/2026     06:31                executionHistory
+d-----        01/01/2026     06:31                expanded
+d-----        01/01/2026     06:31                fileChanges
+d-----        01/01/2026     06:31                fileHashes
+d-----        01/01/2026     06:24                vcsMetadata
+-a----        16/01/2026     17:51              0 gc.properties
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\possivelModmenu\.gradle\8.8\checksums
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        16/01/2026     17:57             17 checksums.lock
+-a----        16/01/2026     17:50          28297 md5-checksums.bin
+-a----        16/01/2026     17:50          87233 sha1-checksums.bin
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\.gradle\8.8\depend
+    encies-accessors
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        16/01/2026     17:51              0 gc.properties
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\possivelModmenu\.gradle\8.8\executionHistory
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        16/01/2026     17:57        1236704 executionHistory.bin
+-a----        16/01/2026     17:57             17 executionHistory.lock
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\possivelModmenu\.gradle\8.8\expanded
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     05:48             17 expanded.lock
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\possivelModmenu\.gradle\8.8\fileChanges
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        16/01/2026     17:57              1 last-build.bin
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\possivelModmenu\.gradle\8.8\fileHashes
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        16/01/2026     17:55          72415 fileHashes.bin
+-a----        16/01/2026     17:57             17 fileHashes.lock
+-a----        16/01/2026     17:55          35225 resourceHashesCache.bin
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\possivelModmenu\.gradle\buildOutputCleanup
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        16/01/2026     17:57             17 buildOutputCleanup.lock
+-a----        01/01/2026     05:44             51 cache.properties
+-a----        16/01/2026     17:57          20459 outputFiles.bin
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\.gradle\vcs-1
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        16/01/2026     17:51              0 gc.properties
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\.idea
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        04/01/2026     09:37                inspectionProfiles
+d-----        01/01/2026     06:31                runConfigurations
+-a----        31/12/2025     22:53            238 .gitignore
+-a----        01/01/2026     05:50            174 compiler.xml
+-a----        09/01/2026     21:10            583 gradle.xml
+-a----        03/01/2026     07:08           4277 misc.xml
+-a----        07/01/2026     08:26            344 possivelModmenu.iml
+-a----        04/01/2026     21:57            188 vcs.xml
+-a----        11/01/2026     23:00          24581 workspace.xml
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\possivelModmenu\.idea\inspectionProfiles
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        04/01/2026     09:37            174 profiles_settings.xml
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\possivelModmenu\.idea\runConfigurations
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        07/01/2026     19:28           3508 runClient.xml
+-a----        07/01/2026     19:28           3503 runData.xml
+-a----        07/01/2026     19:28           3328 runGameTestServer.xml
+-a----        07/01/2026     19:28           3332 runServer.xml
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:31                classes
+d-----        01/01/2026     06:31                classpath
+d-----        06/01/2026     19:35                createMcpToSrg
+d-----        06/01/2026     18:59                createSrgToMcp
+d-----        06/01/2026     18:59                downloadMCMeta
+d-----        06/01/2026     18:59                downloadMcpConfig
+d-----        06/01/2026     18:59                extractSrg
+d-----        01/01/2026     06:31                generated
+d-----        02/01/2026     08:01                jarjar
+d-----        03/01/2026     19:14                libs
+d-----        06/01/2026     19:00                natives
+d-----        03/01/2026     19:14                reobfJar
+d-----        06/01/2026     19:35                resources
+d-----        07/01/2026     16:50                tmp
+d-----        03/01/2026     13:56                _RenameSrg2Mcp_-895463816
+d-----        03/01/2026     05:23                _RenameSrg2Mcp_-973733366
+d-----        03/01/2026     05:23                _RenameSrg2Mcp_1466959425
+d-----        03/01/2026     05:23                _RenameSrg2Mcp_572535719
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\classes
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        16/01/2026     17:55                java
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\classes\java
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        06/01/2026     19:35                main
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\classes\java\main
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        06/01/2026     19:35                com
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\classes\java\main\com
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        06/01/2026     19:35                example
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\classes\java
+    \main\com\example
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        16/01/2026     17:55                modmenu
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\classes\java
+    \main\com\example\modmenu
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        06/01/2026     23:01                client
+d-----        06/01/2026     19:35                commands
+d-----        06/01/2026     19:35                network
+d-----        06/01/2026     19:35                store
+d-----        06/01/2026     19:35                worldgen
+-a----        06/01/2026     19:35           5406 Config.class
+-a----        06/01/2026     19:35           1634 modmenu$ClientModEvents.class
+-a----        06/01/2026     19:35           5897 modmenu.class
+-a----        06/01/2026     19:35          20147 ServerForgeEvents.class
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\classes\java
+    \main\com\example\modmenu\client
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        06/01/2026     19:35                ui
+-a----        06/01/2026     23:01          11386 ClientForgeEvents.class
+-a----        06/01/2026     23:01           1335 ClientModEvents.class
+-a----        06/01/2026     23:01           1184 KeyMappings.class
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\classes\java
+    \main\com\example\modmenu\client\ui
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        06/01/2026     19:35                base
+d-----        06/01/2026     19:35                component
+d-----        06/01/2026     19:35                layout
+da----        16/01/2026     17:55                screen
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\classes\java
+    \main\com\example\modmenu\client\ui\base
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        06/01/2026     19:35           4483 BaseResponsiveLodestoneScreen
+                                                  .class
+-a----        06/01/2026     19:35           3854 ScrollableUIContainer.class
+-a----        06/01/2026     19:35           3070 UIContainer.class
+-a----        06/01/2026     19:35           1595 UIElement.class
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\classes\java
+    \main\com\example\modmenu\client\ui\component
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        06/01/2026     19:35           4029 AbilitySettingComponent.class
+-a----        06/01/2026     19:35           5527 EffectRowComponent.class
+-a----        06/01/2026     19:35           5604 EnchantmentRowComponent.class
+-a----        06/01/2026     19:35           4711 InventoryComponent.class
+-a----        06/01/2026     19:35           3906 ResponsiveButton.class
+-a----        06/01/2026     19:35           6407 StoreItemComponent.class
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\classes\java
+    \main\com\example\modmenu\client\ui\layout
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        06/01/2026     19:35           1712 HorizontalLayoutContainer.cla
+                                                  ss
+-a----        06/01/2026     19:35           2136 VerticalLayoutContainer.class
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\classes\java
+    \main\com\example\modmenu\client\ui\screen
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        06/01/2026     19:35           1990 AbilitiesScreen$1.class
+-a----        06/01/2026     19:35          19485 AbilitiesScreen.class
+-a----        06/01/2026     19:35           2542 BasePlaceholderScreen.class
+-a----        06/01/2026     19:35           8799 EffectsScreen.class
+-a----        06/01/2026     19:35          10584 EnchantmentScreen.class
+-a----        06/01/2026     19:35          11059 EntityFilterScreen.class
+-a----        06/01/2026     19:35          11985 ItemFilterScreen.class
+-a----        16/01/2026     17:55           5857 MainMenuScreen.class
+-a----        06/01/2026     19:35           6379 MiningEnchantmentScreen.class
+-a----        06/01/2026     19:35           6855 ModFilterScreen.class
+-a----        06/01/2026     19:35           1870 StoreScreen$1.class
+-a----        06/01/2026     19:35            750 StoreScreen$StoreItem.class
+-a----        06/01/2026     19:35          18457 StoreScreen.class
+-a----        16/01/2026     17:55            679 SystemScreen$AttributeData.cl
+                                                  ass
+-a----        16/01/2026     17:55           4025 SystemScreen$AttributeRowComp
+                                                  onent.class
+-a----        16/01/2026     17:55           6279 SystemScreen.class
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\classes\java
+    \main\com\example\modmenu\commands
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        06/01/2026     19:35            651 EMCDumpCommand$1.class
+-a----        06/01/2026     19:35           8671 EMCDumpCommand.class
+-a----        06/01/2026     19:35           7413 StoreCommands.class
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\classes\java
+    \main\com\example\modmenu\network
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        06/01/2026     19:35            949 AdminActionPacket$1.class
+-a----        06/01/2026     19:35           1394 AdminActionPacket$Action.clas
+                                                  s
+-a----        06/01/2026     19:35           3313 AdminActionPacket.class
+-a----        06/01/2026     19:35           3846 AttributeUpgradePacket.class
+-a----        06/01/2026     19:35           4431 ClearEffectsPacket.class
+-a----        06/01/2026     19:35           6040 EnchantItemPacket.class
+-a----        06/01/2026     19:35          12424 PacketHandler.class
+-a----        06/01/2026     19:35           6061 PurchasePacket.class
+-a----        06/01/2026     19:35           1848 SaveLayoutPacket.class
+-a----        06/01/2026     19:35           6622 SellAllPacket.class
+-a----        06/01/2026     19:35           5554 SellPacket.class
+-a----        06/01/2026     19:35           6922 SmeltAllPacket.class
+-a----        06/01/2026     19:35           8668 SyncMoneyPacket.class
+-a----        06/01/2026     19:35           4092 SyncPricesPacket.class
+-a----        06/01/2026     19:35           4423 TeleportToMiningDimensionPack
+                                                  et.class
+-a----        06/01/2026     19:35           2887 ToggleEffectPacket.class
+-a----        06/01/2026     19:35           3182 UnlockFeaturePacket.class
+-a----        06/01/2026     19:35           7799 UpdateAbilityPacket.class
+-a----        06/01/2026     19:35           2921 UpdateEffectPricePacket.class
+-a----        06/01/2026     19:35           3519 UpdateEnchantPricePacket.clas
+                                                  s
+-a----        06/01/2026     19:35           3112 UpdatePricePacket.class
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\classes\java
+    \main\com\example\modmenu\store
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        06/01/2026     19:35                pricing
+-a----        06/01/2026     19:35          69679 DefaultPrices.class
+-a----        06/01/2026     19:35          21418 EffectMaintenanceHandler.clas
+                                                  s
+-a----        06/01/2026     19:35            608 StorePriceManager$1.class
+-a----        06/01/2026     19:35            608 StorePriceManager$2.class
+-a----        06/01/2026     19:35            608 StorePriceManager$3.class
+-a----        06/01/2026     19:35            608 StorePriceManager$4.class
+-a----        06/01/2026     19:35            589 StorePriceManager$5.class
+-a----        06/01/2026     19:35            608 StorePriceManager$6.class
+-a----        06/01/2026     19:35            608 StorePriceManager$7.class
+-a----        06/01/2026     19:35           3888 StorePriceManager$AbilitySett
+                                                  ings.class
+-a----        06/01/2026     19:35           1622 StorePriceManager$FormulaConf
+                                                  ig.class
+-a----        06/01/2026     19:35           1650 StorePriceManager$PlayerData.
+                                                  class
+-a----        06/01/2026     19:35            926 StorePriceManager$StorePrices
+                                                  .class
+-a----        06/01/2026     19:35          37623 StorePriceManager.class
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\classes\java
+    \main\com\example\modmenu\store\pricing
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        06/01/2026     19:35           2130 DefaultPriceProvider.class
+-a----        06/01/2026     19:35           1199 FallbackPriceProvider.class
+-a----        06/01/2026     19:35           3424 InferencePriceProvider.class
+-a----        06/01/2026     19:35           1677 MultiLayerCache.class
+-a----        06/01/2026     19:35            479 PriceProvider.class
+-a----        06/01/2026     19:35           2560 PricingContext.class
+-a----        06/01/2026     19:35            813 PricingEngine$1.class
+-a----        06/01/2026     19:35           8837 PricingEngine.class
+-a----        06/01/2026     19:35           1356 ProjectEPriceProvider.class
+-a----        06/01/2026     19:35           4867 RecipeDependencyGraph.class
+-a----        06/01/2026     19:35           4717 RecipePriceProvider.class
+-a----        06/01/2026     19:35           5514 UsagePriceProvider.class
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\classes\java
+    \main\com\example\modmenu\worldgen
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        06/01/2026     19:35          10737 MiningChunkGenerator.class
+-a----        06/01/2026     19:35           1210 MiningDimension.class
+-a----        06/01/2026     19:35           2063 WorldGenRegistry.class
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\classpath
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        11/01/2026     22:48          17670 runClient_minecraftClasspath.
+                                                  txt
+-a----        07/01/2026     19:28          17670 runData_minecraftClasspath.tx
+                                                  t
+-a----        07/01/2026     19:28          17670 runGameTestServer_minecraftCl
+                                                  asspath.txt
+-a----        07/01/2026     19:28          17670 runServer_minecraftClasspath.
+                                                  txt
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\createMcpToSrg
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        06/01/2026     19:35        9129252 output.tsrg
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\createSrgToMcp
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        06/01/2026     18:59       20871086 output.srg
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\downloadMCMeta
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        06/01/2026     18:59          34974 version.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\downloadMcpConfig
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     05:44        1740711 output.zip
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\extractSrg
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        06/01/2026     18:59        4558114 output.srg
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\generated
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:31                sources
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\generated\sources
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:31                annotationProcessor
+d-----        01/01/2026     06:31                headers
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\generated\so
+    urces\annotationProcessor
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        16/01/2026     17:55                java
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\generated\so
+    urces\annotationProcessor\java
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        06/01/2026     19:35                main
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\generated\so
+    urces\headers
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        16/01/2026     17:55                java
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\generated\so
+    urces\headers\java
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        06/01/2026     19:35                main
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\jarjar
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     19:14                jarJar
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\jarjar\jarJar
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     19:14             20 metadata.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\libs
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     19:14         244771 modmenu-1.0.1.jar
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\reobfJar
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     19:14          56151 log.txt
+-a----        03/01/2026     19:14        9129252 mappings.tsrg
+-a----        03/01/2026     19:14         244771 output.jar
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\resources
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        06/01/2026     19:35                main
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\resources\main
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        06/01/2026     19:35                .cache
+d-----        06/01/2026     19:35                data
+d-----        06/01/2026     19:35                META-INF
+-a----        06/01/2026     19:35            103 pack.mcmeta
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\resources\main\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        06/01/2026     19:35                forge
+d-----        06/01/2026     19:35                minecraft
+d-----        06/01/2026     19:35                modmenu
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\resources\ma
+    in\data\forge
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        06/01/2026     19:35                tags
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\resources\ma
+    in\data\forge\tags
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        06/01/2026     19:35                worldgen
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\resources\ma
+    in\data\forge\tags\worldgen
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        06/01/2026     19:35                biome
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\resources\ma
+    in\data\forge\tags\worldgen\biome
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        06/01/2026     19:35             75 is_mining_dimension.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\resources\ma
+    in\data\minecraft
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        06/01/2026     19:35                tags
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\resources\ma
+    in\data\minecraft\tags
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        06/01/2026     19:35                worldgen
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\resources\ma
+    in\data\minecraft\tags\worldgen
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        06/01/2026     19:35                biome
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\resources\ma
+    in\data\minecraft\tags\worldgen\biome
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        06/01/2026     19:35             75 is_overworld.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\resources\ma
+    in\data\modmenu
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        06/01/2026     19:35                dimension
+d-----        06/01/2026     19:35                dimension_type
+d-----        06/01/2026     19:35                tags
+d-----        06/01/2026     19:35                worldgen
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\resources\ma
+    in\data\modmenu\dimension
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        06/01/2026     19:35            223 mining_dimension.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\resources\ma
+    in\data\modmenu\dimension_type
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        06/01/2026     19:35            504 mining_dimension_type.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\resources\ma
+    in\data\modmenu\tags
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        06/01/2026     19:35                worldgen
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\resources\ma
+    in\data\modmenu\tags\worldgen
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        06/01/2026     19:35                biome
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\resources\ma
+    in\data\modmenu\worldgen
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        06/01/2026     19:35                biome
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\resources\ma
+    in\data\modmenu\worldgen\biome
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        06/01/2026     19:35           1747 mining_biome.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\resources\main\META-INF
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        06/01/2026     19:35           5097 mods.toml
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\tmp
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        06/01/2026     19:35                compileJava
+d-----        16/01/2026     17:55                compileTestJava
+d-----        02/01/2026     08:01                jar
+d-----        07/01/2026     16:50                test
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\tmp\compileJava
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:31                compileTransaction
+-a----        16/01/2026     17:55         209999 previous-compilation-data.bin
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\tmp\compileJ
+    ava\compileTransaction
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:24                backup-dir
+da----        16/01/2026     17:55                stash-dir
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\tmp\compileJ
+    ava\compileTransaction\stash-dir
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        11/01/2026     22:19            968 AIClient$Response.class.uniqu
+                                                  eId15
+-a----        11/01/2026     22:19           7259 AIClient.class.uniqueId0
+-a----        11/01/2026     22:19          19658 AIController.class.uniqueId13
+-a----        11/01/2026     22:19           2597 AIHandler.class.uniqueId5
+-a----        11/01/2026     21:40          12618 AIStateCollector.class.unique
+                                                  Id9
+-a----        09/01/2026     21:42           1134 Authority.class.uniqueId6
+-a----        06/01/2026     19:35           1079 ControlMode.class.uniqueId11
+-a----        07/01/2026     22:24           3738 ExecutionResult.class.uniqueI
+                                                  d10
+-a----        06/01/2026     19:35           1168 ExecutionStatus.class.uniqueI
+                                                  d12
+-a----        06/01/2026     19:35           1332 FailureReason.class.uniqueId1
+                                                  4
+-a----        11/01/2026     18:59           3485 HumanIntentDetector.class.uni
+                                                  queId17
+-a----        11/01/2026     18:59           1147 IntentExecutor$1.class.unique
+                                                  Id18
+-a----        11/01/2026     18:59           7829 IntentExecutor.class.uniqueId
+                                                  7
+-a----        11/01/2026     18:59           1519 IntentType.class.uniqueId1
+-a----        11/01/2026     20:48           5857 MainMenuScreen.class.uniqueId
+                                                  8
+-a----        11/01/2026     18:59           1971 ParameterizedIntent.class.uni
+                                                  queId16
+-a----        11/01/2026     22:19           4684 SystemScreen$AIControlRowComp
+                                                  onent.class.uniqueId2
+-a----        11/01/2026     22:19            679 SystemScreen$AttributeData.cl
+                                                  ass.uniqueId3
+-a----        11/01/2026     22:19           4025 SystemScreen$AttributeRowComp
+                                                  onent.class.uniqueId19
+-a----        11/01/2026     22:19           6503 SystemScreen.class.uniqueId4
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\tmp\compileTestJava
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        07/01/2026     16:52                compileTransaction
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\tmp\compileT
+    estJava\compileTransaction
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        07/01/2026     16:52                backup-dir
+da----        11/01/2026     17:02                stash-dir
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\tmp\compileT
+    estJava\compileTransaction\stash-dir
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        11/01/2026     16:15           8236 AIHardeningLogicTest.class.un
+                                                  iqueId0
+-a----        11/01/2026     16:15           3909 ControlAuthorityTest.class.un
+                                                  iqueId1
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\tmp\jar
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     19:14            306 MANIFEST.MF
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\_RenameSrg2M
+    cp_-895463816
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     13:56           1578 log.txt
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\_RenameSrg2M
+    cp_-973733366
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     05:23           1578 log.txt
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\_RenameSrg2M
+    cp_1466959425
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     05:23           1574 log.txt
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\build\_RenameSrg2M
+    cp_572535719
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     05:23           1557 log.txt
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\failures
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        07/01/2026     12:47            267 incident_00aa05a1.json
+-a----        07/01/2026     12:47            266 incident_024bd579.json
+-a----        07/01/2026     12:47            267 incident_048dfa8b.json
+-a----        07/01/2026     12:47            312 incident_067183ef.json
+-a----        07/01/2026     12:47            275 incident_06b26d99.json
+-a----        07/01/2026     12:47            274 incident_077c6b15.json
+-a----        07/01/2026     12:47            267 incident_0a0615a2.json
+-a----        07/01/2026     12:47            274 incident_0a2035c2.json
+-a----        07/01/2026     12:47            267 incident_0d656b0f.json
+-a----        07/01/2026     12:47            275 incident_0e8bbc81.json
+-a----        07/01/2026     12:47            275 incident_0f3472c7.json
+-a----        07/01/2026     12:47            274 incident_10b770b7.json
+-a----        07/01/2026     12:47            267 incident_13e5b640.json
+-a----        07/01/2026     12:47            275 incident_152ec6a9.json
+-a----        07/01/2026     12:47            276 incident_160ab3ec.json
+-a----        07/01/2026     12:47            275 incident_18088c0a.json
+-a----        07/01/2026     12:47            275 incident_184e29fe.json
+-a----        07/01/2026     12:47            267 incident_18844669.json
+-a----        07/01/2026     12:47            348 incident_19bc7c8a.json
+-a----        07/01/2026     12:47            275 incident_1eb74afb.json
+-a----        07/01/2026     12:47            266 incident_1ef2502e.json
+-a----        07/01/2026     12:47            267 incident_1f109717.json
+-a----        07/01/2026     12:47            275 incident_20667b6f.json
+-a----        07/01/2026     12:47            275 incident_23345da0.json
+-a----        07/01/2026     12:47            275 incident_2676f7dd.json
+-a----        07/01/2026     12:47            267 incident_27526525.json
+-a----        07/01/2026     12:47            275 incident_289e99c4.json
+-a----        07/01/2026     12:47            276 incident_2b0c5086.json
+-a----        07/01/2026     12:47            266 incident_2bd3e9e8.json
+-a----        07/01/2026     12:47            274 incident_2e19f509.json
+-a----        07/01/2026     12:47            267 incident_31b2638d.json
+-a----        07/01/2026     12:47            267 incident_33898885.json
+-a----        07/01/2026     12:47            267 incident_33f21c3b.json
+-a----        07/01/2026     12:47            275 incident_35b5efbd.json
+-a----        07/01/2026     12:47            267 incident_38606395.json
+-a----        07/01/2026     12:47            275 incident_44090f02.json
+-a----        07/01/2026     12:47            267 incident_446fbf5b.json
+-a----        07/01/2026     12:47            275 incident_44d3d5f6.json
+-a----        07/01/2026     12:47            267 incident_4693f010.json
+-a----        07/01/2026     12:47            276 incident_4802ddfe.json
+-a----        07/01/2026     12:47            292 incident_4a406ee7.json
+-a----        07/01/2026     12:47            275 incident_4b67d1bc.json
+-a----        07/01/2026     12:47            267 incident_4c1a66c0.json
+-a----        07/01/2026     12:47            274 incident_51630890.json
+-a----        07/01/2026     12:47            267 incident_54dc7880.json
+-a----        07/01/2026     12:47            276 incident_54fc98e2.json
+-a----        07/01/2026     12:47            274 incident_554dd470.json
+-a----        07/01/2026     12:47            276 incident_573b6e2f.json
+-a----        07/01/2026     12:47            266 incident_58b30c86.json
+-a----        07/01/2026     12:47            267 incident_5967b124.json
+-a----        07/01/2026     12:47            276 incident_5aa9b414.json
+-a----        07/01/2026     12:47            267 incident_5e4c4468.json
+-a----        07/01/2026     12:47            267 incident_60365683.json
+-a----        07/01/2026     12:47            310 incident_61fee17d.json
+-a----        07/01/2026     12:47            274 incident_62177854.json
+-a----        07/01/2026     12:47            275 incident_644df524.json
+-a----        07/01/2026     12:47            292 incident_68ef931f.json
+-a----        07/01/2026     12:47            275 incident_694bca7a.json
+-a----        07/01/2026     12:47            275 incident_69804ea4.json
+-a----        07/01/2026     12:47            274 incident_6e1c38d4.json
+-a----        07/01/2026     12:47            275 incident_6f59e778.json
+-a----        07/01/2026     12:47            275 incident_71983043.json
+-a----        07/01/2026     12:47            274 incident_792089c5.json
+-a----        07/01/2026     12:47            266 incident_7bed1fa0.json
+-a----        07/01/2026     12:47            267 incident_803513c5.json
+-a----        07/01/2026     12:47            265 incident_812c1389.json
+-a----        07/01/2026     12:47            275 incident_8249bd12.json
+-a----        07/01/2026     12:47            267 incident_85026f19.json
+-a----        07/01/2026     12:47            267 incident_85ec5a13.json
+-a----        07/01/2026     12:47            275 incident_87060b79.json
+-a----        07/01/2026     12:47            275 incident_888b3cbf.json
+-a----        07/01/2026     12:47            275 incident_8abad7c8.json
+-a----        07/01/2026     12:47            267 incident_8bfc5417.json
+-a----        07/01/2026     12:47            347 incident_929030c6.json
+-a----        07/01/2026     12:47            291 incident_956e400d.json
+-a----        07/01/2026     12:47            274 incident_95884ce9.json
+-a----        07/01/2026     12:47            266 incident_99dd1c6e.json
+-a----        07/01/2026     12:47            265 incident_9b74ce27.json
+-a----        07/01/2026     12:47            274 incident_9e5f203f.json
+-a----        07/01/2026     12:47            274 incident_9e7d828b.json
+-a----        07/01/2026     12:47            275 incident_9f18f7fc.json
+-a----        07/01/2026     12:47            266 incident_a1c3488d.json
+-a----        07/01/2026     12:47            276 incident_a352e3a1.json
+-a----        07/01/2026     12:47            275 incident_a359b424.json
+-a----        07/01/2026     12:47            291 incident_a3a4b79a.json
+-a----        07/01/2026     12:47            267 incident_a5174ba0.json
+-a----        07/01/2026     12:47            267 incident_a6e1298a.json
+-a----        07/01/2026     12:47            276 incident_a7387d4d.json
+-a----        07/01/2026     12:47            276 incident_afaab50b.json
+-a----        07/01/2026     12:47            275 incident_b26c8c63.json
+-a----        07/01/2026     12:47            274 incident_b7763827.json
+-a----        07/01/2026     12:47            275 incident_c0e6bfab.json
+-a----        07/01/2026     12:47            276 incident_c1b8b1d0.json
+-a----        07/01/2026     12:47            275 incident_c2e7ec39.json
+-a----        07/01/2026     12:47            267 incident_c3f03ea2.json
+-a----        07/01/2026     12:47            274 incident_c55ca71b.json
+-a----        07/01/2026     12:47            267 incident_c6c59e98.json
+-a----        07/01/2026     12:47            267 incident_c72acafa.json
+-a----        07/01/2026     12:47            275 incident_c898d6f7.json
+-a----        07/01/2026     12:47            275 incident_c9f5195a.json
+-a----        07/01/2026     12:47            267 incident_ca12cbe3.json
+-a----        07/01/2026     12:47            275 incident_cab75dbb.json
+-a----        07/01/2026     12:47            275 incident_cbe36749.json
+-a----        07/01/2026     12:47            275 incident_ce827848.json
+-a----        07/01/2026     12:47            275 incident_cfeb7f59.json
+-a----        07/01/2026     12:47            276 incident_d10d3e81.json
+-a----        07/01/2026     12:47            275 incident_d377413b.json
+-a----        07/01/2026     12:47            275 incident_d3903000.json
+-a----        07/01/2026     12:47            275 incident_d394c6b6.json
+-a----        07/01/2026     12:47            292 incident_d4ae0656.json
+-a----        07/01/2026     12:47            267 incident_d4fd02ce.json
+-a----        07/01/2026     12:47            267 incident_de411d0b.json
+-a----        07/01/2026     12:47            275 incident_df0ffe1a.json
+-a----        07/01/2026     12:47            275 incident_dfce60e1.json
+-a----        07/01/2026     12:47            275 incident_e1cba236.json
+-a----        07/01/2026     12:47            276 incident_e8c033cf.json
+-a----        07/01/2026     12:47            267 incident_e99dde47.json
+-a----        07/01/2026     12:47            276 incident_e9c2a9a2.json
+-a----        07/01/2026     12:47            275 incident_e9db9a2c.json
+-a----        07/01/2026     12:47            275 incident_ea8ae038.json
+-a----        07/01/2026     12:47            275 incident_eae7ca7c.json
+-a----        07/01/2026     12:47            267 incident_eb4b5bc0.json
+-a----        07/01/2026     12:47            274 incident_eca34ef7.json
+-a----        07/01/2026     12:47            267 incident_ee8d84ff.json
+-a----        07/01/2026     12:47            265 incident_f0f18279.json
+-a----        07/01/2026     12:47            312 incident_f29380a5.json
+-a----        07/01/2026     12:47            275 incident_f331de54.json
+-a----        07/01/2026     12:47            266 incident_f3547c2b.json
+-a----        07/01/2026     12:47            276 incident_f4277e59.json
+-a----        07/01/2026     12:47            267 incident_f4dad607.json
+-a----        07/01/2026     12:47            267 incident_f717ac9c.json
+-a----        07/01/2026     12:47            276 incident_f7ce1680.json
+-a----        07/01/2026     12:47            267 incident_f93560ee.json
+-a----        07/01/2026     12:47            266 incident_fd62d443.json
+-a----        07/01/2026     12:47            267 incident_fd6529f5.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\gradle
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:31                wrapper
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\gradle\wrapper
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        31/12/2025     22:12          62076 gradle-wrapper.jar
+-a----        31/12/2025     22:12            221 gradle-wrapper.properties
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\logs
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        07/01/2026     22:24            162 2026-01-07-10.log.gz
+-a----        07/01/2026     22:24            376 2026-01-07-11.log.gz
+-a----        07/01/2026     21:54            377 2026-01-07-12.log.gz
+-a----        07/01/2026     21:54            349 2026-01-07-13.log.gz
+-a----        07/01/2026     21:04            291 2026-01-07-14.log.gz
+-a----        07/01/2026     21:03            354 2026-01-07-15.log.gz
+-a----        07/01/2026     19:39            353 2026-01-07-16.log.gz
+-a----        07/01/2026     19:39            355 2026-01-07-17.log.gz
+-a----        07/01/2026     19:38            436 2026-01-07-18.log.gz
+-a----        07/01/2026     16:54            417 2026-01-07-19.log.gz
+-a----        09/01/2026     21:42            363 2026-01-07-2.log.gz
+-a----        07/01/2026     16:53            255 2026-01-07-20.log.gz
+-a----        07/01/2026     16:53            247 2026-01-07-21.log.gz
+-a----        07/01/2026     16:53            148 2026-01-07-22.log.gz
+-a----        07/01/2026     23:35            301 2026-01-07-3.log.gz
+-a----        07/01/2026     23:34            352 2026-01-07-4.log.gz
+-a----        07/01/2026     23:01            351 2026-01-07-5.log.gz
+-a----        07/01/2026     23:00            355 2026-01-07-6.log.gz
+-a----        07/01/2026     22:59            292 2026-01-07-7.log.gz
+-a----        07/01/2026     22:45            355 2026-01-07-8.log.gz
+-a----        07/01/2026     22:44            475 2026-01-07-9.log.gz
+-a----        11/01/2026     15:05            316 2026-01-09-2.log.gz
+-a----        09/01/2026     23:20            314 2026-01-09-3.log.gz
+-a----        09/01/2026     23:19            359 2026-01-09-4.log.gz
+-a----        11/01/2026     17:43            384 2026-01-11-1.log.gz
+-a----        11/01/2026     17:03            381 2026-01-11-2.log.gz
+-a----        11/01/2026     17:02            387 2026-01-11-3.log.gz
+-a----        11/01/2026     16:15            462 2026-01-11-4.log.gz
+-a----        11/01/2026     15:08            451 2026-01-11-5.log.gz
+-a----        11/01/2026     17:43            430 debug-1.log.gz
+-a----        11/01/2026     17:03            430 debug-2.log.gz
+-a----        11/01/2026     17:02            436 debug-3.log.gz
+-a----        11/01/2026     16:15            509 debug-4.log.gz
+-a----        11/01/2026     15:08            499 debug-5.log.gz
+-a----        11/01/2026     17:43           2374 debug.log
+-a----        11/01/2026     17:43           2084 latest.log
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\META-INF
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        11/08/2025     04:12            874 mods.toml
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     05:24                config
+d-----        11/01/2026     20:32                crash-reports
+d-----        01/01/2026     06:24                defaultconfigs
+da----        11/01/2026     22:48                logs
+d-----        01/01/2026     06:24                mods
+d-----        01/01/2026     06:24                resourcepacks
+d-----        09/01/2026     23:51                saves
+-a----        07/01/2026     21:39           3538 options.txt
+-a----        11/01/2026     22:53            102 usercache.json
+-a----        01/01/2026     06:37             51 usernamecache.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\config
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:37                store_layouts
+-a----        11/01/2026     22:48            706 curios-client.toml
+-a----        11/01/2026     22:48            161 curios-common.toml
+-a----        11/01/2026     22:48           1147 fml.toml
+-a----        11/01/2026     22:48           1628 forge-client.toml
+-a----        11/01/2026     22:48            880 lodestone-client.toml
+-a----        11/01/2026     22:48            316 modmenu-common.toml
+-a----        11/01/2026     22:11            704 store_formulas.json
+-a----        11/01/2026     22:53          97398 store_prices.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\crash-reports
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     06:07          21466 crash-2026-01-01_06.07.58-cli
+                                                  ent.txt
+-a----        01/01/2026     06:37          21723 crash-2026-01-01_06.37.39-cli
+                                                  ent.txt
+-a----        01/01/2026     06:44          12834 crash-2026-01-01_06.44.04-ser
+                                                  ver.txt
+-a----        11/01/2026     20:32          15445 crash-2026-01-11_20.32.16-cli
+                                                  ent.txt
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\logs
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:24                telemetry
+-a----        03/01/2026     04:27           3565 2026-01-01-2.log.gz
+-a----        01/01/2026     07:27           4197 2026-01-01-3.log.gz
+-a----        01/01/2026     06:49           9218 2026-01-01-4.log.gz
+-a----        01/01/2026     06:41           5340 2026-01-01-5.log.gz
+-a----        01/01/2026     06:36           5069 2026-01-01-6.log.gz
+-a----        03/01/2026     14:46           5986 2026-01-03-10.log.gz
+-a----        03/01/2026     14:12           5069 2026-01-03-11.log.gz
+-a----        03/01/2026     13:56           4862 2026-01-03-12.log.gz
+-a----        03/01/2026     13:42           4355 2026-01-03-13.log.gz
+-a----        03/01/2026     13:26           4046 2026-01-03-14.log.gz
+-a----        03/01/2026     13:10           5353 2026-01-03-15.log.gz
+-a----        03/01/2026     11:55           3991 2026-01-03-16.log.gz
+-a----        03/01/2026     06:46           4655 2026-01-03-17.log.gz
+-a----        03/01/2026     06:21           4048 2026-01-03-18.log.gz
+-a----        03/01/2026     05:25           3354 2026-01-03-19.log.gz
+-a----        06/01/2026     19:36          15702 2026-01-03-2.log.gz
+-a----        03/01/2026     05:23           4021 2026-01-03-20.log.gz
+-a----        03/01/2026     18:57          15057 2026-01-03-3.log.gz
+-a----        03/01/2026     18:27          15647 2026-01-03-4.log.gz
+-a----        03/01/2026     17:32          15019 2026-01-03-5.log.gz
+-a----        03/01/2026     16:38           5509 2026-01-03-6.log.gz
+-a----        03/01/2026     16:08           2916 2026-01-03-7.log.gz
+-a----        03/01/2026     15:36           4017 2026-01-03-8.log.gz
+-a----        03/01/2026     15:05           4153 2026-01-03-9.log.gz
+-a----        07/01/2026     08:53          15401 2026-01-06-2.log.gz
+-a----        06/01/2026     23:02          14877 2026-01-06-3.log.gz
+-a----        06/01/2026     20:12          61476 2026-01-06-4.log.gz
+-a----        08/01/2026     00:16         130074 2026-01-07-1.log.gz
+-a----        07/01/2026     19:31          14971 2026-01-07-10.log.gz
+-a----        07/01/2026     16:44          16176 2026-01-07-11.log.gz
+-a----        07/01/2026     16:40          17492 2026-01-07-12.log.gz
+-a----        07/01/2026     13:59          15138 2026-01-07-13.log.gz
+-a----        07/01/2026     13:53          15700 2026-01-07-14.log.gz
+-a----        07/01/2026     10:39          14916 2026-01-07-15.log.gz
+-a----        07/01/2026     10:27          15035 2026-01-07-16.log.gz
+-a----        07/01/2026     09:59          15048 2026-01-07-17.log.gz
+-a----        07/01/2026     23:19         128262 2026-01-07-2.log.gz
+-a----        07/01/2026     22:46          17074 2026-01-07-3.log.gz
+-a----        07/01/2026     22:37          20931 2026-01-07-4.log.gz
+-a----        07/01/2026     22:11           2907 2026-01-07-5.log.gz
+-a----        07/01/2026     22:06          15220 2026-01-07-6.log.gz
+-a----        07/01/2026     21:12          15108 2026-01-07-7.log.gz
+-a----        07/01/2026     20:58          15045 2026-01-07-8.log.gz
+-a----        07/01/2026     20:03          15486 2026-01-07-9.log.gz
+-a----        09/01/2026     20:15            157 2026-01-08-2.log.gz
+-a----        11/01/2026     13:43          25018 2026-01-09-2.log.gz
+-a----        09/01/2026     23:50         346414 2026-01-09-3.log.gz
+-a----        09/01/2026     23:33          15770 2026-01-09-4.log.gz
+-a----        09/01/2026     23:12          17251 2026-01-09-5.log.gz
+-a----        09/01/2026     21:58          15627 2026-01-09-6.log.gz
+-a----        09/01/2026     21:47          16946 2026-01-09-7.log.gz
+-a----        09/01/2026     20:39          15871 2026-01-09-8.log.gz
+-a----        11/01/2026     22:48         437738 2026-01-11-1.log.gz
+-a----        11/01/2026     15:49         250901 2026-01-11-10.log.gz
+-a----        11/01/2026     15:33          67450 2026-01-11-11.log.gz
+-a----        11/01/2026     14:35         205531 2026-01-11-12.log.gz
+-a----        11/01/2026     14:18         135706 2026-01-11-13.log.gz
+-a----        11/01/2026     22:28         207823 2026-01-11-2.log.gz
+-a----        11/01/2026     21:57        1009197 2026-01-11-3.log.gz
+-a----        11/01/2026     21:24          21520 2026-01-11-4.log.gz
+-a----        11/01/2026     20:33          11150 2026-01-11-5.log.gz
+-a----        11/01/2026     20:31         829646 2026-01-11-6.log.gz
+-a----        11/01/2026     19:12         493069 2026-01-11-7.log.gz
+-a----        11/01/2026     18:09         337831 2026-01-11-8.log.gz
+-a----        11/01/2026     17:14         117547 2026-01-11-9.log.gz
+-a----        11/01/2026     22:48         468710 debug-1.log.gz
+-a----        11/01/2026     22:28         230224 debug-2.log.gz
+-a----        11/01/2026     21:57        1052628 debug-3.log.gz
+-a----        11/01/2026     21:24          36502 debug-4.log.gz
+-a----        11/01/2026     20:33          23926 debug-5.log.gz
+-a----        11/01/2026     22:56       11596652 debug.log
+-a----        11/01/2026     22:56       11029647 latest.log
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:43                New World
+d-----        01/01/2026     07:29                New World (1)
+d-----        03/01/2026     05:27                New World (2)
+da----        03/01/2026     13:41                New World (3)
+da----        03/01/2026     13:50                New World (4)
+da----        03/01/2026     14:17                New World (5)
+da----        03/01/2026     16:11                New World (6)
+da----        03/01/2026     19:13                New World (7)
+da----        09/01/2026     23:50                New World (8)
+d-----        11/01/2026     22:56                New World (9)
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:37                advancements
+d-----        01/01/2026     06:37                data
+d-----        01/01/2026     06:36                datapacks
+d-----        01/01/2026     06:36                DIM-1
+d-----        01/01/2026     06:36                DIM1
+d-----        01/01/2026     06:36                dimensions
+d-----        01/01/2026     06:37                entities
+d-----        01/01/2026     06:44                playerdata
+d-----        01/01/2026     06:43                poi
+d-----        01/01/2026     06:37                region
+d-----        01/01/2026     06:36                serverconfig
+d-----        01/01/2026     06:37                stats
+-a----        01/01/2026     06:37           8628 icon.png
+-a----        01/01/2026     06:43          37673 level.dat
+-a----        01/01/2026     06:43          37673 level.dat_old
+-a----        01/01/2026     06:43              3 session.lock
+-a----        01/01/2026     06:44           3036 store_data.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World\advancements
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     06:44            330 380df991-f603-344c-a090-369ba
+                                                  d2a924a.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     06:43             48 capabilities.dat
+-a----        01/01/2026     06:43             90 raids.dat
+-a----        01/01/2026     06:43            377 random_sequences.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World\DIM-1
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:37                data
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World\DIM-1\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     06:43             48 capabilities.dat
+-a----        01/01/2026     06:43             90 raids.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World\DIM1
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:37                data
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World\DIM1\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     06:43             48 capabilities.dat
+-a----        01/01/2026     06:43             90 raids_end.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World\dimensions
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:36                modmenu
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World\dimensions\modmenu
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:44                mining_dimension
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World\dimensions\modmenu\mining_dimension
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:37                data
+d-----        01/01/2026     06:44                entities
+d-----        01/01/2026     06:44                region
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World\dimensions\modmenu\mining_dimension\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     06:43             48 capabilities.dat
+-a----        01/01/2026     06:43             90 raids.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World\dimensions\modmenu\mining_dimension\entities
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     06:44              0 r.-1.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World\dimensions\modmenu\mining_dimension\region
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     06:44              0 r.-1.0.mca
+-a----        01/01/2026     06:44              0 r.-1.1.mca
+-a----        01/01/2026     06:44              0 r.0.0.mca
+-a----        01/01/2026     06:44              0 r.0.1.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World\entities
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     06:43         303104 r.-1.0.mca
+-a----        01/01/2026     06:43          82899 r.-1.1.mca
+-a----        01/01/2026     06:37          12288 r.0.0.mca
+-a----        01/01/2026     06:43          17103 r.0.1.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World\playerdata
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     06:44            837 380df991-f603-344c-a090-369ba
+                                                  d2a924a.dat
+-a----        01/01/2026     06:44            837 380df991-f603-344c-a090-369ba
+                                                  d2a924a.dat_old
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World\poi
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     06:37              0 r.-1.0.mca
+-a----        01/01/2026     06:43              0 r.-1.1.mca
+-a----        01/01/2026     06:43              0 r.-2.0.mca
+-a----        01/01/2026     06:43              0 r.-2.1.mca
+-a----        01/01/2026     06:43              0 r.0.0.mca
+-a----        01/01/2026     06:43              0 r.0.1.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World\region
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     06:44        6687176 r.-1.0.mca
+-a----        01/01/2026     06:44        4130469 r.-1.1.mca
+-a----        01/01/2026     06:44         258464 r.-2.0.mca
+-a----        01/01/2026     06:44         168300 r.-2.1.mca
+-a----        01/01/2026     06:44        3065615 r.0.0.mca
+-a----        01/01/2026     06:44        1962298 r.0.1.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World\serverconfig
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     06:44           1787 forge-server.toml
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World\stats
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     06:44            204 380df991-f603-344c-a090-369ba
+                                                  d2a924a.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (1)
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:52                advancements
+d-----        01/01/2026     06:52                data
+d-----        01/01/2026     06:51                datapacks
+d-----        01/01/2026     06:51                DIM-1
+d-----        01/01/2026     06:51                DIM1
+d-----        01/01/2026     06:51                dimensions
+d-----        01/01/2026     06:52                entities
+d-----        01/01/2026     07:29                playerdata
+d-----        01/01/2026     07:28                poi
+d-----        01/01/2026     06:51                region
+d-----        01/01/2026     06:51                serverconfig
+d-----        01/01/2026     06:52                stats
+-a----        01/01/2026     06:52          12347 icon.png
+-a----        01/01/2026     07:29          37787 level.dat
+-a----        01/01/2026     07:29          37790 level.dat_old
+-a----        01/01/2026     07:28              3 session.lock
+-a----        01/01/2026     07:28           3102 store_data.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (1)\advancements
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     07:29            325 380df991-f603-344c-a090-369ba
+                                                  d2a924a.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (1)\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     07:29             48 capabilities.dat
+-a----        01/01/2026     07:29             90 raids.dat
+-a----        01/01/2026     07:29            489 random_sequences.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (1)\DIM-1
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:52                data
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (1)\DIM-1\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     07:29             48 capabilities.dat
+-a----        01/01/2026     07:29             90 raids.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (1)\DIM1
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:52                data
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (1)\DIM1\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     07:29             48 capabilities.dat
+-a----        01/01/2026     07:29             90 raids_end.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (1)\dimensions
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:51                modmenu
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (1)\dimensions\modmenu
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:54                mining_dimension
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (1)\dimensions\modmenu\mining_dimension
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:52                data
+d-----        01/01/2026     06:53                entities
+d-----        01/01/2026     07:28                poi
+d-----        01/01/2026     06:53                region
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (1)\dimensions\modmenu\mining_dimension\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     07:29             48 capabilities.dat
+-a----        01/01/2026     07:29             90 raids.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (1)\dimensions\modmenu\mining_dimension\entities
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     06:53              0 r.-1.-1.mca
+-a----        01/01/2026     06:53              0 r.-1.0.mca
+-a----        01/01/2026     06:53              0 r.0.-1.mca
+-a----        01/01/2026     06:53              0 r.0.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (1)\dimensions\modmenu\mining_dimension\poi
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     07:28              0 r.-1.-1.mca
+-a----        01/01/2026     06:54              0 r.-1.0.mca
+-a----        01/01/2026     07:28              0 r.0.-1.mca
+-a----        01/01/2026     06:54              0 r.0.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (1)\dimensions\modmenu\mining_dimension\region
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     07:29        3441059 r.-1.-1.mca
+-a----        01/01/2026     07:29        2981151 r.-1.0.mca
+-a----        01/01/2026     07:29        2961827 r.0.-1.mca
+-a----        01/01/2026     07:29        2556320 r.0.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (1)\entities
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     07:29         169137 r.-1.-1.mca
+-a----        01/01/2026     07:29         135873 r.-1.0.mca
+-a----        01/01/2026     07:29         221992 r.0.-1.mca
+-a----        01/01/2026     07:29          86804 r.0.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (1)\playerdata
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     07:29            957 380df991-f603-344c-a090-369ba
+                                                  d2a924a.dat
+-a----        01/01/2026     07:29            960 380df991-f603-344c-a090-369ba
+                                                  d2a924a.dat_old
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (1)\poi
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     07:29          28828 r.-1.-1.mca
+-a----        01/01/2026     07:28              0 r.-1.0.mca
+-a----        01/01/2026     07:28              0 r.0.-1.mca
+-a----        01/01/2026     07:28              0 r.0.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (1)\region
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     07:29        2825302 r.-1.-1.mca
+-a----        01/01/2026     07:29        2366176 r.-1.0.mca
+-a----        01/01/2026     07:29        2475149 r.0.-1.mca
+-a----        01/01/2026     07:29        2000400 r.0.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (1)\serverconfig
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     07:28           1787 forge-server.toml
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (1)\stats
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     07:29            343 380df991-f603-344c-a090-369ba
+                                                  d2a924a.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (2)
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     04:28                advancements
+d-----        03/01/2026     04:28                data
+d-----        03/01/2026     04:27                datapacks
+d-----        03/01/2026     04:28                DIM-1
+d-----        03/01/2026     04:28                DIM1
+d-----        03/01/2026     04:28                dimensions
+d-----        03/01/2026     04:28                entities
+d-----        03/01/2026     05:27                playerdata
+d-----        03/01/2026     05:26                poi
+d-----        03/01/2026     04:27                region
+d-----        03/01/2026     05:26                serverconfig
+d-----        03/01/2026     04:28                stats
+-a----        03/01/2026     04:28           8676 icon.png
+-a----        03/01/2026     05:27          37821 level.dat
+-a----        03/01/2026     05:26          37731 level.dat_old
+-a----        03/01/2026     05:26              3 session.lock
+-a----        03/01/2026     04:28            149 store_data.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (2)\advancements
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     05:27            343 380df991-f603-344c-a090-369ba
+                                                  d2a924a.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (2)\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     05:27             90 capabilities.dat
+-a----        03/01/2026     05:27             90 raids.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (2)\DIM-1
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     04:28                data
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (2)\DIM-1\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     05:27             90 capabilities.dat
+-a----        03/01/2026     05:27             90 raids.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (2)\DIM1
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     04:28                data
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (2)\DIM1\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     05:27             90 capabilities.dat
+-a----        03/01/2026     05:27             90 raids_end.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (2)\dimensions
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     04:28                modmenu
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (2)\dimensions\modmenu
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     04:28                mining_dimension
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (2)\dimensions\modmenu\mining_dimension
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     04:28                data
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (2)\dimensions\modmenu\mining_dimension\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     05:27             90 capabilities.dat
+-a----        03/01/2026     05:27             90 raids.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (2)\entities
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     05:27         144389 r.-1.-1.mca
+-a----        03/01/2026     05:27         176828 r.-1.0.mca
+-a----        03/01/2026     05:27         148227 r.0.-1.mca
+-a----        03/01/2026     05:27         144054 r.0.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (2)\playerdata
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     05:27            912 380df991-f603-344c-a090-369ba
+                                                  d2a924a.dat
+-a----        03/01/2026     04:43            824 380df991-f603-344c-a090-369ba
+                                                  d2a924a.dat_old
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (2)\poi
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     05:26              0 r.-1.-1.mca
+-a----        03/01/2026     05:26              0 r.-1.0.mca
+-a----        03/01/2026     04:28          28800 r.0.-1.mca
+-a----        03/01/2026     04:28           8368 r.0.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (2)\region
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     05:26        1839702 r.-1.-1.mca
+-a----        03/01/2026     05:26        2151311 r.-1.0.mca
+-a----        03/01/2026     05:26        1806535 r.0.-1.mca
+-a----        03/01/2026     05:26        1909626 r.0.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (2)\serverconfig
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     05:26            583 curios-server.toml
+-a----        03/01/2026     05:26           1787 forge-server.toml
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (2)\stats
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     05:27            237 380df991-f603-344c-a090-369ba
+                                                  d2a924a.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (3)
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     06:33                advancements
+d-----        03/01/2026     06:33                data
+d-----        03/01/2026     06:32                datapacks
+d-----        03/01/2026     06:32                DIM-1
+d-----        03/01/2026     06:32                DIM1
+d-----        03/01/2026     06:32                dimensions
+d-----        03/01/2026     06:32                entities
+da----        03/01/2026     13:41                playerdata
+d-----        03/01/2026     06:48                poi
+d-----        03/01/2026     06:32                region
+d-----        03/01/2026     06:32                serverconfig
+d-----        03/01/2026     06:33                stats
+-a----        03/01/2026     06:33          11381 icon.png
+-a----        03/01/2026     13:41          38486 level.dat
+-a----        03/01/2026     13:40          38481 level.dat_old
+-a----        03/01/2026     13:27              3 session.lock
+-a----        03/01/2026     13:41           2929 store_data.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (3)\advancements
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     13:41           1733 380df991-f603-344c-a090-369ba
+                                                  d2a924a.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (3)\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     13:41             90 capabilities.dat
+-a----        03/01/2026     13:39             90 raids.dat
+-a----        03/01/2026     13:39            574 random_sequences.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (3)\DIM-1
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     06:33                data
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (3)\DIM-1\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     13:41             90 capabilities.dat
+-a----        03/01/2026     13:39             90 raids.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (3)\DIM1
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     06:33                data
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (3)\DIM1\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     13:41             90 capabilities.dat
+-a----        03/01/2026     13:39             90 raids_end.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (3)\dimensions
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     06:32                modmenu
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (3)\dimensions\modmenu
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     06:32                mining_dimension
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (3)\dimensions\modmenu\mining_dimension
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     06:33                data
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (3)\dimensions\modmenu\mining_dimension\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     13:41             90 capabilities.dat
+-a----        03/01/2026     13:39             90 raids.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (3)\entities
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     13:41         328740 r.-1.-1.mca
+-a----        03/01/2026     13:41         197349 r.-1.0.mca
+-a----        03/01/2026     13:41         116153 r.0.-1.mca
+-a----        03/01/2026     13:41          94878 r.0.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (3)\playerdata
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     13:41           1608 380df991-f603-344c-a090-369ba
+                                                  d2a924a.dat
+-a----        03/01/2026     13:40           1608 380df991-f603-344c-a090-369ba
+                                                  d2a924a.dat_old
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (3)\poi
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     06:33           8324 r.-1.-1.mca
+-a----        03/01/2026     06:48              0 r.-1.0.mca
+-a----        03/01/2026     06:48              0 r.0.-1.mca
+-a----        03/01/2026     06:48              0 r.0.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (3)\region
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     13:41        3539184 r.-1.-1.mca
+-a----        03/01/2026     13:41        3408805 r.-1.0.mca
+-a----        03/01/2026     13:41        2102778 r.0.-1.mca
+-a----        03/01/2026     13:39        1663221 r.0.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (3)\serverconfig
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     13:27            583 curios-server.toml
+-a----        03/01/2026     13:27           1787 forge-server.toml
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (3)\stats
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     13:41            490 380df991-f603-344c-a090-369ba
+                                                  d2a924a.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (4)
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     13:43                advancements
+d-----        03/01/2026     13:43                data
+d-----        03/01/2026     13:43                datapacks
+d-----        03/01/2026     13:43                DIM-1
+d-----        03/01/2026     13:43                DIM1
+d-----        03/01/2026     13:43                dimensions
+d-----        03/01/2026     13:43                entities
+da----        03/01/2026     13:50                playerdata
+d-----        03/01/2026     13:44                poi
+d-----        03/01/2026     13:43                region
+d-----        03/01/2026     13:43                serverconfig
+d-----        03/01/2026     13:43                stats
+-a----        03/01/2026     13:43           9484 icon.png
+-a----        03/01/2026     13:50          37978 level.dat
+-a----        03/01/2026     13:48          38158 level.dat_old
+-a----        03/01/2026     13:43              3 session.lock
+-a----        03/01/2026     13:50           2857 store_data.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (4)\advancements
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     13:50           3571 380df991-f603-344c-a090-369ba
+                                                  d2a924a.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (4)\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     13:50             90 capabilities.dat
+-a----        03/01/2026     13:50             90 raids.dat
+-a----        03/01/2026     13:50            132 random_sequences.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (4)\DIM-1
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     13:43                data
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (4)\DIM-1\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     13:50             90 capabilities.dat
+-a----        03/01/2026     13:50             90 raids.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (4)\DIM1
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     13:43                data
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (4)\DIM1\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     13:50             90 capabilities.dat
+-a----        03/01/2026     13:50             90 raids_end.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (4)\dimensions
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     13:43                modmenu
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (4)\dimensions\modmenu
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     13:43                mining_dimension
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (4)\dimensions\modmenu\mining_dimension
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     13:43                data
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (4)\dimensions\modmenu\mining_dimension\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     13:50             90 capabilities.dat
+-a----        03/01/2026     13:50             90 raids.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (4)\entities
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     13:50         193966 r.-1.-1.mca
+-a----        03/01/2026     13:50         205650 r.-1.0.mca
+-a----        03/01/2026     13:50          66434 r.0.-1.mca
+-a----        03/01/2026     13:50          91427 r.0.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (4)\playerdata
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     13:50           1118 380df991-f603-344c-a090-369ba
+                                                  d2a924a.dat
+-a----        03/01/2026     13:48           1297 380df991-f603-344c-a090-369ba
+                                                  d2a924a.dat_old
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (4)\poi
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     13:44           8330 r.-1.-1.mca
+-a----        03/01/2026     13:43           8323 r.-1.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (4)\region
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     13:50        2180761 r.-1.-1.mca
+-a----        03/01/2026     13:50        2505591 r.-1.0.mca
+-a----        03/01/2026     13:50        1205490 r.0.-1.mca
+-a----        03/01/2026     13:50        1456589 r.0.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (4)\serverconfig
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     13:43            583 curios-server.toml
+-a----        03/01/2026     13:43           1787 forge-server.toml
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (4)\stats
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     13:50            392 380df991-f603-344c-a090-369ba
+                                                  d2a924a.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (5)
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     13:57                advancements
+d-----        03/01/2026     13:59                data
+d-----        03/01/2026     13:57                datapacks
+d-----        03/01/2026     13:57                DIM-1
+d-----        03/01/2026     13:57                DIM1
+d-----        03/01/2026     13:57                dimensions
+d-----        03/01/2026     13:57                entities
+da----        03/01/2026     14:17                playerdata
+d-----        03/01/2026     14:13                poi
+d-----        03/01/2026     14:00                region
+d-----        03/01/2026     13:57                serverconfig
+d-----        03/01/2026     13:57                stats
+-a----        03/01/2026     13:57           7630 icon.png
+-a----        03/01/2026     14:17          38736 level.dat
+-a----        03/01/2026     14:17          38741 level.dat_old
+-a----        03/01/2026     14:13              3 session.lock
+-a----        03/01/2026     14:17           3121 store_data.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (5)\advancements
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     14:17           7843 380df991-f603-344c-a090-369ba
+                                                  d2a924a.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (5)\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     14:17             90 capabilities.dat
+-a----        03/01/2026     14:16             90 raids.dat
+-a----        03/01/2026     14:02            464 random_sequences.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (5)\DIM-1
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     13:57                data
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (5)\DIM-1\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     14:17             90 capabilities.dat
+-a----        03/01/2026     14:16             90 raids.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (5)\DIM1
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     13:57                data
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (5)\DIM1\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     14:17             90 capabilities.dat
+-a----        03/01/2026     14:16             90 raids_end.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (5)\dimensions
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     13:57                modmenu
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (5)\dimensions\modmenu
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     14:15                mining_dimension
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (5)\dimensions\modmenu\mining_dimension
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     13:57                data
+d-----        03/01/2026     14:15                entities
+d-----        03/01/2026     14:15                region
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (5)\dimensions\modmenu\mining_dimension\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     14:17             90 capabilities.dat
+-a----        03/01/2026     14:16             90 raids.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (5)\dimensions\modmenu\mining_dimension\entities
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     14:15              0 r.-1.-1.mca
+-a----        03/01/2026     14:15              0 r.-1.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (5)\dimensions\modmenu\mining_dimension\region
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     14:17        4071424 r.-1.-1.mca
+-a----        03/01/2026     14:17        2760704 r.-1.0.mca
+-a----        03/01/2026     14:17        1277952 r.-2.-1.mca
+-a----        03/01/2026     14:17         864256 r.-2.0.mca
+-a----        03/01/2026     14:17        1277952 r.0.-1.mca
+-a----        03/01/2026     14:17         868352 r.0.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (5)\entities
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     14:17         335872 r.-1.-1.mca
+-a----        03/01/2026     14:17          53248 r.-1.0.mca
+-a----        03/01/2026     14:01          29574 r.0.-1.mca
+-a----        03/01/2026     14:01          12814 r.0.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (5)\playerdata
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     14:17           1540 380df991-f603-344c-a090-369ba
+                                                  d2a924a.dat
+-a----        03/01/2026     14:17           1539 380df991-f603-344c-a090-369ba
+                                                  d2a924a.dat_old
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (5)\poi
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     14:13              0 r.-1.-1.mca
+-a----        03/01/2026     14:01              0 r.-1.0.mca
+-a----        03/01/2026     14:01              0 r.-2.-1.mca
+-a----        03/01/2026     14:01              0 r.-2.0.mca
+-a----        03/01/2026     14:13              0 r.0.-1.mca
+-a----        03/01/2026     14:13              0 r.0.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (5)\region
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     14:17        6455296 r.-1.-1.mca
+-a----        03/01/2026     14:01         135533 r.-1.-2.mca
+-a----        03/01/2026     14:17        4485120 r.-1.0.mca
+-a----        03/01/2026     14:17        1331200 r.-2.-1.mca
+-a----        03/01/2026     14:01          20844 r.-2.-2.mca
+-a----        03/01/2026     14:17         901120 r.-2.0.mca
+-a----        03/01/2026     14:17        2580480 r.0.-1.mca
+-a----        03/01/2026     14:01          69997 r.0.-2.mca
+-a----        03/01/2026     14:17        1642496 r.0.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (5)\serverconfig
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     14:17            583 curios-server.toml
+-a----        03/01/2026     14:17            630 elevatorid-server.toml
+-a----        03/01/2026     14:17           1787 forge-server.toml
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (5)\stats
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     14:17            428 380df991-f603-344c-a090-369ba
+                                                  d2a924a.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (6)
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     14:17                advancements
+d-----        03/01/2026     14:21                data
+d-----        03/01/2026     14:17                datapacks
+d-----        03/01/2026     14:17                DIM-1
+d-----        03/01/2026     14:17                DIM1
+d-----        03/01/2026     14:17                dimensions
+d-----        03/01/2026     14:17                entities
+da----        03/01/2026     16:10                playerdata
+d-----        03/01/2026     14:47                poi
+d-----        03/01/2026     14:17                region
+d-----        03/01/2026     14:17                serverconfig
+d-----        03/01/2026     14:17                stats
+-a----        03/01/2026     14:17           8172 icon.png
+-a----        03/01/2026     16:11          38217 level.dat
+-a----        03/01/2026     16:10          38217 level.dat_old
+-a----        03/01/2026     16:09              3 session.lock
+-a----        03/01/2026     16:11           2923 store_data.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (6)\advancements
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     16:10            795 380df991-f603-344c-a090-369ba
+                                                  d2a924a.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (6)\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     16:11             90 capabilities.dat
+-a----        03/01/2026     16:10             89 raids.dat
+-a----        03/01/2026     14:56            492 random_sequences.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (6)\DIM-1
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     14:17                data
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (6)\DIM-1\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     16:11             90 capabilities.dat
+-a----        03/01/2026     16:10             89 raids.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (6)\DIM1
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     14:17                data
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (6)\DIM1\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     16:11             90 capabilities.dat
+-a----        03/01/2026     16:10             89 raids_end.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (6)\dimensions
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     14:17                modmenu
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (6)\dimensions\modmenu
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     14:17                mining_dimension
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (6)\dimensions\modmenu\mining_dimension
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     14:17                data
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (6)\dimensions\modmenu\mining_dimension\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     16:11             90 capabilities.dat
+-a----        03/01/2026     16:10             89 raids.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (6)\entities
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     16:11          94208 r.-1.-1.mca
+-a----        03/01/2026     16:11         225280 r.-1.0.mca
+-a----        03/01/2026     16:11          73728 r.0.-1.mca
+-a----        03/01/2026     16:11         167936 r.0.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (6)\playerdata
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     16:10            951 380df991-f603-344c-a090-369ba
+                                                  d2a924a.dat
+-a----        03/01/2026     16:10            951 380df991-f603-344c-a090-369ba
+                                                  d2a924a.dat_old
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (6)\poi
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     14:47              0 r.-1.-1.mca
+-a----        03/01/2026     14:47              0 r.-1.0.mca
+-a----        03/01/2026     14:47              0 r.0.-1.mca
+-a----        03/01/2026     14:47              0 r.0.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (6)\region
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     16:11        2744320 r.-1.-1.mca
+-a----        03/01/2026     16:11        3956736 r.-1.0.mca
+-a----        03/01/2026     16:11        3493888 r.0.-1.mca
+-a----        03/01/2026     16:11        5136384 r.0.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (6)\serverconfig
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     16:11            583 curios-server.toml
+-a----        03/01/2026     16:11            630 elevatorid-server.toml
+-a----        03/01/2026     16:11           1787 forge-server.toml
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (6)\stats
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     16:10            418 380df991-f603-344c-a090-369ba
+                                                  d2a924a.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (7)
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     16:11                advancements
+d-----        03/01/2026     16:11                data
+d-----        03/01/2026     16:11                datapacks
+d-----        03/01/2026     16:11                DIM-1
+d-----        03/01/2026     16:11                DIM1
+d-----        03/01/2026     16:11                dimensions
+d-----        03/01/2026     19:12                entities
+da----        03/01/2026     19:13                playerdata
+d-----        03/01/2026     19:11                poi
+d-----        03/01/2026     19:09                region
+d-----        03/01/2026     16:11                serverconfig
+d-----        03/01/2026     16:11                stats
+-a----        03/01/2026     16:11           7757 icon.png
+-a----        03/01/2026     19:13          38821 level.dat
+-a----        03/01/2026     19:12          38820 level.dat_old
+-a----        03/01/2026     18:58              3 session.lock
+-a----        03/01/2026     19:13           2863 store_data.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (7)\advancements
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     19:13           4163 380df991-f603-344c-a090-369ba
+                                                  d2a924a.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (7)\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     19:13             90 capabilities.dat
+-a----        03/01/2026     19:13             90 raids.dat
+-a----        03/01/2026     19:13            849 random_sequences.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (7)\DIM-1
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     16:11                data
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (7)\DIM-1\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     19:13             90 capabilities.dat
+-a----        03/01/2026     19:13             90 raids.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (7)\DIM1
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     16:11                data
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (7)\DIM1\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     19:13             90 capabilities.dat
+-a----        03/01/2026     19:13             90 raids_end.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (7)\dimensions
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     16:11                modmenu
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (7)\dimensions\modmenu
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     16:11                mining_dimension
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (7)\dimensions\modmenu\mining_dimension
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     16:11                data
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (7)\dimensions\modmenu\mining_dimension\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     19:13             90 capabilities.dat
+-a----        03/01/2026     19:13             90 raids.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (7)\entities
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     18:59          12912 r.-1.-1.mca
+-a----        03/01/2026     19:07          33089 r.-1.-2.mca
+-a----        03/01/2026     16:11              0 r.-1.0.mca
+-a----        03/01/2026     19:13         639307 r.0.-1.mca
+-a----        03/01/2026     19:13         312380 r.0.-2.mca
+-a----        03/01/2026     19:11          38555 r.0.0.mca
+-a----        03/01/2026     19:13         688875 r.1.-1.mca
+-a----        03/01/2026     19:13          33518 r.1.-2.mca
+-a----        03/01/2026     19:12          54200 r.1.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (7)\playerdata
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     19:13           1634 380df991-f603-344c-a090-369ba
+                                                  d2a924a.dat
+-a----        03/01/2026     19:12           1632 380df991-f603-344c-a090-369ba
+                                                  d2a924a.dat_old
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (7)\poi
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     16:39              0 r.-1.-1.mca
+-a----        03/01/2026     18:29              0 r.-1.-2.mca
+-a----        03/01/2026     16:39              0 r.-1.0.mca
+-a----        03/01/2026     16:39              0 r.0.-1.mca
+-a----        03/01/2026     18:29              0 r.0.-2.mca
+-a----        03/01/2026     16:39              0 r.0.0.mca
+-a----        03/01/2026     19:09          24707 r.1.-1.mca
+-a----        03/01/2026     18:59              0 r.1.-2.mca
+-a----        03/01/2026     19:08           8320 r.1.0.mca
+-a----        03/01/2026     19:11              0 r.2.-1.mca
+-a----        03/01/2026     19:10              0 r.2.-2.mca
+-a----        03/01/2026     19:10              0 r.2.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (7)\region
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     19:07        1692530 r.-1.-1.mca
+-a----        03/01/2026     19:07        2238284 r.-1.-2.mca
+-a----        03/01/2026     19:09         344480 r.-1.0.mca
+-a----        03/01/2026     19:13        8218825 r.0.-1.mca
+-a----        03/01/2026     19:13        6029313 r.0.-2.mca
+-a----        03/01/2026     19:12        1544607 r.0.0.mca
+-a----        03/01/2026     19:13        6988252 r.1.-1.mca
+-a----        03/01/2026     19:13        2584591 r.1.-2.mca
+-a----        03/01/2026     19:12        2974929 r.1.0.mca
+-a----        03/01/2026     19:11         528747 r.2.-1.mca
+-a----        03/01/2026     19:13         123246 r.2.-2.mca
+-a----        03/01/2026     19:11         278890 r.2.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (7)\serverconfig
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     18:58            583 curios-server.toml
+-a----        03/01/2026     18:58            630 elevatorid-server.toml
+-a----        03/01/2026     18:58           1787 forge-server.toml
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (7)\stats
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     19:13            653 380df991-f603-344c-a090-369ba
+                                                  d2a924a.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (8)
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        06/01/2026     19:37                advancements
+d-----        06/01/2026     19:38                data
+d-----        06/01/2026     19:36                datapacks
+d-----        06/01/2026     19:36                DIM-1
+d-----        06/01/2026     19:36                DIM1
+d-----        06/01/2026     19:36                dimensions
+d-----        06/01/2026     19:46                entities
+da----        09/01/2026     23:50                playerdata
+d-----        06/01/2026     20:13                poi
+d-----        07/01/2026     22:48                region
+d-----        06/01/2026     19:36                serverconfig
+d-----        06/01/2026     19:37                stats
+-a----        06/01/2026     19:37           6215 icon.png
+-a----        09/01/2026     23:50          39114 level.dat
+-a----        09/01/2026     23:49          39114 level.dat_old
+-a----        09/01/2026     23:48              3 session.lock
+-a----        09/01/2026     23:50           3089 store_data.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (8)\advancements
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        09/01/2026     23:50          12122 380df991-f603-344c-a090-369ba
+                                                  d2a924a.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (8)\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        09/01/2026     23:50             90 capabilities.dat
+-a----        09/01/2026     23:49             90 raids.dat
+-a----        09/01/2026     23:49           1162 random_sequences.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (8)\DIM-1
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        06/01/2026     19:37                data
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (8)\DIM-1\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        09/01/2026     23:50             90 capabilities.dat
+-a----        09/01/2026     23:49             90 raids.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (8)\DIM1
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        06/01/2026     19:37                data
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (8)\DIM1\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        09/01/2026     23:50             90 capabilities.dat
+-a----        09/01/2026     23:49             90 raids_end.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (8)\dimensions
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        06/01/2026     19:36                modmenu
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (8)\dimensions\modmenu
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        06/01/2026     19:36                mining_dimension
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (8)\dimensions\modmenu\mining_dimension
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        06/01/2026     19:37                data
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (8)\dimensions\modmenu\mining_dimension\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        09/01/2026     23:50             90 capabilities.dat
+-a----        09/01/2026     23:49             90 raids.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (8)\entities
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        09/01/2026     23:50         733184 r.-1.-1.mca
+-a----        06/01/2026     19:46          62468 r.-1.-2.mca
+-a----        09/01/2026     23:50         491520 r.-1.0.mca
+-a----        09/01/2026     23:50          94208 r.-2.-1.mca
+-a----        09/01/2026     23:50         503808 r.-2.0.mca
+-a----        09/01/2026     23:50         364544 r.0.-1.mca
+-a----        06/01/2026     19:46          58194 r.0.-2.mca
+-a----        09/01/2026     23:50         122880 r.0.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (8)\playerdata
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        09/01/2026     23:50           2049 380df991-f603-344c-a090-369ba
+                                                  d2a924a.dat
+-a----        09/01/2026     23:49           2049 380df991-f603-344c-a090-369ba
+                                                  d2a924a.dat_old
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (8)\poi
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        07/01/2026     13:58          61440 r.-1.-1.mca
+-a----        06/01/2026     19:41              0 r.-1.-2.mca
+-a----        07/01/2026     14:03          73728 r.-1.0.mca
+-a----        06/01/2026     19:46              0 r.-1.1.mca
+-a----        06/01/2026     19:45              0 r.-2.-1.mca
+-a----        06/01/2026     19:42              0 r.-2.-2.mca
+-a----        06/01/2026     19:45              0 r.-2.0.mca
+-a----        06/01/2026     19:46              0 r.-2.1.mca
+-a----        07/01/2026     13:58          45056 r.0.-1.mca
+-a----        06/01/2026     19:41              0 r.0.-2.mca
+-a----        06/01/2026     20:13              0 r.0.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (8)\region
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        09/01/2026     23:49        8507392 r.-1.-1.mca
+-a----        06/01/2026     19:46        3217800 r.-1.-2.mca
+-a----        09/01/2026     23:50        8101888 r.-1.0.mca
+-a----        09/01/2026     23:50        1564672 r.-1.1.mca
+-a----        09/01/2026     23:50        5222400 r.-2.-1.mca
+-a----        06/01/2026     19:44         254317 r.-2.-2.mca
+-a----        09/01/2026     23:50        8089600 r.-2.0.mca
+-a----        09/01/2026     23:50        1597440 r.-2.1.mca
+-a----        07/01/2026     22:49         172395 r.-3.-1.mca
+-a----        07/01/2026     22:49         397679 r.-3.0.mca
+-a----        07/01/2026     22:49         102766 r.-3.1.mca
+-a----        09/01/2026     23:50        6950912 r.0.-1.mca
+-a----        06/01/2026     19:46        2343669 r.0.-2.mca
+-a----        09/01/2026     23:50        4509696 r.0.0.mca
+-a----        07/01/2026     14:04          20843 r.0.1.mca
+-a----        06/01/2026     19:40         135534 r.1.-1.mca
+-a----        06/01/2026     19:40          86379 r.1.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (8)\serverconfig
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        09/01/2026     23:50            583 curios-server.toml
+-a----        09/01/2026     23:50            630 elevatorid-server.toml
+-a----        09/01/2026     23:50           1787 forge-server.toml
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (8)\stats
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        09/01/2026     23:50           2112 380df991-f603-344c-a090-369ba
+                                                  d2a924a.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (9)
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        09/01/2026     23:52                advancements
+d-----        09/01/2026     23:52                data
+d-----        09/01/2026     23:51                datapacks
+d-----        09/01/2026     23:51                DIM-1
+d-----        09/01/2026     23:51                DIM1
+d-----        09/01/2026     23:51                dimensions
+d-----        11/01/2026     19:16                entities
+d-----        11/01/2026     22:56                playerdata
+d-----        11/01/2026     18:14                poi
+d-----        11/01/2026     18:13                region
+d-----        09/01/2026     23:51                serverconfig
+d-----        09/01/2026     23:52                stats
+-a----        09/01/2026     23:52          11248 icon.png
+-a----        11/01/2026     22:56          38917 level.dat
+-a----        11/01/2026     22:56          38912 level.dat_old
+-a----        11/01/2026     22:52              3 session.lock
+-a----        11/01/2026     22:56           3065 store_data.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (9)\advancements
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        11/01/2026     22:56           9207 380df991-f603-344c-a090-369ba
+                                                  d2a924a.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (9)\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        11/01/2026     22:56             90 capabilities.dat
+-a----        11/01/2026     22:56             90 raids.dat
+-a----        11/01/2026     22:56           1076 random_sequences.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (9)\DIM-1
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        09/01/2026     23:52                data
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (9)\DIM-1\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        11/01/2026     22:56             90 capabilities.dat
+-a----        11/01/2026     22:56             90 raids.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (9)\DIM1
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        09/01/2026     23:52                data
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (9)\DIM1\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        11/01/2026     22:56             90 capabilities.dat
+-a----        11/01/2026     22:56             90 raids_end.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (9)\dimensions
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        09/01/2026     23:51                modmenu
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (9)\dimensions\modmenu
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        09/01/2026     23:51                mining_dimension
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (9)\dimensions\modmenu\mining_dimension
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        09/01/2026     23:52                data
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (9)\dimensions\modmenu\mining_dimension\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        11/01/2026     22:56             90 capabilities.dat
+-a----        11/01/2026     22:56             90 raids.dat
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (9)\entities
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        11/01/2026     22:56         417792 r.-1.-1.mca
+-a----        11/01/2026     22:56         741376 r.-1.0.mca
+-a----        11/01/2026     22:55          21148 r.-1.1.mca
+-a----        11/01/2026     22:35          53248 r.-2.-1.mca
+-a----        11/01/2026     22:56         434176 r.-2.0.mca
+-a----        11/01/2026     22:55          20812 r.-2.1.mca
+-a----        11/01/2026     22:56         364544 r.0.-1.mca
+-a----        11/01/2026     22:56         307200 r.0.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (9)\playerdata
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        11/01/2026     22:56           1841 380df991-f603-344c-a090-369ba
+                                                  d2a924a.dat
+-a----        11/01/2026     22:56           1846 380df991-f603-344c-a090-369ba
+                                                  d2a924a.dat_old
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (9)\poi
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        11/01/2026     13:43              0 r.-1.-1.mca
+-a----        11/01/2026     15:46              0 r.-1.-2.mca
+-a----        11/01/2026     22:11          57344 r.-1.0.mca
+-a----        11/01/2026     18:13              0 r.-1.1.mca
+-a----        11/01/2026     18:16          12288 r.-2.-1.mca
+-a----        11/01/2026     22:11          16384 r.-2.0.mca
+-a----        11/01/2026     18:14              0 r.-2.1.mca
+-a----        09/01/2026     23:53          12288 r.0.-1.mca
+-a----        11/01/2026     15:46              0 r.0.-2.mca
+-a----        11/01/2026     15:47          81920 r.0.0.mca
+-a----        11/01/2026     18:13              0 r.0.1.mca
+-a----        11/01/2026     14:31              0 r.1.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (9)\region
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        11/01/2026     22:54        7680000 r.-1.-1.mca
+-a----        11/01/2026     15:48         241664 r.-1.-2.mca
+-a----        11/01/2026     22:56        8941568 r.-1.0.mca
+-a----        11/01/2026     22:55        2240512 r.-1.1.mca
+-a----        11/01/2026     22:54        3449318 r.-2.-1.mca
+-a----        11/01/2026     14:35          12288 r.-2.-2.mca
+-a----        11/01/2026     22:56        7512491 r.-2.0.mca
+-a----        11/01/2026     22:55        1930274 r.-2.1.mca
+-a----        11/01/2026     22:53        7647232 r.0.-1.mca
+-a----        11/01/2026     15:48         237568 r.0.-2.mca
+-a----        11/01/2026     22:55        7323648 r.0.0.mca
+-a----        11/01/2026     22:53         328098 r.0.1.mca
+-a----        11/01/2026     14:33         667648 r.1.-1.mca
+-a----        11/01/2026     14:33         655360 r.1.0.mca
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (9)\serverconfig
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        11/01/2026     22:53            583 curios-server.toml
+-a----        11/01/2026     22:53            630 elevatorid-server.toml
+-a----        11/01/2026     22:53           1787 forge-server.toml
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New
+    World (9)\stats
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        11/01/2026     22:56           1502 380df991-f603-344c-a090-369ba
+                                                  d2a924a.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run-data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:41                config
+d-----        01/01/2026     06:41                defaultconfigs
+d-----        01/01/2026     06:41                logs
+d-----        01/01/2026     06:41                mods
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run-data\config
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     06:41           1146 fml.toml
+-a----        01/01/2026     06:41            704 store_formulas.json
+-a----        01/01/2026     06:41             78 store_prices.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\run-data\logs
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     06:41          84332 debug.log
+-a----        01/01/2026     06:41           5245 latest.log
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:31                generated
+d-----        01/01/2026     06:31                main
+d-----        07/01/2026     12:47                test
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\generated
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:41                resources
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\generated\resources
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:41                .cache
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        04/01/2026     19:56                java
+d-----        01/01/2026     06:31                resources
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:31                com
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\com
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        11/01/2026     12:39                example
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\com\example
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        16/01/2026     17:53                modmenu
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\com\
+    example\modmenu
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        07/01/2026     12:47                client
+d-----        01/01/2026     06:31                commands
+d-----        03/01/2026     18:39                network
+d-----        03/01/2026     18:36                store
+d-----        01/01/2026     06:31                worldgen
+-a----        31/12/2025     22:12           2696 Config.java
+-a----        01/01/2026     04:49           4174 modmenu.java
+-a----        03/01/2026     17:51          17422 ServerForgeEvents.java
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\com\
+    example\modmenu\client
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        04/01/2026     12:20                ui
+-a----        07/01/2026     12:47           9929 ClientForgeEvents.java
+-a----        07/01/2026     12:47            589 ClientModEvents.java
+-a----        07/01/2026     12:47            663 KeyMappings.java
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\com\
+    example\modmenu\client\ui
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     05:54                animation
+d-----        03/01/2026     14:35                base
+d-----        03/01/2026     17:48                component
+d-----        03/01/2026     14:35                layout
+d-----        16/01/2026     17:54                screen
+d-----        03/01/2026     05:54                util
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\com\
+    example\modmenu\client\ui\base
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     14:35           5082 BaseResponsiveLodestoneScreen
+                                                  .java
+-a----        03/01/2026     13:37           4443 ScrollableUIContainer.java
+-a----        03/01/2026     13:37           2568 UIContainer.java
+-a----        03/01/2026     13:37           1229 UIElement.java
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\com\
+    example\modmenu\client\ui\component
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     14:59           3559 AbilitySettingComponent.java
+-a----        03/01/2026     17:48           4461 EffectRowComponent.java
+-a----        03/01/2026     14:58           4634 EnchantmentRowComponent.java
+-a----        03/01/2026     14:59           4840 InventoryComponent.java
+-a----        03/01/2026     07:22           4208 ResponsiveButton.java
+-a----        03/01/2026     14:59           4282 StoreItemComponent.java
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\com\
+    example\modmenu\client\ui\layout
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     14:35           1408 HorizontalLayoutContainer.jav
+                                                  a
+-a----        03/01/2026     13:37           2144 VerticalLayoutContainer.java
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\com\
+    example\modmenu\client\ui\screen
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     18:36          11382 AbilitiesScreen.java
+-a----        03/01/2026     05:56            989 BasePlaceholderScreen.java
+-a----        03/01/2026     14:36           4972 EffectsScreen.java
+-a----        03/01/2026     14:58           7461 EnchantmentScreen.java
+-a----        03/01/2026     14:58           6328 EntityFilterScreen.java
+-a----        03/01/2026     18:37           6838 ItemFilterScreen.java
+-a----        03/01/2026     17:50           4465 MainMenuScreen.java
+-a----        03/01/2026     14:58           3739 MiningEnchantmentScreen.java
+-a----        03/01/2026     14:07           3249 ModFilterScreen.java
+-a----        03/01/2026     17:50          14251 StoreScreen.java
+-a----        16/01/2026     17:54           6698 SystemScreen.java
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\com\
+    example\modmenu\commands
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        31/12/2025     22:12           4860 EMCDumpCommand.java
+-a----        31/12/2025     22:12           3391 StoreCommands.java
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\com\
+    example\modmenu\network
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     16:20           1448 AdminActionPacket.java
+-a----        03/01/2026     17:51           2962 AttributeUpgradePacket.java
+-a----        03/01/2026     14:10           2228 ClearEffectsPacket.java
+-a----        31/12/2025     22:12           3981 EnchantItemPacket.java
+-a----        03/01/2026     17:50           6362 PacketHandler.java
+-a----        03/01/2026     13:22           4146 PurchasePacket.java
+-a----        03/01/2026     06:39            648 SaveLayoutPacket.java
+-a----        03/01/2026     18:36           3721 SellAllPacket.java
+-a----        03/01/2026     13:22           3515 SellPacket.java
+-a----        31/12/2025     22:12           4154 SmeltAllPacket.java
+-a----        03/01/2026     18:36           8603 SyncMoneyPacket.java
+-a----        03/01/2026     13:39           1910 SyncPricesPacket.java
+-a----        03/01/2026     17:53           3076 TeleportToMiningDimensionPack
+                                                  et.java
+-a----        31/12/2025     22:12           1144 ToggleEffectPacket.java
+-a----        03/01/2026     17:49           1476 UnlockFeaturePacket.java
+-a----        03/01/2026     18:39           7736 UpdateAbilityPacket.java
+-a----        03/01/2026     16:21           1174 UpdateEffectPricePacket.java
+-a----        03/01/2026     16:21           1550 UpdateEnchantPricePacket.java
+-a----        03/01/2026     16:21           1257 UpdatePricePacket.java
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\com\
+    example\modmenu\store
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        03/01/2026     16:07                pricing
+-a----        31/12/2025     22:12          69346 DefaultPrices.java
+-a----        03/01/2026     14:38          22195 EffectMaintenanceHandler.java
+-a----        03/01/2026     18:36          40784 StorePriceManager.java
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\com\
+    example\modmenu\store\pricing
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        03/01/2026     16:01            987 DefaultPriceProvider.java
+-a----        03/01/2026     16:01            494 FallbackPriceProvider.java
+-a----        03/01/2026     16:01           2268 InferencePriceProvider.java
+-a----        03/01/2026     16:01           1011 MultiLayerCache.java
+-a----        03/01/2026     16:00            670 PriceProvider.java
+-a----        03/01/2026     16:07           1869 PricingContext.java
+-a----        03/01/2026     16:07           5531 PricingEngine.java
+-a----        03/01/2026     16:01           1281 ProjectEPriceProvider.java
+-a----        03/01/2026     16:01           1663 RecipeDependencyGraph.java
+-a----        03/01/2026     16:06           3182 RecipePriceProvider.java
+-a----        03/01/2026     16:07           2758 UsagePriceProvider.java
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\com\
+    example\modmenu\worldgen
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     05:57           6122 MiningChunkGenerator.java
+-a----        01/01/2026     04:47            739 MiningDimension.java
+-a----        01/01/2026     04:48            736 WorldGenRegistry.java
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\resources
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:31                data
+d-----        01/01/2026     06:31                META-INF
+-a----        31/12/2025     22:12            105 pack.mcmeta
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\resources\data
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:31                forge
+d-----        01/01/2026     06:31                minecraft
+d-----        01/01/2026     06:31                modmenu
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\resources\data\forge
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:31                tags
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\resources
+    \data\forge\tags
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:31                worldgen
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\resources
+    \data\forge\tags\worldgen
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:31                biome
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\resources
+    \data\forge\tags\worldgen\biome
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     04:48             75 is_mining_dimension.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\resources
+    \data\minecraft
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:31                tags
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\resources
+    \data\minecraft\tags
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:31                worldgen
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\resources
+    \data\minecraft\tags\worldgen
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:31                biome
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\resources
+    \data\minecraft\tags\worldgen\biome
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     04:48             75 is_overworld.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\resources
+    \data\modmenu
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:31                dimension
+d-----        01/01/2026     06:31                dimension_type
+d-----        01/01/2026     06:31                tags
+d-----        01/01/2026     06:31                worldgen
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\resources
+    \data\modmenu\dimension
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     04:48            223 mining_dimension.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\resources
+    \data\modmenu\dimension_type
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     04:48            504 mining_dimension_type.json
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\resources
+    \data\modmenu\tags
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:31                worldgen
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\resources
+    \data\modmenu\tags\worldgen
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:25                biome
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\resources
+    \data\modmenu\worldgen
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        01/01/2026     06:45                biome
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\resources
+    \data\modmenu\worldgen\biome
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        01/01/2026     06:45           1747 mining_biome.json
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\resources\META-INF
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+-a----        31/12/2025     22:12           5061 mods.toml
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\test
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        07/01/2026     12:47                java
+d-----        01/01/2026     06:24                resources
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\test\java
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        07/01/2026     12:47                com
+    Diretório: C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\test\java\com
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        07/01/2026     12:47                example
+    Diretório:
+    C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\test\java\com\example
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d-----        16/01/2026     17:53                modmenu

@@ -15,10 +15,13 @@ import net.minecraft.network.chat.Component;
 public class AbilitiesScreen extends BaseResponsiveLodestoneScreen {
     private final Screen parent;
     private ScrollableUIContainer content;
+    private StorePriceManager.AbilitySettings lastSettings;
 
     public AbilitiesScreen(Screen parent) {
         super(Component.literal("Abilities"));
         this.parent = parent;
+        this.lastSettings = new StorePriceManager.AbilitySettings();
+        this.lastSettings.copyFrom(StorePriceManager.clientAbilities);
     }
 
     @Override
@@ -31,6 +34,28 @@ public class AbilitiesScreen extends BaseResponsiveLodestoneScreen {
         this.layoutRoot.addElement(content);
         
         refreshContent();
+    }
+
+    @Override
+    public void render(net.minecraft.client.gui.GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
+        if (!areSettingsEqual(lastSettings, StorePriceManager.clientAbilities)) {
+            lastSettings.copyFrom(StorePriceManager.clientAbilities);
+            refreshContent();
+        }
+        super.render(guiGraphics, mouseX, mouseY, partialTick);
+    }
+
+    private boolean areSettingsEqual(StorePriceManager.AbilitySettings a, StorePriceManager.AbilitySettings b) {
+        return a.miningActive == b.miningActive &&
+               a.autoSell == b.autoSell &&
+               a.itemMagnetActive == b.itemMagnetActive &&
+               a.xpMagnetActive == b.xpMagnetActive &&
+               a.flightActive == b.flightActive &&
+               a.sureKillActive == b.sureKillActive &&
+               a.noAggroActive == b.noAggroActive &&
+               a.captureActive == b.captureActive &&
+               a.areaMiningActive == b.areaMiningActive &&
+               a.growCropsActive == b.growCropsActive;
     }
 
     private void refreshContent() {
@@ -106,6 +131,7 @@ public class AbilitiesScreen extends BaseResponsiveLodestoneScreen {
         addHeader(list, "DEFENSE");
         addToggle(list, "Damage Cancel", s.damageCancelActive, () -> { s.damageCancelActive = !s.damageCancelActive; sync(); });
         addToggle(list, "No Aggro", s.noAggroActive, () -> { s.noAggroActive = !s.noAggroActive; sync(); });
+        addToggle(list, "Capture Mode", s.captureActive, () -> { s.captureActive = !s.captureActive; sync(); });
 
         // Visuals
         addHeader(list, "VISUALS");

@@ -62,12 +62,12 @@ public class MiningEnchantmentScreen extends BaseResponsiveLodestoneScreen {
         if (listContainer == null) return;
         listContainer.clearChildren();
 
-        Map<String, Integer> prices = StorePriceManager.getAllEnchantPrices();
+        Map<String, java.math.BigDecimal> prices = StorePriceManager.getAllEnchantPrices();
         int rowHeight = 35;
         int spacing = 4;
         int i = 0;
 
-        for (Map.Entry<String, Integer> entry : prices.entrySet()) {
+        for (Map.Entry<String, java.math.BigDecimal> entry : prices.entrySet()) {
             ResourceLocation id = ResourceLocation.tryParse(entry.getKey());
             if (id == null) continue;
             
@@ -76,7 +76,7 @@ public class MiningEnchantmentScreen extends BaseResponsiveLodestoneScreen {
             listContainer.addElement(new EnchantmentRowComponent(
                 0, i * (rowHeight + spacing), 
                 listContainer.getWidth() - 15, rowHeight, 
-                id, 0, currentLevel, (eid, lvl) -> {
+                id, java.math.BigDecimal.ZERO, currentLevel, (eid, lvl) -> {
                     pendingEnchants.put(eid, lvl);
                     refreshList();
                 }));

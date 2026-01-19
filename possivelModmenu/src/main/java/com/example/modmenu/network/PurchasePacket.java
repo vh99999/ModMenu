@@ -9,6 +9,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.registries.ForgeRegistries;
 
+import java.math.BigDecimal;
 import java.util.function.Supplier;
 
 public class PurchasePacket {
@@ -55,10 +56,10 @@ public class PurchasePacket {
             if (player != null) {
                 if (specialId != null) {
                     if ("mining_dimension".equals(specialId)) {
-                        long cost = 100000000;
-                        long currentMoney = StorePriceManager.getMoney(player.getUUID());
-                        if (currentMoney >= cost) {
-                            StorePriceManager.setMoney(player.getUUID(), currentMoney - cost);
+                        BigDecimal cost = BigDecimal.valueOf(100000000);
+                        BigDecimal currentMoney = StorePriceManager.getMoney(player.getUUID());
+                        if (currentMoney.compareTo(cost) >= 0) {
+                            StorePriceManager.setMoney(player.getUUID(), currentMoney.subtract(cost));
                             StorePriceManager.unlockHouse(player.getUUID(), "mining_dimension");
                             player.displayClientMessage(Component.literal("§aHouse Unlocked!"), true);
                             StorePriceManager.sync(player);
@@ -69,31 +70,42 @@ public class PurchasePacket {
                     return;
                 }
 
-                int pricePerItem = StorePriceManager.getPrice(item);
-                if (pricePerItem <= 0) pricePerItem = 1; // Safety check
+                BigDecimal pricePerItem = StorePriceManager.getPrice(item);
                 
-                long currentMoney = StorePriceManager.getMoney(player.getUUID());
-                long maxAffordable = currentMoney / pricePerItem;
-                int actualQty = (int) Math.min((long)quantity, maxAffordable);
+                StorePriceManager.SkillData data = StorePriceManager.getSkills(player.getUUID());
+                boolean monopoly = data.activeToggles.contains("WEALTH_KEYSTONE_MONOPOLY");
+                boolean freeToken = data.activeToggles.contains("FREE_PURCHASE_TOKEN");
+                
+                if (monopoly || freeToken) pricePerItem = BigDecimal.ZERO;
 
-                if (actualQty <= 0) {
+                BigDecimal totalCost = pricePerItem.multiply(BigDecimal.valueOf(quantity));
+                BigDecimal currentMoney = StorePriceManager.getMoney(player.getUUID());
+
+                if (!StorePriceManager.canAfford(player.getUUID(), totalCost)) {
                     player.displayClientMessage(Component.literal("§cNot enough money!"), true);
                     return;
                 }
 
-                long totalCost = (long) actualQty * pricePerItem;
-                StorePriceManager.setMoney(player.getUUID(), currentMoney - totalCost);
+                StorePriceManager.addMoney(player.getUUID(), totalCost.negate());
+                
+                if (freeToken && totalCost.compareTo(BigDecimal.ZERO) == 0 && quantity > 0) {
+                    data.activeToggles.remove("FREE_PURCHASE_TOKEN");
+                }
+
+                // Monopoly Cashback
+                if (monopoly && totalCost.compareTo(BigDecimal.ZERO) == 0) {
+                    BigDecimal originalPrice = StorePriceManager.getPrice(item);
+                    BigDecimal cashback = originalPrice.multiply(BigDecimal.valueOf(quantity)).multiply(BigDecimal.valueOf(0.01));
+                    if (cashback.compareTo(BigDecimal.ZERO) > 0) StorePriceManager.addMoney(player.getUUID(), cashback);
+                }
 
                 // Give item
-                ItemStack stackToGive = new ItemStack(item, actualQty);
+                ItemStack stackToGive = new ItemStack(item, quantity);
                 if (!player.getInventory().add(stackToGive)) {
                     player.drop(stackToGive, false);
                 }
 
-                String message = "§aBought " + actualQty + "x " + item.getDescription().getString();
-                if (actualQty < quantity) {
-                    message += " §7(requested " + quantity + ")";
-                }
+                String message = "§aBought " + quantity + "x " + item.getDescription().getString();
                 message += " for §e$" + StorePriceManager.formatCurrency(totalCost);
                 player.displayClientMessage(Component.literal(message), true);
 

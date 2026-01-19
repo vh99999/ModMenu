@@ -107,7 +107,7 @@ public class ResponsiveButton extends UIElement {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (active && isHovered && button == 0) {
+        if (active && isMouseOver(mouseX, mouseY) && button == 0) {
             onPress.accept(this);
             return true;
         }

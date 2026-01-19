@@ -16,4 +16,12 @@ public class KeyMappings {
             GLFW.GLFW_KEY_9,
             KEY_CATEGORY_EXAMPLE
     );
+
+    public static final KeyMapping REMOTE_ACCESS_KEY = new KeyMapping(
+            "key.modmenu.remote_access",
+            KeyConflictContext.IN_GAME,
+            InputConstants.Type.KEYSYM,
+            GLFW.GLFW_KEY_P,
+            KEY_CATEGORY_EXAMPLE
+    );
 }

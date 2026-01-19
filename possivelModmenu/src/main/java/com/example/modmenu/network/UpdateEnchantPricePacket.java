@@ -7,25 +7,26 @@ import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.registries.ForgeRegistries;
 
+import java.math.BigDecimal;
 import java.util.function.Supplier;
 
 public class UpdateEnchantPricePacket {
     private final ResourceLocation enchantId;
-    private final int price;
+    private final BigDecimal price;
 
-    public UpdateEnchantPricePacket(ResourceLocation enchantId, int price) {
+    public UpdateEnchantPricePacket(ResourceLocation enchantId, BigDecimal price) {
         this.enchantId = enchantId;
         this.price = price;
     }
 
     public UpdateEnchantPricePacket(FriendlyByteBuf buf) {
         this.enchantId = buf.readResourceLocation();
-        this.price = buf.readInt();
+        this.price = new BigDecimal(buf.readUtf());
     }
 
     public void encode(FriendlyByteBuf buf) {
         buf.writeResourceLocation(enchantId);
-        buf.writeInt(price);
+        buf.writeUtf(price.toString());
     }
 
     public void handle(Supplier<NetworkEvent.Context> ctx) {

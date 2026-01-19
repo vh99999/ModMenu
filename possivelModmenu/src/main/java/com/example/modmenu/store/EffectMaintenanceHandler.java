@@ -1,6 +1,7 @@
 package com.example.modmenu.store;
 
 import com.example.modmenu.modmenu;
+import com.example.modmenu.store.SkillManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -21,6 +22,8 @@ import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.event.level.LevelEvent;
 import net.minecraft.world.level.biome.MobSpawnSettings;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.Map;
 import java.util.UUID;
 import java.util.List;
@@ -30,28 +33,40 @@ import java.lang.reflect.Field;
 @Mod.EventBusSubscriber(modid = "modmenu")
 public class EffectMaintenanceHandler {
     private static int tickCounter = 0;
+    private static int passiveIncomeTimer = 0;
+    private static int compoundInterestTimer = 0;
 
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         
         if (net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer() != null) {
+            long time = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer().overworld().getGameTime();
             for (ServerPlayer player : net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer().getPlayerList().getPlayers()) {
                 UUID uuid = player.getUUID();
                 StorePriceManager.AbilitySettings abilitySettings = StorePriceManager.getAbilities(uuid);
                 
-                if (abilitySettings.itemMagnetActive) {
-                    handleItemMagnet(player, abilitySettings);
+                // Performance Optimization: Throttle Magnets and Crop Growing
+                if (time % 5 == 0) {
+                    if (abilitySettings.itemMagnetActive) {
+                        handleItemMagnet(player, abilitySettings);
+                    }
+                    if (abilitySettings.xpMagnetActive) {
+                        handleXpMagnet(player, abilitySettings);
+                    }
                 }
-                if (abilitySettings.xpMagnetActive) {
-                    handleXpMagnet(player, abilitySettings);
+                
+                if (time % 10 == 0) {
+                    if (abilitySettings.growCropsActive) {
+                        handleGrowCrops(player, abilitySettings);
+                    }
                 }
-                if (abilitySettings.growCropsActive) {
-                    handleGrowCrops(player, abilitySettings);
-                }
+                
                 if (abilitySettings.spawnBoostActive) {
                     handleSpawnBoostManual(player, abilitySettings);
                 }
+                
+                SkillManager.tick(player);
             }
         }
 
@@ -59,6 +74,7 @@ public class EffectMaintenanceHandler {
         if (tickCounter >= 20) {
             tickCounter = 0;
             tick();
+            SkillManager.serverTickSecond();
         }
     }
 
@@ -74,7 +90,7 @@ public class EffectMaintenanceHandler {
         
         if (attempts <= 0) return;
         
-        long costPerAttempt = StorePriceManager.formulas.spawnBoostPerSpawnBase / 20; 
+        BigDecimal costPerAttempt = StorePriceManager.formulas.spawnBoostPerSpawnBase.divide(BigDecimal.valueOf(20), 10, RoundingMode.HALF_UP); 
         
         for (int i = 0; i < attempts; i++) {
             String targetId = settings.spawnBoostTargets.get(level.random.nextInt(settings.spawnBoostTargets.size()));
@@ -101,7 +117,7 @@ public class EffectMaintenanceHandler {
                                   level.noCollision(type.getAABB(spawnPos.getX(), spawnPos.getY(), spawnPos.getZ()));
                 
                 if (canSpawn) {
-                    if (StorePriceManager.getMoney(player.getUUID()) >= costPerAttempt) {
+                    if (StorePriceManager.canAfford(player.getUUID(), costPerAttempt)) {
                         net.minecraft.world.entity.Entity entity = type.create(level);
                         if (entity != null) {
                             entity.moveTo(spawnPos.getX() + 0.5, spawnPos.getY(), spawnPos.getZ() + 0.5, level.random.nextFloat() * 360F, 0);
@@ -115,7 +131,7 @@ public class EffectMaintenanceHandler {
                                 }
                             }
                             level.addFreshEntity(entity);
-                            StorePriceManager.addMoney(player.getUUID(), -costPerAttempt);
+                            StorePriceManager.addMoney(player.getUUID(), costPerAttempt.negate());
                         }
                     }
                 }
@@ -140,11 +156,11 @@ public class EffectMaintenanceHandler {
                 continue;
             }
 
-            long totalCost = StorePriceManager.getDrain(uuid);
-            long money = StorePriceManager.getMoney(uuid);
+            BigDecimal totalCost = StorePriceManager.getDrain(uuid);
+            BigDecimal money = StorePriceManager.getMoney(uuid);
 
-            if (money >= totalCost) {
-                StorePriceManager.addMoney(uuid, -totalCost);
+            if (money.compareTo(totalCost) >= 0) {
+                StorePriceManager.addMoney(uuid, totalCost.negate());
                 applyEffects(player, active);
                 
                 if (abilitySettings.repairActive) {
@@ -192,29 +208,31 @@ public class EffectMaintenanceHandler {
 
     private static void handleRepair(ServerPlayer player) {
         int repairCostPerPoint = StorePriceManager.formulas.repairCostPerPoint;
-        long currentMoney = StorePriceManager.getMoney(player.getUUID());
+        BigDecimal currentMoney = StorePriceManager.getMoney(player.getUUID());
         long totalRepaired = 0;
 
         for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
             ItemStack stack = player.getInventory().getItem(i);
             if (!stack.isEmpty() && stack.isDamaged() && stack.getItem().canBeDepleted()) {
                 int damage = stack.getDamageValue();
-                long cost = (long) damage * repairCostPerPoint;
+                BigDecimal cost = BigDecimal.valueOf(damage).multiply(BigDecimal.valueOf(repairCostPerPoint));
                 
-                if (currentMoney >= cost) {
+                if (currentMoney.compareTo(cost) >= 0) {
                     stack.setDamageValue(0);
-                    currentMoney -= cost;
+                    currentMoney = currentMoney.subtract(cost);
                     totalRepaired += damage;
                 } else {
-                    int pointsToRepair = (int) (currentMoney / repairCostPerPoint);
-                    if (pointsToRepair > 0) {
-                        stack.setDamageValue(damage - pointsToRepair);
-                        currentMoney -= (long) pointsToRepair * repairCostPerPoint;
-                        totalRepaired += pointsToRepair;
+                    BigDecimal bdRepairCost = BigDecimal.valueOf(repairCostPerPoint);
+                    BigDecimal pointsBD = currentMoney.divide(bdRepairCost, 0, RoundingMode.FLOOR);
+                    if (pointsBD.compareTo(BigDecimal.ZERO) > 0) {
+                        int actualRepair = pointsBD.compareTo(BigDecimal.valueOf(damage)) >= 0 ? damage : pointsBD.intValue();
+                        stack.setDamageValue(damage - actualRepair);
+                        currentMoney = currentMoney.subtract(BigDecimal.valueOf(actualRepair).multiply(BigDecimal.valueOf(repairCostPerPoint)));
+                        totalRepaired += actualRepair;
                     }
                 }
             }
-            if (currentMoney <= 0) break;
+            if (currentMoney.compareTo(BigDecimal.ZERO) <= 0) break;
         }
 
         if (totalRepaired > 0) {
@@ -223,11 +241,38 @@ public class EffectMaintenanceHandler {
     }
 
     private static void handleItemMagnet(ServerPlayer player, StorePriceManager.AbilitySettings settings) {
-        net.minecraft.world.phys.AABB area = player.getBoundingBox().inflate(settings.itemMagnetRange);
+        StorePriceManager.SkillData skillData = StorePriceManager.getSkills(player.getUUID());
+        int vacuumRank = SkillManager.getActiveRank(skillData, "UTILITY_QUANTUM_VACUUM");
+        
+        double range = settings.itemMagnetRange;
+        if (vacuumRank > 0) range += 128 * vacuumRank;
+        if (vacuumRank >= 5) range = 1000; // Singularity: Global-ish
+
+        // Magnet Throttling (Phase 3.3)
+        if (range > 32 && player.level().getGameTime() % 5 != 0) return;
+
+        net.minecraft.world.phys.AABB area = player.getBoundingBox().inflate(range);
         java.util.List<net.minecraft.world.entity.item.ItemEntity> items = player.level().getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, area);
+        
+        // Dynamic Optimization: prioritize items with higher value per slot (Value Density)
+        if (items.size() > 5) {
+            items.sort((a, b) -> {
+                BigDecimal priceA = StorePriceManager.getSellPrice(a.getItem().getItem());
+                BigDecimal priceB = StorePriceManager.getSellPrice(b.getItem().getItem());
+                return priceB.multiply(BigDecimal.valueOf(b.getItem().getCount())).compareTo(priceA.multiply(BigDecimal.valueOf(a.getItem().getCount())));
+            });
+        }
+
+        int processed = 0;
+        int maxOps = settings.itemMagnetOpsPerTick;
+        if (vacuumRank > 0) maxOps += 100 * vacuumRank;
+        if (vacuumRank >= 5) maxOps = 10000; // No speed limit
+
+        int batchRank = SkillManager.getActiveRank(skillData, "UTILITY_BATCH_PROCESSING");
         
         for (net.minecraft.world.entity.item.ItemEntity itemEntity : items) {
             if (!itemEntity.isAlive()) continue;
+            if (processed >= maxOps) break;
             
             ItemStack stack = itemEntity.getItem();
             String id = ForgeRegistries.ITEMS.getKey(stack.getItem()).toString();
@@ -235,11 +280,24 @@ public class EffectMaintenanceHandler {
             boolean shouldSell = settings.autoSellerWhitelist.contains(id);
             if (settings.autoSellerIsBlacklist) shouldSell = !shouldSell;
 
-            if (settings.autoSellerActive && shouldSell) {
-                int price = StorePriceManager.getSellPrice(stack.getItem());
-                if (price > 0) {
-                    long totalGain = (long) price * stack.getCount();
+            // Batch Processing Rank 5: Instant Liquidation
+            if (batchRank >= 5 && shouldSell) {
+                BigDecimal price = StorePriceManager.getSellPrice(stack.getItem());
+                if (price.compareTo(BigDecimal.ZERO) > 0) {
+                    BigDecimal totalGain = price.multiply(BigDecimal.valueOf(stack.getCount()));
                     StorePriceManager.addMoney(player.getUUID(), totalGain);
+                    StorePriceManager.recordSale(stack.getItem(), BigDecimal.valueOf(stack.getCount()));
+                    itemEntity.discard();
+                    continue;
+                }
+            }
+
+            if (settings.autoSellerActive && shouldSell) {
+                BigDecimal price = StorePriceManager.getSellPrice(stack.getItem());
+                if (price.compareTo(BigDecimal.ZERO) > 0) {
+                    BigDecimal totalGain = price.multiply(BigDecimal.valueOf(stack.getCount()));
+                    StorePriceManager.addMoney(player.getUUID(), totalGain);
+                    StorePriceManager.recordSale(stack.getItem(), BigDecimal.valueOf(stack.getCount()));
                     player.displayClientMessage(net.minecraft.network.chat.Component.literal("§6[AutoSeller] §aSold " + stack.getCount() + "x " + stack.getHoverName().getString() + " for §e$" + StorePriceManager.formatCurrency(totalGain)), true);
                     itemEntity.discard();
                     continue;
@@ -249,15 +307,20 @@ public class EffectMaintenanceHandler {
             if (player.getInventory().add(stack)) {
                 if (stack.isEmpty()) {
                     itemEntity.discard();
+                    processed++;
                 }
             } else {
                 itemEntity.setPos(player.getX(), player.getY(), player.getZ());
                 itemEntity.setNoPickUpDelay();
+                processed++;
             }
         }
     }
 
     private static void handleXpMagnet(ServerPlayer player, StorePriceManager.AbilitySettings settings) {
+        // Magnet Throttling
+        if (settings.xpMagnetRange > 32 && player.level().getGameTime() % 5 != 0) return;
+
         net.minecraft.world.phys.AABB area = player.getBoundingBox().inflate(settings.xpMagnetRange);
         java.util.List<net.minecraft.world.entity.ExperienceOrb> orbs = player.level().getEntitiesOfClass(net.minecraft.world.entity.ExperienceOrb.class, area);
         
@@ -271,60 +334,70 @@ public class EffectMaintenanceHandler {
 
     private static void handleGrowCrops(ServerPlayer player, StorePriceManager.AbilitySettings settings) {
         int range = settings.growCropsRange;
-        long opCost = StorePriceManager.formulas.growCropsPerOperation;
+        BigDecimal opCost = StorePriceManager.formulas.growCropsPerOperation;
         
         BlockPos pos = player.blockPosition();
-        ServerLevel level = (ServerLevel) player.level();
+        ServerLevel level = player.serverLevel();
         
         int grown = 0;
-        for (BlockPos p : BlockPos.betweenClosed(pos.offset(-range, -2, -range), pos.offset(range, 2, range))) {
-            BlockState state = level.getBlockState(p);
-            if (state.getBlock() instanceof BonemealableBlock growable) {
-                if (growable.isValidBonemealTarget(level, p, state, false)) {
-                    if (StorePriceManager.getMoney(player.getUUID()) >= opCost) {
-                        growable.performBonemeal(level, level.random, p, state);
-                        StorePriceManager.addMoney(player.getUUID(), -opCost);
-                        grown++;
-                    }
-                }
-            } else if (state.is(net.minecraft.world.level.block.Blocks.SUGAR_CANE) || state.is(net.minecraft.world.level.block.Blocks.CACTUS)) {
-                BlockPos topPos = p.above();
-                if (level.isEmptyBlock(topPos)) {
-                    int height = 1;
-                    BlockPos below = p.below();
-                    while (level.getBlockState(below).is(state.getBlock())) {
-                        height++;
-                        below = below.below();
-                    }
-                    if (height < 3) {
-                        if (StorePriceManager.getMoney(player.getUUID()) >= opCost) {
-                            level.setBlockAndUpdate(topPos, state.getBlock().defaultBlockState());
-                            StorePriceManager.addMoney(player.getUUID(), -opCost);
-                            grown++;
+        // Optimization: Only scan chunks in range and use BlockPos.MutableBlockPos
+        int minX = (pos.getX() - range);
+        int maxX = (pos.getX() + range);
+        int minZ = (pos.getZ() - range);
+        int maxZ = (pos.getZ() + range);
+        int minY = (pos.getY() - 2);
+        int maxY = (pos.getY() + 2);
+
+        BlockPos.MutableBlockPos mutablePos = new BlockPos.MutableBlockPos();
+
+        for (int x = minX; x <= maxX; x++) {
+            for (int z = minZ; z <= maxZ; z++) {
+                // Check if chunk is loaded for this column
+                if (!level.hasChunk(x >> 4, z >> 4)) continue;
+                
+                for (int y = minY; y <= maxY; y++) {
+                    mutablePos.set(x, y, z);
+                    BlockState state = level.getBlockState(mutablePos);
+                    if (state.isAir()) continue;
+
+                    if (state.getBlock() instanceof BonemealableBlock growable) {
+                        if (growable.isValidBonemealTarget(level, mutablePos, state, false)) {
+                            if (StorePriceManager.canAfford(player.getUUID(), opCost)) {
+                                growable.performBonemeal(level, level.random, mutablePos.immutable(), state);
+                                StorePriceManager.addMoney(player.getUUID(), opCost.negate());
+                                grown++;
+                            }
+                        }
+                    } else if (state.is(net.minecraft.world.level.block.Blocks.SUGAR_CANE) || state.is(net.minecraft.world.level.block.Blocks.CACTUS)) {
+                        BlockPos topPos = mutablePos.above();
+                        if (level.isEmptyBlock(topPos)) {
+                            int height = 1;
+                            BlockPos below = mutablePos.below();
+                            while (level.getBlockState(below).is(state.getBlock())) {
+                                height++;
+                                below = below.below();
+                            }
+                            if (height < 3) {
+                                if (StorePriceManager.canAfford(player.getUUID(), opCost)) {
+                                    level.setBlockAndUpdate(topPos, state.getBlock().defaultBlockState());
+                                    StorePriceManager.addMoney(player.getUUID(), opCost.negate());
+                                    grown++;
+                                }
+                            }
+                        }
+                    } else if (state.is(net.minecraft.world.level.block.Blocks.NETHER_WART)) {
+                        int age = state.getValue(net.minecraft.world.level.block.NetherWartBlock.AGE);
+                        if (age < 3) {
+                            if (StorePriceManager.canAfford(player.getUUID(), opCost)) {
+                                level.setBlockAndUpdate(mutablePos, state.setValue(net.minecraft.world.level.block.NetherWartBlock.AGE, age + 1));
+                                StorePriceManager.addMoney(player.getUUID(), opCost.negate());
+                                grown++;
+                            }
                         }
                     }
-                }
-            } else if (state.is(net.minecraft.world.level.block.Blocks.NETHER_WART)) {
-                int age = state.getValue(net.minecraft.world.level.block.NetherWartBlock.AGE);
-                if (age < 3) {
-                    if (StorePriceManager.getMoney(player.getUUID()) >= opCost) {
-                        level.setBlockAndUpdate(p, state.setValue(net.minecraft.world.level.block.NetherWartBlock.AGE, age + 1));
-                        StorePriceManager.addMoney(player.getUUID(), -opCost);
-                        grown++;
-                    }
-                }
-            } else if (state.is(net.minecraft.world.level.block.Blocks.CHORUS_FLOWER)) {
-                int age = state.getValue(net.minecraft.world.level.block.ChorusFlowerBlock.AGE);
-                if (age < 5) {
-                    if (StorePriceManager.getMoney(player.getUUID()) >= opCost) {
-                        // Chorus flower growth is more complex than just setting age, but this is a start
-                        level.setBlockAndUpdate(p, state.setValue(net.minecraft.world.level.block.ChorusFlowerBlock.AGE, age + 1));
-                        StorePriceManager.addMoney(player.getUUID(), -opCost);
-                        grown++;
-                    }
+                    if (grown > 5) return; 
                 }
             }
-            if (grown > 5) break; 
         }
     }
 
@@ -424,15 +497,14 @@ public class EffectMaintenanceHandler {
         boolean shouldSell = settings.autoSellerWhitelist.contains(id);
         if (settings.autoSellerIsBlacklist) shouldSell = !shouldSell;
 
-        if (shouldSell) {
-            int price = StorePriceManager.getSellPrice(stack.getItem());
-            if (price > 0) {
-                long totalGain = (long) price * stack.getCount();
+        if (shouldSell && stack.getOrCreateTag().getInt("modmenu_lock_state") == 0) {
+            BigDecimal price = StorePriceManager.getSellPrice(stack.getItem());
+            if (price.compareTo(BigDecimal.ZERO) > 0) {
+                BigDecimal totalGain = price.multiply(BigDecimal.valueOf(stack.getCount()));
                 StorePriceManager.addMoney(player.getUUID(), totalGain);
                 player.displayClientMessage(net.minecraft.network.chat.Component.literal("§6[AutoSeller] §aSold " + stack.getCount() + "x " + stack.getHoverName().getString() + " for §e$" + StorePriceManager.formatCurrency(totalGain)), true);
                 event.getItem().discard();
                 event.setCanceled(true);
-                StorePriceManager.sync(player);
             }
         }
     }

@@ -3,29 +3,30 @@ package com.example.modmenu.store.pricing;
 import net.minecraft.world.item.*;
 import net.minecraftforge.registries.ForgeRegistries;
 
+import java.math.BigDecimal;
 import java.util.Optional;
 
 public class InferencePriceProvider implements PriceProvider {
     @Override
-    public Optional<Long> getPrice(Item item, PricingContext context) {
+    public Optional<BigDecimal> getPrice(Item item, PricingContext context) {
         String id = ForgeRegistries.ITEMS.getKey(item).toString();
         
         // 1. Infer from class
-        long basePrice = 100; // Default base for inferred items
+        BigDecimal basePrice = BigDecimal.valueOf(100); // Default base for inferred items
 
         if (item instanceof TieredItem tieredItem) {
             Tier tier = tieredItem.getTier();
-            basePrice = inferFromTier(tier);
+            basePrice = BigDecimal.valueOf(inferFromTier(tier));
         } else if (item instanceof ArmorItem armorItem) {
             ArmorMaterial material = armorItem.getMaterial();
-            basePrice = inferFromArmorMaterial(material);
+            basePrice = BigDecimal.valueOf(inferFromArmorMaterial(material));
         } else if (item instanceof BlockItem blockItem) {
-            basePrice = 16; // Basic blocks
+            basePrice = BigDecimal.valueOf(16); // Basic blocks
         }
 
         // 2. Adjust by stats if applicable
         if (item instanceof DiggerItem diggerItem) {
-            basePrice += (long) (diggerItem.getAttackDamage() * 10);
+            basePrice = basePrice.add(BigDecimal.valueOf(diggerItem.getAttackDamage() * 10));
         }
 
         // 3. Rarity modifiers (already applied in PricingEngine, but we can add more here if needed)

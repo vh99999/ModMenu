@@ -14,6 +14,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraftforge.registries.ForgeRegistries;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -23,8 +24,8 @@ public class EffectsScreen extends BaseResponsiveLodestoneScreen {
     private final Screen parent;
     private EditBox searchBox;
     private ScrollableUIContainer effectList;
-    private List<Map.Entry<String, Integer>> allEffects = new ArrayList<>();
-    private List<Map.Entry<String, Integer>> visibleEffects = new ArrayList<>();
+    private List<Map.Entry<String, BigDecimal>> allEffects = new ArrayList<>();
+    private List<Map.Entry<String, BigDecimal>> visibleEffects = new ArrayList<>();
 
     public EffectsScreen(Screen parent) {
         super(Component.literal("Effects Store"));
@@ -89,7 +90,7 @@ public class EffectsScreen extends BaseResponsiveLodestoneScreen {
         
         int rowHeight = 35;
         for (int i = 0; i < visibleEffects.size(); i++) {
-            Map.Entry<String, Integer> entry = visibleEffects.get(i);
+            Map.Entry<String, java.math.BigDecimal> entry = visibleEffects.get(i);
             effectList.addElement(new EffectRowComponent(
                 0, i * rowHeight, effectList.getWidth() - 10, rowHeight - 5,
                 entry.getKey(), entry.getValue(),

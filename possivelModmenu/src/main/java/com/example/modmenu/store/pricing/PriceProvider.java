@@ -1,6 +1,7 @@
 package com.example.modmenu.store.pricing;
 
 import net.minecraft.world.item.Item;
+import java.math.BigDecimal;
 import java.util.Optional;
 
 public interface PriceProvider {
@@ -10,7 +11,7 @@ public interface PriceProvider {
      * @param context The pricing context.
      * @return An Optional containing the price if available, otherwise empty.
      */
-    Optional<Long> getPrice(Item item, PricingContext context);
+    Optional<BigDecimal> getPrice(Item item, PricingContext context);
 
     /**
      * The priority of this provider. Higher values are processed first.

@@ -46,7 +46,7 @@ public class StoreItemComponent extends UIElement {
         }
 
         // Price in GREEN below the item
-        long price = item != null ? (isSellMode ? StorePriceManager.getSellPrice(item) : StorePriceManager.getBuyPrice(item)) : 100000000;
+        java.math.BigDecimal price = item != null ? (isSellMode ? StorePriceManager.getSellPrice(item) : StorePriceManager.getBuyPrice(item)) : java.math.BigDecimal.valueOf(100000000);
         String priceText = "$" + StorePriceManager.formatCurrency(price);
         int priceColor = 0xFF55FF55; // Always green as in the image
         
