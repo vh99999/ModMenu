@@ -37,6 +37,7 @@ public class ToggleSkillPacket {
                             data.skillRanks.put(skillId, 1);
                         }
                     }
+                    StorePriceManager.markDirty(player.getUUID());
                     StorePriceManager.applyAllAttributes(player);
                     StorePriceManager.sync(player);
                 }

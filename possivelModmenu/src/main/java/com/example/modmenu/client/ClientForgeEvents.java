@@ -15,10 +15,14 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.ChestBlockEntity;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.client.event.RenderGuiOverlayEvent;
 import net.minecraftforge.client.event.RenderLevelStageEvent;
 import net.minecraftforge.client.event.ScreenEvent;
+import net.minecraftforge.client.gui.overlay.VanillaGuiOverlay;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.player.ItemTooltipEvent;
+import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -32,10 +36,14 @@ public class ClientForgeEvents {
     private static List<BlockPos> cachedTraps = new ArrayList<>();
     private static List<net.minecraft.world.entity.Entity> cachedEntities = new ArrayList<>();
     private static int scanTick = 0;
+    public static int transferModeChamberIndex = -1;
 
     @SubscribeEvent
     public static void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase == TickEvent.Phase.END) {
+            if (Minecraft.getInstance().level == null) {
+                transferModeChamberIndex = -1;
+            }
             while (KeyMappings.OPEN_MENU_KEY.consumeClick()) {
                 Minecraft.getInstance().setScreen(new MainMenuScreen());
             }
@@ -109,6 +117,50 @@ public class ClientForgeEvents {
                 event.getToolTip().add(Component.literal("§b[FROZEN: No Move]"));
             }
         }
+    }
+
+    @SubscribeEvent
+    public static void onScreenRenderPost(ScreenEvent.Render.Post event) {
+        if (event.getScreen() instanceof net.minecraft.client.gui.screens.inventory.AbstractContainerScreen<?> screen) {
+            net.minecraft.client.gui.GuiGraphics g = event.getGuiGraphics();
+            int guiLeft = screen.getGuiLeft();
+            int guiTop = screen.getGuiTop();
+
+            for (net.minecraft.world.inventory.Slot slot : screen.getMenu().slots) {
+                ItemStack stack = slot.getItem();
+                if (!stack.isEmpty()) {
+                    int lockState = stack.getOrCreateTag().getInt("modmenu_lock_state");
+                    if (lockState >= 1) {
+                        int x = guiLeft + slot.x;
+                        int y = guiTop + slot.y;
+
+                        // Render feedback
+                        if (lockState == 1) { // Locked
+                            g.fill(x, y, x + 16, y + 16, 0x33FF0000);
+                            renderBorder(g, x - 1, y - 1, 18, 18, 0xFFFF0000);
+                        } else if (lockState == 2) { // Frozen
+                            g.fill(x, y, x + 16, y + 16, 0x3300AAFF);
+                            renderBorder(g, x - 1, y - 1, 18, 18, 0xFF00AAFF);
+                        }
+
+                        // Render Symbol
+                        g.pose().pushPose();
+                        g.pose().translate(x + 10, y, 300);
+                        g.pose().scale(0.5f, 0.5f, 1.0f);
+                        String icon = lockState == 2 ? "❄" : "🔒";
+                        g.drawString(Minecraft.getInstance().font, icon, 0, 0, 0xFFFFFFFF);
+                        g.pose().popPose();
+                    }
+                }
+            }
+        }
+    }
+
+    private static void renderBorder(net.minecraft.client.gui.GuiGraphics g, int x, int y, int w, int h, int color) {
+        g.fill(x, y, x + w, y + 1, color);
+        g.fill(x, y + h - 1, x + w, y + h, color);
+        g.fill(x, y, x + 1, y + h, color);
+        g.fill(x + w - 1, y, x + w, y + h, color);
     }
 
     @SubscribeEvent
@@ -292,5 +344,34 @@ public class ClientForgeEvents {
         
         com.mojang.blaze3d.systems.RenderSystem.disableBlend();
         com.mojang.blaze3d.systems.RenderSystem.enableDepthTest();
+    }
+
+    @SubscribeEvent
+    public static void onRightClickBlock(PlayerInteractEvent.RightClickBlock event) {
+        if (event.getLevel().isClientSide && transferModeChamberIndex != -1) {
+            if (event.getEntity().isShiftKeyDown()) {
+                BlockEntity be = event.getLevel().getBlockEntity(event.getPos());
+                if (be != null && be.getCapability(ForgeCapabilities.ITEM_HANDLER).isPresent()) {
+                    com.example.modmenu.network.PacketHandler.sendToServer(new com.example.modmenu.network.ActionChamberPacket(transferModeChamberIndex, 17, event.getPos()));
+                    transferModeChamberIndex = -1;
+                    event.setCanceled(true);
+                    event.setResult(net.minecraftforge.eventbus.api.Event.Result.ALLOW);
+                    event.setCancellationResult(net.minecraft.world.InteractionResult.SUCCESS);
+                }
+            } else {
+                transferModeChamberIndex = -1;
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onRenderGui(RenderGuiOverlayEvent.Post event) {
+        if (event.getOverlay() == VanillaGuiOverlay.HOTBAR.type() && transferModeChamberIndex != -1) {
+            Minecraft mc = Minecraft.getInstance();
+            int x = event.getWindow().getGuiScaledWidth() / 2;
+            int y = event.getWindow().getGuiScaledHeight() / 2 + 20;
+            String text = "§6[Transfer Mode Active] §eShift-Right-Click a Container";
+            event.getGuiGraphics().drawCenteredString(mc.font, text, x, y, 0xFFFFFFFF);
+        }
     }
 }

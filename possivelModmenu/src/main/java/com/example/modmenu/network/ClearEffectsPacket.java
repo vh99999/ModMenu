@@ -35,7 +35,7 @@ public class ClearEffectsPacket {
                 Map<String, Integer> active = StorePriceManager.getActiveEffects(player.getUUID());
                 BigDecimal cost = BigDecimal.ZERO;
                 for (int lvl : active.values()) {
-                    cost = cost.add(BigDecimal.valueOf(2000).multiply(BigDecimal.valueOf(2).pow(lvl - 1)));
+                    cost = cost.add(BigDecimal.valueOf(2000).multiply(BigDecimal.valueOf(2).pow(StorePriceManager.dampedExponent(lvl - 1))));
                 }
                 
                 BigDecimal currentMoney = StorePriceManager.getMoney(player.getUUID());

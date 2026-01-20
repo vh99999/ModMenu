@@ -51,7 +51,7 @@ public class EffectRowComponent extends UIElement {
         
         renderBtn(guiGraphics, valX + 15, getY() + 10, 20, 16, "+", mouseX, mouseY);
 
-        BigDecimal currentPrice = activeLevel > 0 ? basePrice.multiply(BigDecimal.valueOf(2).pow(activeLevel - 1)) : basePrice;
+        BigDecimal currentPrice = activeLevel > 0 ? basePrice.multiply(BigDecimal.valueOf(2).pow(StorePriceManager.dampedExponent(activeLevel - 1))) : basePrice;
         String priceText = "$" + StorePriceManager.formatCurrency(currentPrice) + "/s";
         guiGraphics.drawString(Minecraft.getInstance().font, priceText, getX() + 8, getY() + 18, 0xFFFFFF55);
     }

@@ -70,7 +70,7 @@ public class PurchasePacket {
                     return;
                 }
 
-                BigDecimal pricePerItem = StorePriceManager.getPrice(item);
+                BigDecimal pricePerItem = StorePriceManager.getPrice(item, player.getUUID());
                 
                 StorePriceManager.SkillData data = StorePriceManager.getSkills(player.getUUID());
                 boolean monopoly = data.activeToggles.contains("WEALTH_KEYSTONE_MONOPOLY");
@@ -94,7 +94,7 @@ public class PurchasePacket {
 
                 // Monopoly Cashback
                 if (monopoly && totalCost.compareTo(BigDecimal.ZERO) == 0) {
-                    BigDecimal originalPrice = StorePriceManager.getPrice(item);
+                    BigDecimal originalPrice = StorePriceManager.getPrice(item, player.getUUID());
                     BigDecimal cashback = originalPrice.multiply(BigDecimal.valueOf(quantity)).multiply(BigDecimal.valueOf(0.01));
                     if (cashback.compareTo(BigDecimal.ZERO) > 0) StorePriceManager.addMoney(player.getUUID(), cashback);
                 }

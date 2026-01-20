@@ -38,7 +38,7 @@ public class RerollLootPacket {
                         StorePriceManager.ChamberData chamber = data.chambers.get(index);
                         BigDecimal cost = BigDecimal.valueOf(100);
                         if (chamber.rerollCount > 0) {
-                            cost = cost.multiply(BigDecimal.valueOf(2).pow(chamber.rerollCount));
+                            cost = cost.multiply(BigDecimal.valueOf(2).pow(StorePriceManager.dampedExponent(chamber.rerollCount)));
                         }
                         
                         int lootRank = SkillManager.getActiveRank(data, "COMBAT_LOOT_RECALIBRATION");
@@ -61,7 +61,7 @@ public class RerollLootPacket {
                     if (buffer != null) {
                         BigDecimal cost = BigDecimal.valueOf(100);
                         if (buffer.rerollCount > 0) {
-                            cost = cost.multiply(BigDecimal.valueOf(2).pow(buffer.rerollCount));
+                            cost = cost.multiply(BigDecimal.valueOf(2).pow(StorePriceManager.dampedExponent(buffer.rerollCount)));
                         }
                         
                         int lootRank = SkillManager.getActiveRank(data, "COMBAT_LOOT_RECALIBRATION");

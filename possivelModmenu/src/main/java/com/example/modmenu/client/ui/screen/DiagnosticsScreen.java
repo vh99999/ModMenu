@@ -4,9 +4,15 @@ import com.example.modmenu.client.ui.base.BaseResponsiveLodestoneScreen;
 import com.example.modmenu.client.ui.component.ResponsiveButton;
 import com.example.modmenu.store.StorePriceManager;
 import com.example.modmenu.store.SkillManager;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.ai.attributes.Attribute;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.RangedAttribute;
+import net.minecraftforge.registries.ForgeRegistries;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 
@@ -68,7 +74,7 @@ public class DiagnosticsScreen extends BaseResponsiveLodestoneScreen {
         // Stasis
         int sovereignRank = SkillManager.getActiveRank(StorePriceManager.clientSkills, "COMBAT_SOVEREIGN_DOMAIN");
         if (sovereignRank > 0) {
-            cachedHpLimit = BigDecimal.valueOf(1000).multiply(BigDecimal.TEN.pow(sovereignRank - 1));
+            cachedHpLimit = BigDecimal.valueOf(1000).multiply(BigDecimal.TEN.pow(StorePriceManager.dampedExponent(sovereignRank - 1)));
         } else {
             cachedHpLimit = BigDecimal.valueOf(-1);
         }
@@ -83,10 +89,9 @@ public class DiagnosticsScreen extends BaseResponsiveLodestoneScreen {
             if (intervalTicks < 1) intervalTicks = 1;
             
             int multiThreadRank = SkillManager.getActiveRank(StorePriceManager.clientSkills, "VIRT_MULTI_THREAD");
-            int batchSize = (int) Math.pow(2, multiThreadRank);
-            if (batchSize > 1000) batchSize = 1000;
+            BigDecimal batchSize = BigDecimal.valueOf(2).pow(StorePriceManager.dampedExponent(multiThreadRank));
 
-            cachedKillsPerSecond = (20.0 / intervalTicks) * batchSize * chamberCount;
+            cachedKillsPerSecond = (20.0 / intervalTicks) * batchSize.doubleValue() * chamberCount;
         } else {
             cachedKillsPerSecond = 0;
         }
@@ -147,16 +152,38 @@ public class DiagnosticsScreen extends BaseResponsiveLodestoneScreen {
         g.drawString(font, "§7- Permanent Attribute Gains:", x + 10, startY, 0xFFFFFFFF);
         startY += spacing;
         for (java.util.Map.Entry<String, BigDecimal> entry : StorePriceManager.clientSkills.permanentAttributes.entrySet()) {
-            String attr = entry.getKey();
+            String attrId = entry.getKey();
             BigDecimal val = entry.getValue();
-            String name = attr.substring(attr.lastIndexOf('.') + 1).replace('_', ' ');
-            if (attr.contains("max_health")) name = "Max HP";
-            if (attr.contains("attack_damage")) name = "Attack Damage";
-            if (attr.contains("movement_speed")) name = "Movement Speed";
-            if (attr.contains("attack_speed")) name = "Attack Speed";
-            if (attr.contains("reach_distance")) name = "Reach Distance";
+            String name = attrId.substring(attrId.lastIndexOf('.') + 1).replace('_', ' ');
+            if (attrId.contains("max_health")) name = "Max HP";
+            if (attrId.contains("attack_damage")) name = "Attack Damage";
+            if (attrId.contains("movement_speed")) name = "Movement Speed";
+            if (attrId.contains("attack_speed")) name = "Attack Speed";
+            if (attrId.contains("reach_distance")) name = "Reach Distance";
 
-            g.drawString(font, "  " + name + ": §a+" + StorePriceManager.formatCurrency(val), x + 10, startY, 0xFFFFFFFF);
+            net.minecraft.client.player.LocalPlayer player = net.minecraft.client.Minecraft.getInstance().player;
+            double currentVal = 0;
+            double maxAttr = Double.MAX_VALUE;
+            if (player != null) {
+                Attribute attrObj = ForgeRegistries.ATTRIBUTES.getValue(ResourceLocation.tryParse(attrId));
+                if (attrObj != null) {
+                    AttributeInstance inst = player.getAttribute(attrObj);
+                    if (inst != null) {
+                        currentVal = inst.getValue();
+                        if (attrObj instanceof RangedAttribute ranged) {
+                            maxAttr = ranged.getMaxValue();
+                        }
+                    }
+                    
+                    if (attrId.equals("minecraft:generic.movement_speed")) maxAttr = Math.min(maxAttr, StorePriceManager.MAX_MOVEMENT_SPEED);
+                    else if (attrId.equals("minecraft:generic.attack_speed")) maxAttr = Math.min(maxAttr, StorePriceManager.MAX_ATTACK_SPEED);
+                    else if (attrId.equals("forge:reach_distance")) maxAttr = Math.min(maxAttr, StorePriceManager.MAX_REACH_DISTANCE);
+                }
+            }
+
+            String line = "  " + name + ": §a+" + StorePriceManager.formatCurrency(val);
+            if (currentVal >= maxAttr - 0.0001) line += " §c(MAX)";
+            g.drawString(font, line, x + 10, startY, 0xFFFFFFFF);
             startY += spacing;
         }
         

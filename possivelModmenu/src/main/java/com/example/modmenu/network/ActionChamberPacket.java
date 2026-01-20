@@ -6,6 +6,8 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.items.ItemHandlerHelper;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.registries.ForgeRegistries;
 
@@ -18,13 +20,14 @@ import java.util.function.Supplier;
 public class ActionChamberPacket {
     private final int index;
     private final int action; // 0: Harvest XP, 1: Collect All Loot, 2: Void All Loot, 3: Set Weapon, 4: Collect Single, 5: Void Single, 6: Unlock Chamber, 7: Toggle Pause, 8: Sync Filter
-    // 9: Toggle Bartering, 10: Cycle Condensation, 11: Set Yield Target, 12: Set Speed, 13: Set Thread, 14: Update Advanced Filter, 15: Clear Input
+    // 9: Toggle Bartering, 10: Cycle Condensation, 11: Set Yield Target, 12: Set Speed, 13: Set Thread, 14: Update Advanced Filter, 15: Clear Input, 17: Transfer to Container
     private final int itemIndex;
     private List<String> filterData;
     private String stringData;
     private int intData;
     private net.minecraft.nbt.CompoundTag nbtData;
     private net.minecraft.world.item.Item itemData;
+    private net.minecraft.core.BlockPos posData;
 
     public ActionChamberPacket(int index, int action) {
         this(index, action, -1);
@@ -57,6 +60,13 @@ public class ActionChamberPacket {
         this(index, action, stringData, intData, null);
     }
 
+    public ActionChamberPacket(int index, int action, net.minecraft.core.BlockPos pos) {
+        this.index = index;
+        this.action = action;
+        this.itemIndex = -1;
+        this.posData = pos;
+    }
+
     public ActionChamberPacket(int index, List<String> filterData) {
         this.index = index;
         this.action = 8;
@@ -81,6 +91,8 @@ public class ActionChamberPacket {
         } else if (action == 4 || action == 5) {
             if (buf.readBoolean()) this.itemData = buf.readRegistryIdSafe(net.minecraft.world.item.Item.class);
             if (buf.readBoolean()) this.nbtData = buf.readNbt();
+        } else if (action == 17) {
+            this.posData = buf.readBlockPos();
         }
     }
 
@@ -103,6 +115,8 @@ public class ActionChamberPacket {
             if (itemData != null) buf.writeRegistryId(ForgeRegistries.ITEMS, itemData);
             buf.writeBoolean(nbtData != null);
             if (nbtData != null) buf.writeNbt(nbtData);
+        } else if (action == 17) {
+            buf.writeBlockPos(posData);
         }
     }
 
@@ -116,8 +130,9 @@ public class ActionChamberPacket {
                     int chambers = data.unlockedChambers - 1;
                     if (chambers > 0) {
                         // (1.5)^n = (3/2)^n = 3^n / 2^n
-                        cost = cost.multiply(new BigDecimal("3").pow(chambers))
-                                   .divide(new BigDecimal("2").pow(chambers), 10, RoundingMode.HALF_UP);
+                        int damped = StorePriceManager.dampedExponent(chambers);
+                        cost = cost.multiply(new BigDecimal("3").pow(damped))
+                                   .divide(new BigDecimal("2").pow(damped), 10, RoundingMode.HALF_UP);
                     }
                     cost = cost.setScale(0, RoundingMode.HALF_UP);
 
@@ -170,26 +185,53 @@ public class ActionChamberPacket {
                             chamber.updateVersion++;
                         }
                         case 4 -> {
+                            ItemStack target = null;
                             if (itemIndex >= 0 && itemIndex < chamber.storedLoot.size()) {
-                                ItemStack stack = chamber.storedLoot.get(itemIndex);
-                                // Verify identity
-                                if (itemData != null && stack.getItem() == itemData && net.minecraft.nbt.NbtUtils.compareNbt(nbtData, stack.getTag(), true)) {
-                                    chamber.storedLoot.remove(itemIndex);
-                                    if (!player.getInventory().add(stack)) {
-                                        player.drop(stack, false);
-                                    }
-                                    chamber.updateVersion++;
+                                ItemStack s = chamber.storedLoot.get(itemIndex);
+                                if (s.getItem() == itemData && net.minecraft.nbt.NbtUtils.compareNbt(nbtData, s.getTag(), true)) {
+                                    target = s;
                                 }
+                            }
+                            if (target == null) {
+                                for (ItemStack s : chamber.storedLoot) {
+                                    if (s.getItem() == itemData && net.minecraft.nbt.NbtUtils.compareNbt(nbtData, s.getTag(), true)) {
+                                        target = s;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (target != null) {
+                                int toExtract = Math.min(target.getCount(), 64);
+                                ItemStack extract = target.split(toExtract);
+                                if (target.isEmpty()) chamber.storedLoot.remove(target);
+
+                                if (!player.getInventory().add(extract)) {
+                                    player.drop(extract, false);
+                                }
+                                chamber.updateVersion++;
                             }
                         }
                         case 5 -> {
+                            ItemStack target = null;
                             if (itemIndex >= 0 && itemIndex < chamber.storedLoot.size()) {
-                                ItemStack stack = chamber.storedLoot.get(itemIndex);
-                                // Verify identity
-                                if (itemData != null && stack.getItem() == itemData && net.minecraft.nbt.NbtUtils.compareNbt(nbtData, stack.getTag(), true)) {
-                                    chamber.storedLoot.remove(itemIndex);
-                                    chamber.updateVersion++;
+                                ItemStack s = chamber.storedLoot.get(itemIndex);
+                                if (s.getItem() == itemData && net.minecraft.nbt.NbtUtils.compareNbt(nbtData, s.getTag(), true)) {
+                                    target = s;
                                 }
+                            }
+                            if (target == null) {
+                                for (ItemStack s : chamber.storedLoot) {
+                                    if (s.getItem() == itemData && net.minecraft.nbt.NbtUtils.compareNbt(nbtData, s.getTag(), true)) {
+                                        target = s;
+                                        break;
+                                    }
+                                }
+                            }
+
+                            if (target != null) {
+                                chamber.storedLoot.remove(target);
+                                chamber.updateVersion++;
                             }
                         }
                         case 7 -> {
@@ -240,6 +282,7 @@ public class ActionChamberPacket {
                                 }
                                 if (!ruleExists) chamber.advancedFilters.add(rule);
                             }
+                            chamber.updateVersion++;
                         }
                         case 15 -> {
                             for (ItemStack stack : chamber.inputBuffer) {
@@ -258,7 +301,35 @@ public class ActionChamberPacket {
                                 held.setCount(0);
                             }
                         }
+                        case 17 -> {
+                            if (posData != null && player.level().mayInteract(player, posData)) {
+                                net.minecraft.world.level.block.entity.BlockEntity be = player.level().getBlockEntity(posData);
+                                if (be != null) {
+                                    be.getCapability(ForgeCapabilities.ITEM_HANDLER).ifPresent(handler -> {
+                                        long totalMoved = 0;
+                                        for (ItemStack chamberStack : chamber.storedLoot) {
+                                            int lastCount;
+                                            do {
+                                                lastCount = chamberStack.getCount();
+                                                ItemStack remainder = ItemHandlerHelper.insertItemStacked(handler, chamberStack, false);
+                                                int moved = lastCount - remainder.getCount();
+                                                totalMoved += moved;
+                                                chamberStack.setCount(remainder.getCount());
+                                            } while (!chamberStack.isEmpty() && chamberStack.getCount() < lastCount);
+                                        }
+                                        chamber.storedLoot.removeIf(ItemStack::isEmpty);
+                                        chamber.updateVersion++;
+                                        if (totalMoved > 0) {
+                                            player.displayClientMessage(net.minecraft.network.chat.Component.literal("§6[Chamber] §a" + String.format("%,d", totalMoved) + " items moved successfully!"), true);
+                                        } else {
+                                            player.displayClientMessage(net.minecraft.network.chat.Component.literal("§6[Chamber] §cContainer is full! No items were transferred."), true);
+                                        }
+                                    });
+                                }
+                            }
+                        }
                     }
+                    StorePriceManager.markDirty(player.getUUID());
                     StorePriceManager.sync(player);
                 }
             }

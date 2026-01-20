@@ -52,7 +52,7 @@ public class EnchantItemPacket {
                 BigDecimal currentMoney = StorePriceManager.getMoney(player.getUUID());
 
                 if (level > 0) {
-                    BigDecimal cost = basePrice.multiply(BigDecimal.valueOf(2).pow(level - 1));
+                    BigDecimal cost = basePrice.multiply(BigDecimal.valueOf(2).pow(StorePriceManager.dampedExponent(level - 1)));
                     if (currentMoney.compareTo(cost) >= 0) {
                         Map<Enchantment, Integer> enchants = EnchantmentHelper.getEnchantments(stack);
                         enchants.put(enchantment, level);
@@ -66,7 +66,7 @@ public class EnchantItemPacket {
                 } else {
                     int currentLvl = EnchantmentHelper.getItemEnchantmentLevel(enchantment, stack);
                     if (currentLvl > 0) {
-                        BigDecimal cost = basePrice.multiply(BigDecimal.valueOf(2).pow(currentLvl - 1));
+                        BigDecimal cost = basePrice.multiply(BigDecimal.valueOf(2).pow(StorePriceManager.dampedExponent(currentLvl - 1)));
                         if (currentMoney.compareTo(cost) >= 0) {
                             Map<Enchantment, Integer> enchants = EnchantmentHelper.getEnchantments(stack);
                             enchants.remove(enchantment);

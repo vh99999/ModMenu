@@ -11,9 +11,13 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParamSets;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
-import net.minecraftforge.common.util.FakePlayer;
-import net.minecraftforge.common.util.FakePlayerFactory;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.event.entity.living.LivingDeathEvent;
+import net.minecraftforge.event.entity.living.LivingDropsEvent;
+import net.minecraftforge.event.entity.living.LivingExperienceDropEvent;
+import net.minecraftforge.common.ForgeHooks;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -40,11 +44,8 @@ public class SkillManager {
         
         BigDecimal cost = base.multiply(BigDecimal.valueOf(rank).pow(3));
         
-        // Virtualization Safety Protocol (SP Cost Cap)
-        if (path.branch == SkillDefinitions.Branch.CONTAINMENT) {
-            BigDecimal cap = BigDecimal.valueOf(1000000);
-            if (cost.compareTo(cap) > 0) cost = cap;
-        }
+        // Virtualization Safety Protocol (SP Cost Cap - Removed as per user request)
+        // If growth is too fast, user will handle it
 
         BigDecimal finalCost = cost.multiply(branchMultiplier);
         
@@ -69,10 +70,8 @@ public class SkillManager {
     private static int secondTimer = 0;
     private static boolean chronosLockActive = false;
     private static Map<ResourceLocation, ResourceLocation> lootTableCache = new HashMap<>();
-    private static Map<ResourceLocation, Integer> xpCache = new HashMap<>();
     private static Map<net.minecraft.world.item.Item, BigDecimal> itemPriceCache = new HashMap<>();
 
-    private static final Map<UUID, com.mojang.authlib.GameProfile> profileCache = new HashMap<>();
     private static final Map<ResourceLocation, net.minecraft.world.entity.Entity> dummyEntityCache = new HashMap<>();
 
     private static class CondensationRecipe {
@@ -89,9 +88,7 @@ public class SkillManager {
 
     public static void clearCaches() {
         lootTableCache.clear();
-        xpCache.clear();
         itemPriceCache.clear();
-        profileCache.clear();
         dummyEntityCache.clear();
         condensationCache.clear();
         chunkValueCache.clear();
@@ -131,8 +128,7 @@ public class SkillManager {
         long intervalMs = intervalTicks * 50; // 1 tick = 50ms
         
         int multiThreadRank = getActiveRank(data, "VIRT_MULTI_THREAD");
-        int batchSize = (int) Math.pow(2, multiThreadRank);
-        if (batchSize > 1000) batchSize = 1000;
+        BigDecimal batchSize = BigDecimal.valueOf(2).pow(StorePriceManager.dampedExponent(multiThreadRank));
 
         for (StorePriceManager.ChamberData chamber : data.chambers) {
             if (chamber.paused || chamber.lastOfflineProcessingTime <= 0) continue;
@@ -141,11 +137,11 @@ public class SkillManager {
             long occurrences = elapsed / intervalMs;
             
             if (occurrences > 0) {
-                // Limit offline processing to avoid huge spikes on login (e.g., max 24 hours)
-                long maxOccurrences = (24 * 3600 * 1000) / intervalMs;
+                // Limit offline processing to avoid huge spikes on login (e.g., max 7 days)
+                long maxOccurrences = (7 * 24 * 3600 * 1000) / intervalMs;
                 if (occurrences > maxOccurrences) occurrences = maxOccurrences;
                 
-                BigDecimal totalKills = BigDecimal.valueOf(occurrences).multiply(BigDecimal.valueOf(batchSize));
+                BigDecimal totalKills = BigDecimal.valueOf(occurrences).multiply(batchSize);
                 
                 // Optimized offline simulation: 
                 // Instead of millions of loops, we simulate a representative sample and scale it.
@@ -161,6 +157,7 @@ public class SkillManager {
             }
             chamber.lastOfflineProcessingTime = now;
         }
+        StorePriceManager.saveData();
     }
 
     public static void serverTickSecond() {
@@ -408,16 +405,15 @@ public class SkillManager {
             if (effectiveClock >= 20) interval = 1;
             if (interval < 1) interval = 1;
             
-            int batchSize = (int) Math.pow(2, effectiveThread);
-            if (batchSize > 1000) batchSize = 1000;
+            BigDecimal batchSize = BigDecimal.valueOf(2).pow(StorePriceManager.dampedExponent(effectiveThread));
 
             if (time - chamber.lastHarvestTime >= interval) {
                 long elapsed = time - chamber.lastHarvestTime;
                 long occurrences = elapsed / interval;
-                if (occurrences > 100) occurrences = 100;
+                if (occurrences > 10000) occurrences = 10000;
                 
                 chamber.lastHarvestTime += occurrences * interval;
-                BigDecimal totalKills = BigDecimal.valueOf(batchSize).multiply(BigDecimal.valueOf(occurrences));
+                BigDecimal totalKills = batchSize.multiply(BigDecimal.valueOf(occurrences));
                 
                 int sampleSize = (int) Math.min(totalKills.longValue(), 50);
                 if (sampleSize <= 0) continue;
@@ -524,8 +520,6 @@ public class SkillManager {
         
         if (lootTableLoc == null) return;
 
-        com.mojang.authlib.GameProfile profile = profileCache.computeIfAbsent(player.getUUID(), id -> new com.mojang.authlib.GameProfile(id, player.getName().getString()));
-        FakePlayer fakePlayer = FakePlayerFactory.get(level, profile);
         ItemStack tool = chamber.killerWeapon != null && !chamber.killerWeapon.isEmpty() ? chamber.killerWeapon.copy() : ItemStack.EMPTY;
         
         net.minecraft.world.entity.Entity dummy = null;
@@ -572,16 +566,12 @@ public class SkillManager {
             tool.enchant(net.minecraft.world.item.enchantment.Enchantments.MOB_LOOTING, recursiveLooting);
         }
         
-        if (!tool.isEmpty()) {
-            fakePlayer.setItemInHand(net.minecraft.world.InteractionHand.MAIN_HAND, tool);
-        }
-
         LootParams.Builder lootParamsBuilder = new LootParams.Builder(level)
             .withParameter(LootContextParams.ORIGIN, player.position())
-            .withParameter(LootContextParams.DAMAGE_SOURCE, level.damageSources().playerAttack(fakePlayer))
-            .withParameter(LootContextParams.KILLER_ENTITY, fakePlayer)
-            .withParameter(LootContextParams.DIRECT_KILLER_ENTITY, fakePlayer)
-            .withOptionalParameter(LootContextParams.LAST_DAMAGE_PLAYER, fakePlayer)
+            .withParameter(LootContextParams.DAMAGE_SOURCE, level.damageSources().playerAttack(player))
+            .withParameter(LootContextParams.KILLER_ENTITY, player)
+            .withParameter(LootContextParams.DIRECT_KILLER_ENTITY, player)
+            .withOptionalParameter(LootContextParams.LAST_DAMAGE_PLAYER, player)
             .withParameter(LootContextParams.TOOL, tool);
 
         if (dummy != null) {
@@ -596,6 +586,82 @@ public class SkillManager {
 
         net.minecraft.world.level.storage.loot.LootTable lootTable = level.getServer().getLootData().getLootTable(lootTableLoc);
         List<ItemStack> drops = lootTable.getRandomItems(lootParamsBuilder.create(chamber.isExcavation ? net.minecraft.world.level.storage.loot.parameters.LootContextParamSets.CHEST : LootContextParamSets.ENTITY));
+
+        if (dummy instanceof net.minecraft.world.entity.LivingEntity living && !isBartering) {
+            net.minecraft.world.damagesource.DamageSource src = level.damageSources().playerAttack(player);
+            
+            // Set entity state for modded listeners
+            try {
+                java.lang.reflect.Field f1 = net.minecraft.world.entity.LivingEntity.class.getDeclaredField("lastHurtByPlayer");
+                f1.setAccessible(true);
+                f1.set(living, player);
+                
+                java.lang.reflect.Field f2 = net.minecraft.world.entity.LivingEntity.class.getDeclaredField("lastHurtByPlayerTime");
+                f2.setAccessible(true);
+                f2.set(living, 100);
+            } catch (Exception e) {
+                // Fallback
+            }
+            
+            living.setHealth(0); // Mark as dead
+            living.setPos(player.getX(), player.getY(), player.getZ());
+
+            // Firing LivingDeathEvent: Used by mods to initialize loot modifiers
+            MinecraftForge.EVENT_BUS.post(new LivingDeathEvent(living, src));
+
+            // Determine looting level via event (respects modded looting modifiers)
+            int lootingLevel = ForgeHooks.getLootingLevel(living, player, src);
+
+            // Add physical equipment drops (Armor/Held items)
+            if (living instanceof net.minecraft.world.entity.Mob mob) {
+                addEquipmentDrops(mob, drops, level.random);
+            }
+
+            // Wrap drops into ItemEntities for the Drops Event
+            java.util.Collection<ItemEntity> itemEntities = new java.util.ArrayList<>();
+            for (ItemStack stack : drops) {
+                if (!stack.isEmpty()) {
+                    itemEntities.add(new ItemEntity(level, living.getX(), living.getY(), living.getZ(), stack));
+                }
+            }
+
+            // Firing LivingDropsEvent: THIS is where most mods (Apotheosis, Draconic Evolution, etc.) inject loot
+            LivingDropsEvent dropsEvent = new LivingDropsEvent(living, src, itemEntities, lootingLevel, true);
+            MinecraftForge.EVENT_BUS.post(dropsEvent);
+
+            // Re-collect the final list of drops
+            drops.clear();
+            for (ItemEntity ie : dropsEvent.getDrops()) {
+                if (ie != null && !ie.getItem().isEmpty()) {
+                    drops.add(ie.getItem().copy());
+                }
+            }
+
+            // Experience Pipeline
+            int baseXP = living.getExperienceReward();
+            LivingExperienceDropEvent xpEvent = new LivingExperienceDropEvent(living, player, baseXP);
+            MinecraftForge.EVENT_BUS.post(xpEvent);
+            
+            processSimulatedXP(player, data, chamber, xpEvent.getDroppedExperience(), scale, acc);
+
+            if (getActiveRank(data, "VIRT_ISOLATED_SANDBOX") <= 0) {
+                float currentSatiety = data.mobSatiety.getOrDefault(chamber.mobId, 0f);
+                data.mobSatiety.put(chamber.mobId, (float) Math.min(100.0f, currentSatiety + (0.1f * scale.floatValue()))); 
+            }
+
+            int soulReap = getActiveRank(data, "COMBAT_SOUL_REAP");
+            if (soulReap > 0) {
+                BigDecimal hpGainBD = BigDecimal.valueOf(0.033 * soulReap).multiply(scale);
+                BigDecimal dmgGainBD = BigDecimal.valueOf(0.016 * soulReap).multiply(scale);
+                if (acc != null) {
+                    acc.hpGain = acc.hpGain.add(hpGainBD);
+                    acc.dmgGain = acc.dmgGain.add(dmgGainBD);
+                } else {
+                    data.permanentAttributes.put("minecraft:generic.max_health", data.permanentAttributes.getOrDefault("minecraft:generic.max_health", BigDecimal.ZERO).add(hpGainBD));
+                    data.permanentAttributes.put("minecraft:generic.attack_damage", data.permanentAttributes.getOrDefault("minecraft:generic.attack_damage", BigDecimal.ZERO).add(dmgGainBD));
+                }
+            }
+        }
         
         // Advanced Filtering
         if (getActiveRank(data, "VIRT_ADVANCED_FILTERING") > 0 && !chamber.advancedFilters.isEmpty()) {
@@ -623,7 +689,7 @@ public class SkillManager {
             if (countBD.compareTo(BigDecimal.ZERO) <= 0) continue;
             
             if (marketLink > 0) {
-                BigDecimal sellPrice = StorePriceManager.getSellPrice(drop.getItem());
+                BigDecimal sellPrice = StorePriceManager.getSellPrice(drop.getItem(), player.getUUID());
                 if (data.activeToggles.contains("WEALTH_KEYSTONE_MONOPOLY")) {
                     sellPrice = sellPrice.multiply(BigDecimal.valueOf(1.01));
                 }
@@ -654,53 +720,46 @@ public class SkillManager {
             }
         }
         
-        if (!chamber.isExcavation && !isBartering && type != null) {
-            ResourceLocation entityTypeLoc = ForgeRegistries.ENTITY_TYPES.getKey(type);
-            int xp = xpCache.computeIfAbsent(entityTypeLoc, k -> {
-                net.minecraft.world.entity.Entity dummyEnt = ForgeRegistries.ENTITY_TYPES.getValue(k).create(level);
-                if (dummyEnt instanceof net.minecraft.world.entity.LivingEntity living) {
-                    return living.getExperienceReward();
-                }
-                return 5;
-            });
-            
-            BigDecimal totalXP = BigDecimal.valueOf(xp).multiply(scale);
-            if (acc != null) acc.xpGain = acc.xpGain.add(totalXP);
-            else {
-                int neuralRank = getActiveRank(data, "VIRT_NEURAL_CONDENSATION");
-                if (neuralRank > 0) {
-                    BigDecimal spCost = BigDecimal.valueOf(10000 / neuralRank);
-                    chamber.storedXP = chamber.storedXP.add(totalXP);
-                    if (chamber.storedXP.compareTo(spCost) >= 0) {
-                        data.totalSP = data.totalSP.add(chamber.storedXP.divide(spCost, 0, RoundingMode.FLOOR));
-                        chamber.storedXP = chamber.storedXP.remainder(spCost);
-                    }
-                } else {
-                    chamber.storedXP = chamber.storedXP.add(totalXP);
-                }
-            }
-            
-            if (getActiveRank(data, "VIRT_ISOLATED_SANDBOX") <= 0) {
-                float currentSatiety = data.mobSatiety.getOrDefault(chamber.mobId, 0f);
-                data.mobSatiety.put(chamber.mobId, (float) Math.min(15.0f, currentSatiety + (0.1f * scale.floatValue()))); 
-            }
-
-            int soulReap = getActiveRank(data, "COMBAT_SOUL_REAP");
-            if (soulReap > 0) {
-                BigDecimal hpGainBD = BigDecimal.valueOf(0.033 * soulReap).multiply(scale);
-                BigDecimal dmgGainBD = BigDecimal.valueOf(0.016 * soulReap).multiply(scale);
-                if (acc != null) {
-                    acc.hpGain = acc.hpGain.add(hpGainBD);
-                    acc.dmgGain = acc.dmgGain.add(dmgGainBD);
-                } else {
-                    data.permanentAttributes.put("minecraft:generic.max_health", data.permanentAttributes.getOrDefault("minecraft:generic.max_health", BigDecimal.ZERO).add(hpGainBD));
-                    data.permanentAttributes.put("minecraft:generic.attack_damage", data.permanentAttributes.getOrDefault("minecraft:generic.attack_damage", BigDecimal.ZERO).add(dmgGainBD));
-                }
-            }
-        }
 
         if (acc == null) {
             chamber.updateVersion++;
+        }
+    }
+
+    private static void processSimulatedXP(ServerPlayer player, StorePriceManager.SkillData data, StorePriceManager.ChamberData chamber, int xpGainAmount, BigDecimal scale, SimulationAccumulator acc) {
+        BigDecimal xpGain = BigDecimal.valueOf(xpGainAmount).multiply(scale);
+        if (acc != null) acc.xpGain = acc.xpGain.add(xpGain);
+        else {
+            int neuralRank = getActiveRank(data, "VIRT_NEURAL_CONDENSATION");
+            if (neuralRank > 0) {
+                BigDecimal spCost = BigDecimal.valueOf(10000 / neuralRank);
+                chamber.storedXP = chamber.storedXP.add(xpGain);
+                if (chamber.storedXP.compareTo(spCost) >= 0) {
+                    data.totalSP = data.totalSP.add(chamber.storedXP.divide(spCost, 0, RoundingMode.FLOOR));
+                    chamber.storedXP = chamber.storedXP.remainder(spCost);
+                }
+            } else {
+                chamber.storedXP = chamber.storedXP.add(xpGain);
+            }
+        }
+    }
+
+    private static void addEquipmentDrops(net.minecraft.world.entity.Mob mob, List<ItemStack> drops, net.minecraft.util.RandomSource random) {
+        for (net.minecraft.world.entity.EquipmentSlot slot : net.minecraft.world.entity.EquipmentSlot.values()) {
+            ItemStack stack = mob.getItemBySlot(slot);
+            if (!stack.isEmpty()) {
+                float chance = 0.085f;
+                try {
+                    java.lang.reflect.Method m = net.minecraft.world.entity.Mob.class.getDeclaredMethod("getEquipmentDropChance", net.minecraft.world.entity.EquipmentSlot.class);
+                    m.setAccessible(true);
+                    chance = (float) m.invoke(mob, slot);
+                } catch (Exception e) {
+                    // Fallback
+                }
+                if (random.nextFloat() < chance) {
+                    drops.add(stack.copy());
+                }
+            }
         }
     }
 
@@ -715,14 +774,18 @@ public class SkillManager {
                 switch (rule.matchType) {
                     case "ID" -> match = ForgeRegistries.ITEMS.getKey(stack.getItem()).toString().equals(rule.matchValue);
                     case "TAG" -> match = stack.getTags().anyMatch(t -> t.location().toString().equals(rule.matchValue));
-                    case "NBT" -> match = rule.nbtSample != null && net.minecraft.nbt.NbtUtils.compareNbt(rule.nbtSample, stack.getTag(), true);
+                    case "NBT" -> {
+                        boolean idMatch = ForgeRegistries.ITEMS.getKey(stack.getItem()).toString().equals(rule.matchValue);
+                        boolean nbtMatch = rule.nbtSample != null && net.minecraft.nbt.NbtUtils.compareNbt(rule.nbtSample, stack.getTag(), true);
+                        match = idMatch && nbtMatch;
+                    }
                 }
 
                 if (match) {
                     if (rule.action == 1) { // VOID
                         it.remove();
                     } else if (rule.action == 2) { // LIQUIDATE
-                        BigDecimal sellPrice = StorePriceManager.getSellPrice(stack.getItem());
+                        BigDecimal sellPrice = StorePriceManager.getSellPrice(stack.getItem(), playerUuid);
                         BigDecimal gain = sellPrice.multiply(BigDecimal.valueOf(stack.getCount()));
                         if (acc != null) acc.moneyGain = acc.moneyGain.add(gain);
                         else StorePriceManager.addMoney(playerUuid, gain);
@@ -814,7 +877,7 @@ public class SkillManager {
         
         for (int x = -radiusChunks; x <= radiusChunks; x++) {
             for (int z = -radiusChunks; z <= radiusChunks; z++) {
-                totalValue = totalValue.add(getChunkValue(player.serverLevel(), px + x, pz + z));
+                totalValue = totalValue.add(getChunkValue(player.serverLevel(), px + x, pz + z, player.getUUID()));
             }
         }
         
@@ -827,7 +890,7 @@ public class SkillManager {
     }
 
     private static Map<Long, BigDecimal> chunkValueCache = new HashMap<>();
-    private static BigDecimal getChunkValue(net.minecraft.server.level.ServerLevel level, int cx, int cz) {
+    private static BigDecimal getChunkValue(net.minecraft.server.level.ServerLevel level, int cx, int cz, UUID playerUuid) {
         long key = ((long)cx << 32) | (cz & 0xFFFFFFFFL);
         // Clear cache periodically (once every minute) handled in tick
         if (chunkValueCache.containsKey(key)) return chunkValueCache.get(key);
@@ -841,7 +904,7 @@ public class SkillManager {
                 for (int z = 0; z < 16; z += 4) {
                     net.minecraft.world.item.Item item = chunk.getBlockState(new net.minecraft.core.BlockPos(x, y, z)).getBlock().asItem();
                     if (item != net.minecraft.world.item.Items.AIR) {
-                        BigDecimal price = itemPriceCache.computeIfAbsent(item, StorePriceManager::getBuyPrice);
+                        BigDecimal price = StorePriceManager.getSellPrice(item, playerUuid);
                         value = value.add(price.multiply(BigDecimal.valueOf(256)));
                     }
                 }

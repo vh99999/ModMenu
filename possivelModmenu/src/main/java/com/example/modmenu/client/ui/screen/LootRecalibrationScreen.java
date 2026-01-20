@@ -41,7 +41,7 @@ public class LootRecalibrationScreen extends BaseResponsiveLodestoneScreen {
 
         BigDecimal cost = BigDecimal.valueOf(100);
         if (rerollCount > 0) {
-            cost = cost.multiply(BigDecimal.valueOf(2).pow(rerollCount));
+            cost = cost.multiply(BigDecimal.valueOf(2).pow(StorePriceManager.dampedExponent(rerollCount)));
         }
         
         // Free Token check (Client display only)
@@ -79,14 +79,53 @@ public class LootRecalibrationScreen extends BaseResponsiveLodestoneScreen {
         @Override
         public void render(GuiGraphics g, int mx, int my, float pt) {
             boolean hovered = mx >= getX() && my >= getY() && mx < getX() + getWidth() && my < getY() + getHeight();
-            g.fill(getX(), getY(), getX() + getWidth(), getY() + getHeight(), hovered ? 0x66FFFFFF : 0x33FFFFFF);
-            g.renderItem(stack, getX() + 12, getY() + 12);
-            g.renderItemDecorations(Minecraft.getInstance().font, stack, getX() + 12, getY() + 12);
+            
+            int lockState = !stack.isEmpty() ? stack.getOrCreateTag().getInt("modmenu_lock_state") : 0;
+            int bgColor = hovered ? 0x66FFFFFF : 0x33FFFFFF;
+            
+            if (lockState == 1) { // Locked
+                bgColor = hovered ? 0x66FF5555 : 0x33FF0000;
+            } else if (lockState == 2) { // Frozen
+                bgColor = hovered ? 0x665555FF : 0x3300AAFF;
+            }
+
+            g.fill(getX(), getY(), getX() + getWidth(), getY() + getHeight(), bgColor);
+            
+            if (lockState == 1) {
+                renderBorder(g, getX(), getY(), getWidth(), getHeight(), 0xFFFF0000);
+            } else if (lockState == 2) {
+                renderBorder(g, getX(), getY(), getWidth(), getHeight(), 0xFF00AAFF);
+            }
+
+            g.renderItem(stack, getX() + (getWidth() - 16) / 2, getY() + (getHeight() - 16) / 2);
+            g.renderItemDecorations(Minecraft.getInstance().font, stack, getX() + (getWidth() - 16) / 2, getY() + (getHeight() - 16) / 2);
+            
+            if (lockState == 2) {
+                g.pose().pushPose();
+                g.pose().translate(getX() + getWidth() - 10, getY() + 2, 300);
+                g.pose().scale(0.5f, 0.5f, 1.0f);
+                g.drawString(Minecraft.getInstance().font, "❄", 0, 0, 0xFFFFFFFF);
+                g.pose().popPose();
+            } else if (lockState == 1) {
+                g.pose().pushPose();
+                g.pose().translate(getX() + getWidth() - 10, getY() + 2, 300);
+                g.pose().scale(0.5f, 0.5f, 1.0f);
+                g.drawString(Minecraft.getInstance().font, "🔒", 0, 0, 0xFFFFFFFF);
+                g.pose().popPose();
+            }
+
             if (hovered) {
                 addPostRenderTask(gui -> {
                     gui.renderTooltip(Minecraft.getInstance().font, stack, absMouseX, absMouseY);
                 });
             }
+        }
+
+        private void renderBorder(GuiGraphics g, int x, int y, int w, int h, int color) {
+            g.fill(x, y, x + w, y + 1, color);
+            g.fill(x, y + h - 1, x + w, y + h, color);
+            g.fill(x, y, x + 1, y + h, color);
+            g.fill(x + w - 1, y, x + w, y + h, color);
         }
     }
 }

@@ -34,6 +34,7 @@ public class SetSkillRankPacket {
                 int maxUnlocked = data.unlockedRanks.getOrDefault(skillId, 0);
                 if (rank >= 0 && rank <= maxUnlocked) {
                     data.skillRanks.put(skillId, rank);
+                    StorePriceManager.markDirty(player.getUUID());
                     StorePriceManager.applyAllAttributes(player);
                     StorePriceManager.sync(player);
                 }

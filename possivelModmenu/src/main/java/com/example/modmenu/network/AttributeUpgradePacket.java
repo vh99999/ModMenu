@@ -38,7 +38,9 @@ public class AttributeUpgradePacket {
             ServerPlayer player = ctx.get().getSender();
             if (player != null) {
                 double currentBonus = StorePriceManager.getAttributeBonuses(player.getUUID()).getOrDefault(attributeId, 0.0);
-                BigDecimal cost = BigDecimal.valueOf(1000000); // 1M per level
+                
+                // Exponential scaling cost: $1M * 2^currentBonus (damped exponent)
+                BigDecimal cost = BigDecimal.valueOf(1000000).multiply(BigDecimal.valueOf(2).pow(StorePriceManager.dampedExponent((int)currentBonus)));
                 
                 if (increase) {
                     if (StorePriceManager.canAfford(player.getUUID(), cost)) {

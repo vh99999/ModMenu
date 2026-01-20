@@ -39,7 +39,7 @@ public class SellPacket {
                     player.displayClientMessage(Component.literal("§cYou cannot sell ore blocks! Only buying is allowed."), true);
                     return;
                 }
-                BigDecimal pricePerItem = StorePriceManager.getSellPrice(item);
+                BigDecimal pricePerItem = StorePriceManager.getSellPrice(item, player.getUUID());
                 
                 // Find how many the player actually has
                 int totalInInventory = 0;

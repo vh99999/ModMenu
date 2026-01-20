@@ -275,7 +275,7 @@ public class ServerForgeEvents {
                 LivingEntity victim = event.getEntity();
                 victim.discard(); // harvested instantly as per desc
                 // Value is hard to determine for all entities, use HP based?
-                java.math.BigDecimal value = java.math.BigDecimal.valueOf(victim.getMaxHealth()).multiply(java.math.BigDecimal.valueOf(100));
+                java.math.BigDecimal value = StorePriceManager.safeBD(victim.getMaxHealth()).multiply(java.math.BigDecimal.valueOf(100));
                 StorePriceManager.addMoney(player.getUUID(), value);
                 player.displayClientMessage(Component.literal("§6[Entity Defrag] §aHarvested for §e$" + StorePriceManager.formatCurrency(value)), true);
                 event.setCanceled(true);
@@ -326,7 +326,7 @@ public class ServerForgeEvents {
                 double reduction = 0.2 * lethalRank;
                 
                 BigDecimal baseCost = StorePriceManager.formulas.sureKillBaseCost;
-                BigDecimal healthCost = BigDecimal.valueOf(health).multiply(BigDecimal.valueOf(StorePriceManager.formulas.sureKillHealthMultiplier));
+                BigDecimal healthCost = StorePriceManager.safeBD(health).multiply(BigDecimal.valueOf(StorePriceManager.formulas.sureKillHealthMultiplier));
                 
                 BigDecimal cost = sovereignty ? BigDecimal.ZERO : baseCost.add(healthCost).multiply(BigDecimal.valueOf(1.0 - reduction));
                 
@@ -417,8 +417,7 @@ public class ServerForgeEvents {
         // Structural Refactoring (Branch C)
         int structRank = SkillManager.getActiveRank(skillData, "UTILITY_STRUCTURAL_REFACTORING");
         if (structRank > 0) {
-            size += 16 * structRank; // Up to 3+80 = 83? User said 65x65x65
-            if (size > 65) size = 65;
+            size += (int)(16 * StorePriceManager.dampedDouble(BigDecimal.valueOf(structRank), 10.0));
         }
 
         if (size <= 1) return;
@@ -573,18 +572,59 @@ public class ServerForgeEvents {
     }
 
     private static boolean pricesCalculated = false;
+    private static volatile boolean pricesCalculating = false;
 
     @SubscribeEvent
     public static void onPlayerLogin(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
-            if (!pricesCalculated) {
-                StorePriceManager.addAllItems(player.level());
-                pricesCalculated = true;
+            StorePriceManager.loadPlayerData(player.getUUID()); // Load individual data
+            
+            if (!pricesCalculated && !pricesCalculating) {
+                pricesCalculating = true;
+                player.displayClientMessage(Component.literal("§6[ModMenu] §eCalculating item prices in background... Some features may be delayed."), false);
+                
+                Thread calculationThread = new Thread(() -> {
+                    try {
+                        StorePriceManager.addAllItems(player.level());
+                        pricesCalculated = true;
+                        pricesCalculating = false;
+                        
+                        net.minecraft.server.MinecraftServer server = player.getServer();
+                        if (server != null) {
+                            server.execute(() -> {
+                                server.getPlayerList().broadcastSystemMessage(Component.literal("§6[ModMenu] §aItem pricing calculation complete!"), false);
+                                for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+                                    StorePriceManager.syncPrices(p);
+                                }
+                            });
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        pricesCalculating = false;
+                    }
+                }, "ModMenu-PricingThread");
+                calculationThread.setPriority(Thread.MIN_PRIORITY);
+                calculationThread.start();
             }
+            
             SkillManager.handleOfflineProcessing(player);
             StorePriceManager.applyAllAttributes(player);
             StorePriceManager.sync(player);
-            StorePriceManager.syncPrices(player);
+            if (pricesCalculated) StorePriceManager.syncPrices(player);
+
+            if (StorePriceManager.isDataCorrupted) {
+                com.example.modmenu.network.PacketHandler.sendToPlayer(
+                    new com.example.modmenu.network.DataCorruptionPacket(StorePriceManager.lastLoadError),
+                    player
+                );
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            StorePriceManager.savePlayerData(player.getUUID());
         }
     }
 
@@ -626,8 +666,8 @@ public class ServerForgeEvents {
             
             if (!bySureKill || sureKillProtocol > 0) {
                 // Points = floor(sqrt(MaxHP / 10))
-                BigDecimal hpBD = BigDecimal.valueOf(maxHealth);
-                BigDecimal baseSP = BigDecimal.valueOf(Math.floor(Math.sqrt(maxHealth / 10.0)));
+                BigDecimal hpBD = StorePriceManager.safeBD(maxHealth);
+                BigDecimal baseSP = StorePriceManager.safeBD(Math.floor(Math.sqrt(maxHealth / 10.0)));
                 
                 // Apply global SP multiplier
                 BigDecimal spGain = baseSP.multiply(BigDecimal.valueOf(StorePriceManager.formulas.spMultiplier));
@@ -674,13 +714,13 @@ public class ServerForgeEvents {
             // Use BigDecimal power for reward calculation to avoid overflow
             BigDecimal reward;
             if (exponent == 1.0) {
-                reward = BigDecimal.valueOf(maxHealth).multiply(baseMult).multiply(rewardMultiplier);
+                reward = StorePriceManager.safeBD(maxHealth).multiply(baseMult).multiply(rewardMultiplier);
             } else {
                 // BigDecimal.pow only accepts int. For fractional, we use Math.pow and check for Infinity
                 double pow = Math.pow(maxHealth, exponent);
                 if (Double.isInfinite(pow)) {
-                    // Fallback for extreme cases: use Log-based BigDecimal power or just massive constant
-                    reward = BigDecimal.valueOf(maxHealth).pow((int)exponent).multiply(baseMult).multiply(rewardMultiplier);
+                    // Fallback for extreme cases: use BigDecimal power with damped exponent
+                    reward = StorePriceManager.safeBD(maxHealth).pow(StorePriceManager.dampedExponent((int)exponent)).multiply(baseMult).multiply(rewardMultiplier);
                 } else {
                     reward = BigDecimal.valueOf(pow).multiply(baseMult).multiply(rewardMultiplier);
                 }
@@ -694,7 +734,7 @@ public class ServerForgeEvents {
             }
             
             // 3. Increase Satiety
-            float newSatiety = Math.min(15.0f, currentSatiety + 1.0f);
+            float newSatiety = Math.min(100.0f, currentSatiety + 1.0f);
             skillData.mobSatiety.put(mobId, newSatiety);
             
             // 4. Soul Reap (Permanent Stats)
@@ -731,6 +771,7 @@ public class ServerForgeEvents {
                 // Simplified: logic to capture drops and send to client
             }
 
+            StorePriceManager.markDirty(player.getUUID());
             StorePriceManager.sync(player);
         }
     }

@@ -51,6 +51,12 @@ public class ChamberLootScreen extends BaseResponsiveLodestoneScreen {
         }));
         bx += 85;
 
+        this.layoutRoot.addElement(new ResponsiveButton(bx, 10, 80, 20, Component.literal("Transfer"), btn -> {
+            com.example.modmenu.client.ClientForgeEvents.transferModeChamberIndex = chamberIndex;
+            this.minecraft.setScreen(null);
+        }));
+        bx += 85;
+
         this.layoutRoot.addElement(new ResponsiveButton(bx, 10, 80, 20, Component.literal("Collect XP"), btn -> {
             PacketHandler.sendToServer(new ActionChamberPacket(chamberIndex, 0));
         }));
@@ -83,6 +89,31 @@ public class ChamberLootScreen extends BaseResponsiveLodestoneScreen {
             }
         }));
         bx += 105;
+
+        this.layoutRoot.addElement(new ResponsiveButton(bx, 10, 20, 20, Component.literal("?"), btn -> {}) {
+            @Override
+            public void render(GuiGraphics g, int mx, int my, float pt) {
+                super.render(g, mx, my, pt);
+                if (isMouseOver(mx, my)) {
+                    addPostRenderTask(gui -> {
+                        java.util.List<Component> lines = new java.util.ArrayList<>();
+                        lines.add(Component.literal("§6Virtualization Controls:"));
+                        lines.add(Component.literal("§eLeft Click Item: §7Collect 64 items"));
+                        lines.add(Component.literal("§eRight Click Item: §7Void all of that item"));
+                        lines.add(Component.literal("§eMiddle Click Item: §7Set Yield Target"));
+                        lines.add(Component.literal("§eTransfer Button: §7Click, then Shift+Right-Click a container."));
+                        lines.add(Component.literal(""));
+                        lines.add(Component.literal("§6Advanced Filtering:"));
+                        lines.add(Component.literal("§7Hold an item in main hand to add rules."));
+                        lines.add(Component.literal("§bID: §7Matches exactly that item."));
+                        lines.add(Component.literal("§bTags: §7Matches any item with those tags."));
+                        lines.add(Component.literal("§bNBT: §7Matches item ID AND specific NBT data."));
+                        gui.renderComponentTooltip(font, lines, absMouseX, absMouseY);
+                    });
+                }
+            }
+        });
+        bx += 25;
 
         // Sliders and Toggles panel on the left
         int leftX = 5;
@@ -278,15 +309,53 @@ public class ChamberLootScreen extends BaseResponsiveLodestoneScreen {
         @Override
         public void render(GuiGraphics g, int mx, int my, float pt) {
             boolean hovered = mx >= getX() && my >= getY() && mx < getX() + getWidth() && my < getY() + getHeight();
-            g.fill(getX(), getY(), getX() + getWidth(), getY() + getHeight(), hovered ? 0x66FFFFFF : 0x33FFFFFF);
+            
+            int lockState = !stack.isEmpty() ? stack.getOrCreateTag().getInt("modmenu_lock_state") : 0;
+            int bgColor = hovered ? 0x66FFFFFF : 0x33FFFFFF;
+            
+            if (lockState == 1) { // Locked
+                bgColor = hovered ? 0x66FF5555 : 0x33FF0000;
+            } else if (lockState == 2) { // Frozen
+                bgColor = hovered ? 0x665555FF : 0x3300AAFF;
+            }
+
+            g.fill(getX(), getY(), getX() + getWidth(), getY() + getHeight(), bgColor);
+            
+            if (lockState == 1) {
+                renderBorder(g, getX(), getY(), getWidth(), getHeight(), 0xFFFF0000);
+            } else if (lockState == 2) {
+                renderBorder(g, getX(), getY(), getWidth(), getHeight(), 0xFF00AAFF);
+            }
+
             g.renderItem(stack, getX() + (getWidth() - 16) / 2, getY() + (getHeight() - 16) / 2);
             g.renderItemDecorations(Minecraft.getInstance().font, stack, getX() + (getWidth() - 16) / 2, getY() + (getHeight() - 16) / 2);
             
+            if (lockState == 2) {
+                g.pose().pushPose();
+                g.pose().translate(getX() + getWidth() - 10, getY() + 2, 300);
+                g.pose().scale(0.5f, 0.5f, 1.0f);
+                g.drawString(Minecraft.getInstance().font, "❄", 0, 0, 0xFFFFFFFF);
+                g.pose().popPose();
+            } else if (lockState == 1) {
+                g.pose().pushPose();
+                g.pose().translate(getX() + getWidth() - 10, getY() + 2, 300);
+                g.pose().scale(0.5f, 0.5f, 1.0f);
+                g.drawString(Minecraft.getInstance().font, "🔒", 0, 0, 0xFFFFFFFF);
+                g.pose().popPose();
+            }
+
             if (hovered) {
                 addPostRenderTask(gui -> {
                     gui.renderTooltip(Minecraft.getInstance().font, stack, absMouseX, absMouseY);
                 });
             }
+        }
+
+        private void renderBorder(GuiGraphics g, int x, int y, int w, int h, int color) {
+            g.fill(x, y, x + w, y + 1, color);
+            g.fill(x, y + h - 1, x + w, y + h, color);
+            g.fill(x, y, x + 1, y + h, color);
+            g.fill(x + w - 1, y, x + w, y + h, color);
         }
 
         @Override

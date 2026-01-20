@@ -142,6 +142,13 @@ repositories {
     maven {
         url "https://cursemaven.com"
     }
+    maven {
+        // Shadows
+        url "https://maven.shadowsoffire.dev/releases"
+        content {
+            includeGroup "dev.shadowsoffire"
+        }
+    }
 }
 
 dependencies {
@@ -151,6 +158,13 @@ dependencies {
     // If the group id is "net.minecraft" and the artifact id is one of ["client", "server", "joined"],
     // then special handling is done to allow a setup of a vanilla dependency without the use of an external repository.
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
+
+    implementation fg.deobf("curse.maven:sophisticated-storage-619320:7443286")
+    implementation fg.deobf("curse.maven:sophisticated-core-618298:7493520")
+    implementation fg.deobf("curse.maven:apotheosis-313970:6461960")
+    implementation fg.deobf("curse.maven:placebo-283644:6274231")
+    implementation fg.deobf("curse.maven:patchouli-306770:6164575")
+    implementation fg.deobf("dev.shadowsoffire:ApothicAttributes:${mcVersion}-${attributeslibVersion}")
 
 
     //1.18.2 Example: implementation fg.deobf("team.lodestar.lodestone:lodestone:1.18.2-1.4.1.435")

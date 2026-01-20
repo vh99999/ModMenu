@@ -18,6 +18,7 @@ public class AdvancedFilterScreen extends BaseResponsiveLodestoneScreen {
     private final Screen parent;
     private final int chamberIndex;
     private ScrollableUIContainer ruleList;
+    private int lastVersion = -1;
 
     public AdvancedFilterScreen(Screen parent, int chamberIndex) {
         super(Component.literal("Advanced Item Filtering"));
@@ -36,7 +37,6 @@ public class AdvancedFilterScreen extends BaseResponsiveLodestoneScreen {
             if (!held.isEmpty()) {
                 String id = ForgeRegistries.ITEMS.getKey(held.getItem()).toString();
                 PacketHandler.sendToServer(new ActionChamberPacket(chamberIndex, 14, id, (0 << 16) | 0)); 
-                refreshRules();
             }
         }));
 
@@ -47,7 +47,6 @@ public class AdvancedFilterScreen extends BaseResponsiveLodestoneScreen {
                     String tagId = tag.location().toString();
                     PacketHandler.sendToServer(new ActionChamberPacket(chamberIndex, 14, tagId, (1 << 16) | 0)); 
                 });
-                refreshRules();
             }
         }));
 
@@ -56,13 +55,24 @@ public class AdvancedFilterScreen extends BaseResponsiveLodestoneScreen {
             if (!held.isEmpty() && held.hasTag()) {
                 String id = ForgeRegistries.ITEMS.getKey(held.getItem()).toString();
                 PacketHandler.sendToServer(new ActionChamberPacket(chamberIndex, 14, id, (2 << 16) | 0, held.getTag())); 
-                refreshRules();
             }
         }));
 
         ruleList = new ScrollableUIContainer(50, 40, this.width - 100, this.height - 50);
         this.layoutRoot.addElement(ruleList);
         refreshRules();
+    }
+
+    @Override
+    public void render(GuiGraphics g, int mx, int my, float pt) {
+        if (chamberIndex >= 0 && chamberIndex < StorePriceManager.clientSkills.chambers.size()) {
+            int currentVer = StorePriceManager.clientSkills.chambers.get(chamberIndex).updateVersion;
+            if (currentVer != lastVersion) {
+                refreshRules();
+                lastVersion = currentVer;
+            }
+        }
+        super.render(g, mx, my, pt);
     }
 
     private void refreshRules() {
@@ -123,7 +133,6 @@ public class AdvancedFilterScreen extends BaseResponsiveLodestoneScreen {
                 int typeIdx = rule.matchType.equals("ID") ? 0 : (rule.matchType.equals("TAG") ? 1 : 2);
                 PacketHandler.sendToServer(new ActionChamberPacket(chamberIndex, 14, rule.matchValue, (typeIdx << 16) | 0xFFFF)); // -1
                 StorePriceManager.clientSkills.chambers.get(chamberIndex).advancedFilters.remove(rule);
-                refreshRules();
                 return true;
             }
             return false;

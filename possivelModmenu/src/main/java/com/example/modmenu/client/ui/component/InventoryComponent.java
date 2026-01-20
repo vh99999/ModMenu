@@ -55,9 +55,19 @@ public class InventoryComponent extends UIElement {
         
         // Lodestone-style slot: Semi-transparent, sleek
         int bgColor = hovered ? 0x66555555 : 0x331A1A1A;
-        guiGraphics.fill(x, y, x + 22, y + 22, bgColor);
         
+        int lockState = !stack.isEmpty() ? stack.getOrCreateTag().getInt("modmenu_lock_state") : 0;
         int borderColor = hovered ? 0xAA00AAFF : 0x44FFFFFF;
+        
+        if (lockState == 1) { // Locked
+            borderColor = 0xFFFF0000;
+            if (!hovered) bgColor = 0x33FF0000;
+        } else if (lockState == 2) { // Frozen
+            borderColor = 0xFF00AAFF;
+            if (!hovered) bgColor = 0x3300AAFF;
+        }
+
+        guiGraphics.fill(x, y, x + 22, y + 22, bgColor);
         renderBorder(guiGraphics, x, y, 22, 22, borderColor);
         
         if (!stack.isEmpty()) {
@@ -67,13 +77,18 @@ public class InventoryComponent extends UIElement {
             guiGraphics.renderItemDecorations(Minecraft.getInstance().font, stack, 0, 0);
             guiGraphics.pose().popPose();
             
-            // Render Lock Indicator
-            int lockState = stack.getOrCreateTag().getInt("modmenu_lock_state");
-            if (lockState >= 1) {
-                int color = lockState == 1 ? 0xFFFF0000 : 0xFF00AAFF;
+            // Render Symbol/Feedback
+            if (lockState == 2) { // Frozen: snowflake or similar
                 guiGraphics.pose().pushPose();
-                guiGraphics.pose().translate(0, 0, 300);
-                guiGraphics.fill(x + 1, y + 1, x + 5, y + 5, color);
+                guiGraphics.pose().translate(x + 14, y + 2, 300);
+                guiGraphics.pose().scale(0.5f, 0.5f, 1.0f);
+                guiGraphics.drawString(Minecraft.getInstance().font, "❄", 0, 0, 0xFFFFFFFF);
+                guiGraphics.pose().popPose();
+            } else if (lockState == 1) { // Locked: lock symbol
+                guiGraphics.pose().pushPose();
+                guiGraphics.pose().translate(x + 14, y + 2, 300);
+                guiGraphics.pose().scale(0.5f, 0.5f, 1.0f);
+                guiGraphics.drawString(Minecraft.getInstance().font, "🔒", 0, 0, 0xFFFFFFFF);
                 guiGraphics.pose().popPose();
             }
 

@@ -72,14 +72,14 @@ public class AbilitiesScreen extends BaseResponsiveLodestoneScreen {
             if (s.miningActive) { s.focusedMiningActive = false; s.areaMiningActive = false; }
             sync(); 
         });
-        addSetting(list, "Mining Range", String.valueOf(s.miningRange), () -> { s.miningRange = Math.max(1, s.miningRange - 1); sync(); }, () -> { s.miningRange = Math.min(128, s.miningRange + 1); sync(); });
+        addSetting(list, "Mining Range", String.valueOf(s.miningRange), () -> { s.miningRange = Math.max(1, s.miningRange - 1); sync(); }, () -> { s.miningRange = Math.min(10000, s.miningRange + 1); sync(); });
         
         addToggle(list, "Focused Mining", s.focusedMiningActive, () -> { 
             s.focusedMiningActive = !s.focusedMiningActive; 
             if (s.focusedMiningActive) { s.miningActive = false; s.areaMiningActive = false; }
             sync(); 
         });
-        addSetting(list, "Focused Range", String.valueOf(s.focusedMiningRange), () -> { s.focusedMiningRange = Math.max(1, s.focusedMiningRange - 1); sync(); }, () -> { s.focusedMiningRange = Math.min(128, s.focusedMiningRange + 1); sync(); });
+        addSetting(list, "Focused Range", String.valueOf(s.focusedMiningRange), () -> { s.focusedMiningRange = Math.max(1, s.focusedMiningRange - 1); sync(); }, () -> { s.focusedMiningRange = Math.min(10000, s.focusedMiningRange + 1); sync(); });
         
         list.addElement(new ResponsiveButton(0, 0, list.getWidth(), 20, Component.literal("Configure Mining Blacklist"), btn -> {
             this.minecraft.setScreen(new ItemFilterScreen(this, s.miningBlacklist, "Mining Blacklist"));
@@ -97,18 +97,18 @@ public class AbilitiesScreen extends BaseResponsiveLodestoneScreen {
             if (s.areaMiningActive) { s.miningActive = false; s.focusedMiningActive = false; }
             sync(); 
         });
-        addSetting(list, "Area Size", String.valueOf(s.areaMiningSize), () -> { s.areaMiningSize = Math.max(1, s.areaMiningSize - 2); sync(); }, () -> { s.areaMiningSize = Math.min(25, s.areaMiningSize + 2); sync(); });
+        addSetting(list, "Area Size", String.valueOf(s.areaMiningSize), () -> { s.areaMiningSize = Math.max(1, s.areaMiningSize - 2); sync(); }, () -> { s.areaMiningSize = Math.min(1000, s.areaMiningSize + 2); sync(); });
 
         // Automation
         addHeader(list, "AUTOMATION");
         addToggle(list, "Item Repair Active", s.repairActive, () -> { s.repairActive = !s.repairActive; sync(); });
         addToggle(list, "Item Magnet", s.itemMagnetActive, () -> { s.itemMagnetActive = !s.itemMagnetActive; sync(); });
-        addSetting(list, "Item Magnet Speed", String.valueOf(s.itemMagnetOpsPerTick), () -> { s.itemMagnetOpsPerTick = Math.max(1, s.itemMagnetOpsPerTick - 1); sync(); }, () -> { s.itemMagnetOpsPerTick = Math.min(100, s.itemMagnetOpsPerTick + 1); sync(); });
-        addSetting(list, "Item Magnet Range", String.valueOf(s.itemMagnetRange), () -> { s.itemMagnetRange = Math.max(1, s.itemMagnetRange - 1); sync(); }, () -> { s.itemMagnetRange = Math.min(128, s.itemMagnetRange + 1); sync(); });
+        addSetting(list, "Item Magnet Speed", String.valueOf(s.itemMagnetOpsPerTick), () -> { s.itemMagnetOpsPerTick = Math.max(1, s.itemMagnetOpsPerTick - 1); sync(); }, () -> { s.itemMagnetOpsPerTick = Math.min(1000000, s.itemMagnetOpsPerTick + 1); sync(); });
+        addSetting(list, "Item Magnet Range", String.valueOf(s.itemMagnetRange), () -> { s.itemMagnetRange = Math.max(1, s.itemMagnetRange - 1); sync(); }, () -> { s.itemMagnetRange = Math.min(10000, s.itemMagnetRange + 1); sync(); });
         
         addToggle(list, "XP Magnet", s.xpMagnetActive, () -> { s.xpMagnetActive = !s.xpMagnetActive; sync(); });
-        addSetting(list, "XP Magnet Speed", String.valueOf(s.xpMagnetOpsPerTick), () -> { s.xpMagnetOpsPerTick = Math.max(1, s.xpMagnetOpsPerTick - 1); sync(); }, () -> { s.xpMagnetOpsPerTick = Math.min(100, s.xpMagnetOpsPerTick + 1); sync(); });
-        addSetting(list, "XP Magnet Range", String.valueOf(s.xpMagnetRange), () -> { s.xpMagnetRange = Math.max(1, s.xpMagnetRange - 1); sync(); }, () -> { s.xpMagnetRange = Math.min(128, s.xpMagnetRange + 1); sync(); });
+        addSetting(list, "XP Magnet Speed", String.valueOf(s.xpMagnetOpsPerTick), () -> { s.xpMagnetOpsPerTick = Math.max(1, s.xpMagnetOpsPerTick - 1); sync(); }, () -> { s.xpMagnetOpsPerTick = Math.min(1000000, s.xpMagnetOpsPerTick + 1); sync(); });
+        addSetting(list, "XP Magnet Range", String.valueOf(s.xpMagnetRange), () -> { s.xpMagnetRange = Math.max(1, s.xpMagnetRange - 1); sync(); }, () -> { s.xpMagnetRange = Math.min(10000, s.xpMagnetRange + 1); sync(); });
 
         addToggle(list, "Auto Seller", s.autoSellerActive, () -> { s.autoSellerActive = !s.autoSellerActive; sync(); });
         addToggle(list, "Auto Seller Mode: " + (s.autoSellerIsBlacklist ? "Blacklist" : "Whitelist"), s.autoSellerIsBlacklist, () -> { s.autoSellerIsBlacklist = !s.autoSellerIsBlacklist; sync(); });
@@ -136,13 +136,13 @@ public class AbilitiesScreen extends BaseResponsiveLodestoneScreen {
         // Visuals
         addHeader(list, "VISUALS");
         addToggle(list, "Chest Highlight", s.chestHighlightActive, () -> { s.chestHighlightActive = !s.chestHighlightActive; sync(); });
-        addSetting(list, "Chest Range", String.valueOf(s.chestHighlightRange), () -> { s.chestHighlightRange = Math.max(1, s.chestHighlightRange - 1); sync(); }, () -> { s.chestHighlightRange = Math.min(256, s.chestHighlightRange + 1); sync(); });
+        addSetting(list, "Chest Range", String.valueOf(s.chestHighlightRange), () -> { s.chestHighlightRange = Math.max(1, s.chestHighlightRange - 1); sync(); }, () -> { s.chestHighlightRange = Math.min(10000, s.chestHighlightRange + 1); sync(); });
         
         addToggle(list, "Trap Highlight", s.trapHighlightActive, () -> { s.trapHighlightActive = !s.trapHighlightActive; sync(); });
-        addSetting(list, "Trap Range", String.valueOf(s.trapHighlightRange), () -> { s.trapHighlightRange = Math.max(1, s.trapHighlightRange - 1); sync(); }, () -> { s.trapHighlightRange = Math.min(256, s.trapHighlightRange + 1); sync(); });
+        addSetting(list, "Trap Range", String.valueOf(s.trapHighlightRange), () -> { s.trapHighlightRange = Math.max(1, s.trapHighlightRange - 1); sync(); }, () -> { s.trapHighlightRange = Math.min(10000, s.trapHighlightRange + 1); sync(); });
         
         addToggle(list, "Entity ESP", s.entityESPActive, () -> { s.entityESPActive = !s.entityESPActive; sync(); });
-        addSetting(list, "ESP Range", String.valueOf(s.entityESPRange), () -> { s.entityESPRange = Math.max(1, s.entityESPRange - 1); sync(); }, () -> { s.entityESPRange = Math.min(256, s.entityESPRange + 1); sync(); });
+        addSetting(list, "ESP Range", String.valueOf(s.entityESPRange), () -> { s.entityESPRange = Math.max(1, s.entityESPRange - 1); sync(); }, () -> { s.entityESPRange = Math.min(10000, s.entityESPRange + 1); sync(); });
 
         // Utility
         addHeader(list, "UTILITY");
@@ -150,13 +150,13 @@ public class AbilitiesScreen extends BaseResponsiveLodestoneScreen {
         list.addElement(new ResponsiveButton(0, 0, list.getWidth(), 20, Component.literal("Configure Spawn Boost Targets"), btn -> {
             this.minecraft.setScreen(new EntityFilterScreen(this, s.spawnBoostTargets));
         }));
-        addSetting(list, "Boost Mult", String.format("%.1f", s.spawnBoostMultiplier), () -> { s.spawnBoostMultiplier = Math.max(1.0, s.spawnBoostMultiplier - 0.5); sync(); }, () -> { s.spawnBoostMultiplier = Math.min(100.0, s.spawnBoostMultiplier + 0.5); sync(); });
+        addSetting(list, "Boost Mult", String.format("%.1f", s.spawnBoostMultiplier), () -> { s.spawnBoostMultiplier = Math.max(1.0, s.spawnBoostMultiplier - 0.5); sync(); }, () -> { s.spawnBoostMultiplier = Math.min(1000000.0, s.spawnBoostMultiplier + 0.5); sync(); });
 
         // Movement / Combat
         addHeader(list, "MOVEMENT & COMBAT");
         addToggle(list, "Flight", s.flightActive, () -> { s.flightActive = !s.flightActive; sync(); });
         addToggle(list, "Step Assist", s.stepAssistActive, () -> { s.stepAssistActive = !s.stepAssistActive; sync(); });
-        addSetting(list, "Step Height", String.format("%.1f", s.stepAssistHeight), () -> { s.stepAssistHeight = Math.max(0.5f, s.stepAssistHeight - 0.5f); sync(); }, () -> { s.stepAssistHeight = Math.min(10.0f, s.stepAssistHeight + 0.5f); sync(); });
+        addSetting(list, "Step Height", String.format("%.1f", s.stepAssistHeight), () -> { s.stepAssistHeight = Math.max(0.5f, s.stepAssistHeight - 0.5f); sync(); }, () -> { s.stepAssistHeight = Math.min(1000.0f, s.stepAssistHeight + 0.5f); sync(); });
         addToggle(list, "Sure Kill", s.sureKillActive, () -> { s.sureKillActive = !s.sureKillActive; sync(); });
 
         content.addElement(list);

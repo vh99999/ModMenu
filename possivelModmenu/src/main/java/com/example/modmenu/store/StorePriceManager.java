@@ -23,6 +23,8 @@ import java.io.IOException;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -35,11 +37,17 @@ public class StorePriceManager {
             .create();
     private static final File PRICES_FILE = new File(FMLPaths.CONFIGDIR.get().toFile(), "store_prices.json");
     private static File DATA_FILE = new File(FMLPaths.CONFIGDIR.get().toFile(), "store_data.json");
+    private static File WORLD_DATA_DIR;
+    private static File PLAYER_DATA_DIR;
     private static final PricingEngine pricingEngine = new PricingEngine();
     
     public static final BigDecimal BD_100 = BigDecimal.valueOf(100);
     public static final BigDecimal BD_1000 = BigDecimal.valueOf(1000);
     public static final BigDecimal BD_BILLION = new BigDecimal("1000000000");
+    
+    public static final double MAX_MOVEMENT_SPEED = 1.1;
+    public static final double MAX_ATTACK_SPEED = 20.0;
+    public static final double MAX_REACH_DISTANCE = 20.0;
     
     private static Map<String, BigDecimal> itemBuyPrices = new HashMap<>();
     private static Map<String, BigDecimal> itemSellPrices = new HashMap<>();
@@ -56,7 +64,11 @@ public class StorePriceManager {
     private static Map<UUID, String> playerReturnDimension = new HashMap<>();
     private static Map<UUID, double[]> playerReturnPosition = new HashMap<>();
     private static Set<UUID> editors = new HashSet<>();
+    private static final Set<UUID> dirtyPlayers = Collections.synchronizedSet(new HashSet<>());
+    private static boolean globalDirty = false;
     public static boolean globalSkillsDisabled = false;
+    public static boolean isDataCorrupted = false;
+    public static String lastLoadError = "";
     
     // Client-side current player info
     public static BigDecimal playerMoney = BigDecimal.ZERO;
@@ -395,7 +407,7 @@ public class StorePriceManager {
     public static FormulaConfig formulas = new FormulaConfig();
     private static final File FORMULA_FILE = new File(FMLPaths.CONFIGDIR.get().toFile(), "store_formulas.json");
 
-    private static class PlayerData {
+    private static class LegacyPlayerData {
         Map<String, BigDecimal> money = new HashMap<>();
         List<String> editors = new ArrayList<>();
         Map<String, Map<String, Integer>> activeEffects = new HashMap<>();
@@ -406,6 +418,22 @@ public class StorePriceManager {
         Map<String, String> returnDimension = new HashMap<>();
         Map<String, double[]> returnPosition = new HashMap<>();
         Map<String, Long> soldVolume = new HashMap<>();
+    }
+
+    private static class GlobalData {
+        List<String> editors = new ArrayList<>();
+        Map<String, Long> soldVolume = new HashMap<>();
+    }
+
+    private static class SinglePlayerData {
+        BigDecimal money;
+        Map<String, Integer> activeEffects;
+        AbilitySettings abilities;
+        SkillData skills;
+        List<String> unlockedHouses;
+        Map<String, Double> attributeBonuses;
+        String returnDimension;
+        double[] returnPosition;
     }
 
     private static class StorePrices {
@@ -422,18 +450,25 @@ public class StorePriceManager {
     }
 
     public static void initWorldData(File worldDir) {
-        DATA_FILE = new File(worldDir, "store_data.json");
-        playerMoneyMap.clear();
-        totalSoldVolume.clear();
-        editors.clear();
-        activeEffects.clear();
-        playerAbilities.clear();
-        playerSkills.clear();
-        unlockedHousesMap.clear();
-        playerAttributeBonuses.clear();
-        playerReturnDimension.clear();
-        playerReturnPosition.clear();
-        loadData();
+        WORLD_DATA_DIR = new File(worldDir, "modmenu_data");
+        if (!WORLD_DATA_DIR.exists()) WORLD_DATA_DIR.mkdirs();
+        PLAYER_DATA_DIR = new File(WORLD_DATA_DIR, "players");
+        if (!PLAYER_DATA_DIR.exists()) PLAYER_DATA_DIR.mkdirs();
+        
+        DATA_FILE = new File(WORLD_DATA_DIR, "global.json");
+        isDataCorrupted = false;
+        lastLoadError = "";
+        
+        // Check for legacy data
+        File legacyFile = new File(worldDir, "store_data.json");
+        if (legacyFile.exists()) {
+            loadLegacyData(legacyFile);
+            saveGlobalData();
+            playerMoneyMap.keySet().forEach(StorePriceManager::savePlayerData);
+            legacyFile.renameTo(new File(worldDir, "store_data.json.old"));
+        } else {
+            loadData();
+        }
     }
 
     public static void clearWorldData() {
@@ -448,6 +483,7 @@ public class StorePriceManager {
         playerReturnDimension.clear();
         playerReturnPosition.clear();
         DATA_FILE = new File(FMLPaths.CONFIGDIR.get().toFile(), "store_data.json"); // Reset to default
+        isDataCorrupted = false;
     }
 
     private static void loadFormulas() {
@@ -464,11 +500,23 @@ public class StorePriceManager {
     }
 
     private static void saveFormulas() {
-        try (FileWriter writer = new FileWriter(FORMULA_FILE)) {
-            GSON.toJson(formulas, writer);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        atomicWrite(FORMULA_FILE, formulas);
+    }
+
+    public static void save() {
+        savePrices();
+        saveFormulas();
+        saveAllDirty();
+    }
+
+    public static void savePrices() {
+        StorePrices sp = new StorePrices();
+        sp.itemsBuy = itemBuyPrices;
+        sp.itemsSell = itemSellPrices;
+        sp.enchantments = enchantPrices;
+        sp.effects = effectBasePrices;
+        sp.edited = editedPrices;
+        atomicWrite(PRICES_FILE, sp);
     }
 
     private static void loadPrices() {
@@ -576,104 +624,145 @@ public class StorePriceManager {
         if (added) savePrices();
     }
 
+    private static synchronized void atomicWrite(File file, Object data) {
+        File tmpFile = new File(file.getParent(), file.getName() + ".tmp");
+        try (FileWriter writer = new FileWriter(tmpFile)) {
+            GSON.toJson(data, writer);
+            writer.flush();
+        } catch (IOException e) {
+            e.printStackTrace();
+            return;
+        }
+        
+        try {
+            Files.move(tmpFile.toPath(), file.toPath(), 
+                StandardCopyOption.REPLACE_EXISTING, 
+                StandardCopyOption.ATOMIC_MOVE);
+        } catch (IOException e) {
+            try {
+                Files.move(tmpFile.toPath(), file.toPath(), 
+                    StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
+        }
+    }
+
+    private static void loadLegacyData(File legacyFile) {
+        try (FileReader reader = new FileReader(legacyFile)) {
+            LegacyPlayerData data = GSON.fromJson(reader, LegacyPlayerData.class);
+            if (data != null) {
+                if (data.money != null) data.money.forEach((u, m) -> playerMoneyMap.put(UUID.fromString(u), m));
+                if (data.editors != null) data.editors.forEach(u -> editors.add(UUID.fromString(u)));
+                if (data.activeEffects != null) data.activeEffects.forEach((u, e) -> activeEffects.put(UUID.fromString(u), e));
+                if (data.abilities != null) data.abilities.forEach((u, a) -> playerAbilities.put(UUID.fromString(u), a));
+                if (data.skills != null) data.skills.forEach((u, s) -> playerSkills.put(UUID.fromString(u), s));
+                if (data.unlockedHouses != null) data.unlockedHouses.forEach((u, h) -> unlockedHousesMap.put(UUID.fromString(u), new HashSet<>(h)));
+                if (data.attributeBonuses != null) data.attributeBonuses.forEach((u, b) -> playerAttributeBonuses.put(UUID.fromString(u), b));
+                if (data.returnDimension != null) data.returnDimension.forEach((u, d) -> playerReturnDimension.put(UUID.fromString(u), d));
+                if (data.returnPosition != null) data.returnPosition.forEach((u, p) -> playerReturnPosition.put(UUID.fromString(u), p));
+                if (data.soldVolume != null) totalSoldVolume.putAll(data.soldVolume);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
     private static void loadData() {
         if (!DATA_FILE.exists()) {
-            saveData();
+            saveGlobalData();
             return;
         }
         try (FileReader reader = new FileReader(DATA_FILE)) {
-            PlayerData data = GSON.fromJson(reader, PlayerData.class);
+            GlobalData data = GSON.fromJson(reader, GlobalData.class);
             if (data != null) {
-                if (data.money != null) {
-                    data.money.forEach((uuidStr, money) -> {
-                        try { playerMoneyMap.put(UUID.fromString(uuidStr), money); } catch (Exception ignored) {}
-                    });
-                }
-                if (data.editors != null) {
-                    data.editors.forEach(uuidStr -> {
-                        try { editors.add(UUID.fromString(uuidStr)); } catch (Exception ignored) {}
-                    });
-                }
-                if (data.activeEffects != null) {
-                    data.activeEffects.forEach((uuidStr, effects) -> {
-                        try { activeEffects.put(UUID.fromString(uuidStr), effects); } catch (Exception ignored) {}
-                    });
-                }
-                if (data.abilities != null) {
-                    data.abilities.forEach((uuidStr, ability) -> {
-                        try { playerAbilities.put(UUID.fromString(uuidStr), ability); } catch (Exception ignored) {}
-                    });
-                }
-                if (data.skills != null) {
-                    data.skills.forEach((uuidStr, skill) -> {
-                        try { playerSkills.put(UUID.fromString(uuidStr), skill); } catch (Exception ignored) {}
-                    });
-                }
-                if (data.unlockedHouses != null) {
-                    data.unlockedHouses.forEach((uuidStr, houses) -> {
-                        try { unlockedHousesMap.put(UUID.fromString(uuidStr), new HashSet<>(houses)); } catch (Exception ignored) {}
-                    });
-                }
-                if (data.attributeBonuses != null) {
-                    data.attributeBonuses.forEach((uuidStr, bonuses) -> {
-                        try { playerAttributeBonuses.put(UUID.fromString(uuidStr), bonuses); } catch (Exception ignored) {}
-                    });
-                }
-                if (data.returnDimension != null) {
-                    data.returnDimension.forEach((uuidStr, dim) -> {
-                        try { playerReturnDimension.put(UUID.fromString(uuidStr), dim); } catch (Exception ignored) {}
-                    });
-                }
-                if (data.returnPosition != null) {
-                    data.returnPosition.forEach((uuidStr, pos) -> {
-                        try { playerReturnPosition.put(UUID.fromString(uuidStr), pos); } catch (Exception ignored) {}
-                    });
-                }
-                if (data.soldVolume != null) {
-                    totalSoldVolume = data.soldVolume;
-                }
+                editors.clear();
+                totalSoldVolume.clear();
+                if (data.editors != null) data.editors.forEach(u -> editors.add(UUID.fromString(u)));
+                if (data.soldVolume != null) totalSoldVolume.putAll(data.soldVolume);
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
+            isDataCorrupted = true;
+            lastLoadError = e.getMessage() != null ? e.getMessage() : e.toString();
             e.printStackTrace();
         }
     }
 
-    public static void save() {
-        savePrices();
-        saveFormulas();
-        saveData();
-    }
-
-    private static void savePrices() {
-        try (FileWriter writer = new FileWriter(PRICES_FILE)) {
-            StorePrices sp = new StorePrices();
-            sp.itemsBuy = itemBuyPrices;
-            sp.itemsSell = itemSellPrices;
-            sp.enchantments = enchantPrices;
-            sp.effects = effectBasePrices;
-            sp.edited = editedPrices;
-            GSON.toJson(sp, writer);
-        } catch (IOException e) {
+    public static void loadPlayerData(UUID uuid) {
+        File playerFile = new File(PLAYER_DATA_DIR, uuid.toString() + ".json");
+        if (!playerFile.exists()) return;
+        try (FileReader reader = new FileReader(playerFile)) {
+            SinglePlayerData data = GSON.fromJson(reader, SinglePlayerData.class);
+            if (data != null) {
+                if (data.money != null) playerMoneyMap.put(uuid, data.money);
+                if (data.activeEffects != null) activeEffects.put(uuid, data.activeEffects);
+                if (data.abilities != null) playerAbilities.put(uuid, data.abilities);
+                if (data.skills != null) playerSkills.put(uuid, data.skills);
+                if (data.unlockedHouses != null) unlockedHousesMap.put(uuid, new HashSet<>(data.unlockedHouses));
+                if (data.attributeBonuses != null) playerAttributeBonuses.put(uuid, data.attributeBonuses);
+                if (data.returnDimension != null) playerReturnDimension.put(uuid, data.returnDimension);
+                if (data.returnPosition != null) playerReturnPosition.put(uuid, data.returnPosition);
+            }
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private static void saveData() {
-        try (FileWriter writer = new FileWriter(DATA_FILE)) {
-            PlayerData data = new PlayerData();
-            playerMoneyMap.forEach((uuid, money) -> data.money.put(uuid.toString(), money));
-            editors.forEach(uuid -> data.editors.add(uuid.toString()));
-            activeEffects.forEach((uuid, effects) -> data.activeEffects.put(uuid.toString(), effects));
-            playerAbilities.forEach((uuid, ability) -> data.abilities.put(uuid.toString(), ability));
-            playerSkills.forEach((uuid, skill) -> data.skills.put(uuid.toString(), skill));
-            unlockedHousesMap.forEach((uuid, houses) -> data.unlockedHouses.put(uuid.toString(), new ArrayList<>(houses)));
-            playerAttributeBonuses.forEach((uuid, bonuses) -> data.attributeBonuses.put(uuid.toString(), bonuses));
-            playerReturnDimension.forEach((uuid, dim) -> data.returnDimension.put(uuid.toString(), dim));
-            playerReturnPosition.forEach((uuid, pos) -> data.returnPosition.put(uuid.toString(), pos));
-            data.soldVolume = totalSoldVolume;
-            GSON.toJson(data, writer);
-        } catch (IOException e) {
-            e.printStackTrace();
+    public static void saveGlobalData() {
+        if (isDataCorrupted) return;
+        GlobalData data = new GlobalData();
+        editors.forEach(u -> data.editors.add(u.toString()));
+        data.soldVolume = totalSoldVolume;
+        atomicWrite(DATA_FILE, data);
+        globalDirty = false;
+    }
+
+    public static void savePlayerData(UUID uuid) {
+        if (isDataCorrupted) return;
+        SinglePlayerData data = new SinglePlayerData();
+        data.money = getMoney(uuid);
+        data.activeEffects = activeEffects.get(uuid);
+        data.abilities = playerAbilities.get(uuid);
+        data.skills = playerSkills.get(uuid);
+        Set<String> houses = unlockedHousesMap.get(uuid);
+        data.unlockedHouses = houses != null ? new ArrayList<>(houses) : null;
+        data.attributeBonuses = playerAttributeBonuses.get(uuid);
+        data.returnDimension = playerReturnDimension.get(uuid);
+        data.returnPosition = playerReturnPosition.get(uuid);
+        
+        File playerFile = new File(PLAYER_DATA_DIR, uuid.toString() + ".json");
+        atomicWrite(playerFile, data);
+        dirtyPlayers.remove(uuid);
+    }
+
+    public static void saveData() {
+        saveGlobalData();
+        new HashSet<>(playerMoneyMap.keySet()).forEach(StorePriceManager::savePlayerData);
+    }
+
+    public static void markDirty(UUID uuid) {
+        if (uuid == null) globalDirty = true;
+        else dirtyPlayers.add(uuid);
+    }
+
+    public static void saveAllDirty() {
+        if (globalDirty) saveGlobalData();
+        new HashSet<>(dirtyPlayers).forEach(StorePriceManager::savePlayerData);
+    }
+
+    public static void backupCorruptedData() {
+        if (WORLD_DATA_DIR == null || !WORLD_DATA_DIR.exists()) return;
+        File backupDir = new File(WORLD_DATA_DIR, "backups");
+        if (!backupDir.exists()) backupDir.mkdirs();
+        File sessionBackup = new File(backupDir, "corrupted_" + System.currentTimeMillis());
+        sessionBackup.mkdirs();
+        
+        if (DATA_FILE.exists()) DATA_FILE.renameTo(new File(sessionBackup, DATA_FILE.getName()));
+        File[] players = PLAYER_DATA_DIR.listFiles();
+        if (players != null) {
+            for (File p : players) {
+                p.renameTo(new File(sessionBackup, p.getName()));
+            }
         }
     }
 
@@ -683,7 +772,7 @@ public class StorePriceManager {
 
     public static void setMoney(UUID uuid, BigDecimal amount) {
         playerMoneyMap.put(uuid, amount);
-        saveData();
+        markDirty(uuid);
     }
 
     public static void addMoney(UUID uuid, long amount) {
@@ -743,7 +832,7 @@ public class StorePriceManager {
     public static void setEditor(UUID uuid, boolean editor) {
         if (editor) editors.add(uuid);
         else editors.remove(uuid);
-        saveData();
+        markDirty(null);
     }
 
     public static Map<String, Integer> getActiveEffects(UUID uuid) {
@@ -757,7 +846,7 @@ public class StorePriceManager {
         } else {
             effects.put(effectId, level);
         }
-        saveData();
+        markDirty(uuid);
     }
 
     public static BigDecimal getEffectBasePrice(String effectId) {
@@ -778,33 +867,49 @@ public class StorePriceManager {
     }
 
     public static BigDecimal getBuyPrice(Item item) {
+        return getBuyPrice(item, null);
+    }
+
+    public static BigDecimal getBuyPrice(Item item, UUID uuid) {
+        SkillData skills = getSkillsForContext(uuid);
+        if (skills != null && skills.activeToggles.contains("WEALTH_KEYSTONE_MONOPOLY")) return BigDecimal.ZERO;
+        return getPrice(item, uuid);
+    }
+
+    public static BigDecimal getPrice(Item item) {
+        return getPrice(item, null);
+    }
+
+    public static BigDecimal getPrice(Item item, UUID uuid) {
         String id = ForgeRegistries.ITEMS.getKey(item).toString();
         Map<String, BigDecimal> buyPrices = (net.minecraftforge.api.distmarker.Dist.CLIENT == net.minecraftforge.fml.loading.FMLEnvironment.dist && !clientBuyPrices.isEmpty()) ? clientBuyPrices : itemBuyPrices;
         
-        // Absolute Monopoly Keystone (Wealth Branch)
-        if (net.minecraftforge.fml.loading.FMLEnvironment.dist == net.minecraftforge.api.distmarker.Dist.CLIENT) {
-            if (clientSkills.activeToggles.contains("WEALTH_KEYSTONE_MONOPOLY")) return BigDecimal.ZERO;
-        }
-
+        BigDecimal price = BigDecimal.valueOf(100);
         if (buyPrices.containsKey(id)) {
-            BigDecimal price = buyPrices.get(id);
-            if (price.compareTo(BigDecimal.ZERO) > 0) return applyBuyDiscounts(price);
-        }
-
-        for (Map.Entry<String, BigDecimal> entry : buyPrices.entrySet()) {
-            if (entry.getKey().startsWith("tag:")) {
-                String tagId = entry.getKey().substring(4);
-                if (hasTag(item, tagId)) {
-                    return applyBuyDiscounts(entry.getValue());
+            price = buyPrices.get(id);
+        } else {
+            for (Map.Entry<String, BigDecimal> entry : buyPrices.entrySet()) {
+                if (entry.getKey().startsWith("tag:")) {
+                    String tagId = entry.getKey().substring(4);
+                    if (hasTag(item, tagId)) {
+                        price = entry.getValue();
+                        break;
+                    }
                 }
             }
         }
-        return applyBuyDiscounts(BigDecimal.valueOf(100));
+        return applyBuyDiscounts(price, getSkillsForContext(uuid));
     }
 
-    private static BigDecimal applyBuyDiscounts(BigDecimal price) {
-        if (net.minecraftforge.fml.loading.FMLEnvironment.dist == net.minecraftforge.api.distmarker.Dist.CLIENT) {
-            int inflationRank = SkillManager.getActiveRank(clientSkills, "WEALTH_INFLATION_CONTROL");
+    private static SkillData getSkillsForContext(UUID uuid) {
+        if (uuid != null) return getSkills(uuid);
+        if (net.minecraftforge.fml.loading.FMLEnvironment.dist == net.minecraftforge.api.distmarker.Dist.CLIENT) return clientSkills;
+        return null;
+    }
+
+    private static BigDecimal applyBuyDiscounts(BigDecimal price, SkillData skills) {
+        if (skills != null) {
+            int inflationRank = SkillManager.getActiveRank(skills, "WEALTH_INFLATION_CONTROL");
             if (inflationRank > 0) {
                 price = price.multiply(BigDecimal.valueOf(1.0 - 0.02 * inflationRank));
             }
@@ -813,6 +918,10 @@ public class StorePriceManager {
     }
 
     public static BigDecimal getSellPrice(Item item) {
+        return getSellPrice(item, null);
+    }
+
+    public static BigDecimal getSellPrice(Item item, UUID uuid) {
         String id = ForgeRegistries.ITEMS.getKey(item).toString();
         Map<String, BigDecimal> sellPrices = (net.minecraftforge.api.distmarker.Dist.CLIENT == net.minecraftforge.fml.loading.FMLEnvironment.dist && !clientSellPrices.isEmpty()) ? clientSellPrices : itemSellPrices;
         
@@ -833,10 +942,9 @@ public class StorePriceManager {
 
         if (baseSellPrice.compareTo(BigDecimal.ZERO) <= 0) baseSellPrice = BigDecimal.valueOf(10);
 
-        // Market Manipulation (Branch A)
-        // Client-side only for UI display, or handled in packets for server-side
-        if (net.minecraftforge.fml.loading.FMLEnvironment.dist == net.minecraftforge.api.distmarker.Dist.CLIENT) {
-            int manipulationRank = SkillManager.getActiveRank(clientSkills, "WEALTH_MARKET_MANIPULATION");
+        SkillData skills = getSkillsForContext(uuid);
+        if (skills != null) {
+            int manipulationRank = SkillManager.getActiveRank(skills, "WEALTH_MARKET_MANIPULATION");
             if (manipulationRank > 0) {
                 baseSellPrice = baseSellPrice.multiply(BigDecimal.valueOf(1.0 + 0.5 * manipulationRank));
                 if (manipulationRank >= 10) return baseSellPrice.setScale(0, RoundingMode.HALF_UP); // Ignore decay
@@ -844,17 +952,13 @@ public class StorePriceManager {
         }
 
         // Dynamic Economy Algorithm (Supply and Demand)
-        if (net.minecraftforge.fml.loading.FMLEnvironment.dist == net.minecraftforge.api.distmarker.Dist.DEDICATED_SERVER || 
-            net.minecraftforge.fml.loading.FMLEnvironment.dist == net.minecraftforge.api.distmarker.Dist.CLIENT) {
-            
-            Map<String, Long> volumes = (net.minecraftforge.fml.loading.FMLEnvironment.dist == net.minecraftforge.api.distmarker.Dist.CLIENT) ? clientSoldVolume : totalSoldVolume;
-            long volume = volumes.getOrDefault(id, 0L);
-            if (volume > 1000) {
-                // Drop price exponentially: P = P0 * 0.95 ^ (volume / 1000)
-                double factor = Math.pow(0.95, volume / 1000.0);
-                baseSellPrice = baseSellPrice.multiply(BigDecimal.valueOf(factor));
-                return baseSellPrice.compareTo(BigDecimal.ONE) < 0 ? BigDecimal.ONE : baseSellPrice.setScale(0, RoundingMode.HALF_UP);
-            }
+        Map<String, Long> volumes = (net.minecraftforge.fml.loading.FMLEnvironment.dist == net.minecraftforge.api.distmarker.Dist.CLIENT) ? clientSoldVolume : totalSoldVolume;
+        long volume = volumes.getOrDefault(id, 0L);
+        if (volume > 1000) {
+            // Drop price exponentially: P = P0 * 0.95 ^ (volume / 1000)
+            double factor = Math.pow(0.95, volume / 1000.0);
+            baseSellPrice = baseSellPrice.multiply(BigDecimal.valueOf(factor));
+            return baseSellPrice.compareTo(BigDecimal.ONE) < 0 ? BigDecimal.ONE : baseSellPrice.setScale(0, RoundingMode.HALF_UP);
         }
 
         return baseSellPrice.setScale(0, RoundingMode.HALF_UP);
@@ -866,8 +970,8 @@ public class StorePriceManager {
         long newVolume = oldVolume + count.longValue();
         totalSoldVolume.put(id, newVolume);
         
-        if (newVolume / 100 > oldVolume / 100) { // Save every 100
-            saveData();
+        if (newVolume / 100 > oldVolume / 100) { // Mark dirty every 100
+            markDirty(null);
         }
         
         if (newVolume / 10000 > oldVolume / 10000) { // Sync every 10k
@@ -878,10 +982,6 @@ public class StorePriceManager {
                 }
             }
         }
-    }
-
-    public static BigDecimal getPrice(Item item) {
-        return getBuyPrice(item);
     }
 
     private static BigDecimal getInternalPrice(Item item) {
@@ -974,6 +1074,35 @@ public class StorePriceManager {
         return formatCurrency(BigDecimal.valueOf(amount));
     }
 
+    public static BigDecimal safeBD(double val) {
+        if (Double.isInfinite(val)) return new BigDecimal("1e300");
+        if (Double.isNaN(val)) return BigDecimal.ZERO;
+        return BigDecimal.valueOf(val);
+    }
+
+    public static BigDecimal safeBD(float val) {
+        if (Float.isInfinite(val)) return new BigDecimal("1e300");
+        if (Float.isNaN(val)) return BigDecimal.ZERO;
+        return BigDecimal.valueOf(val);
+    }
+
+    public static int dampedExponent(int exp) {
+        if (exp <= 2000) return Math.max(0, exp);
+        return 2000 + (int)Math.sqrt(exp - 2000);
+    }
+
+    public static double dampedDouble(BigDecimal val, double threshold) {
+        if (val.compareTo(BigDecimal.valueOf(threshold)) <= 0) return val.doubleValue();
+        BigDecimal excess = val.subtract(BigDecimal.valueOf(threshold));
+        try {
+            // Using sqrt for slow but infinite growth
+            double bonus = excess.sqrt(new java.math.MathContext(10, RoundingMode.HALF_UP)).doubleValue();
+            return Math.min(threshold + bonus, 1e300); // Attribute safety cap (Minecraft/Double stability)
+        } catch (Exception e) {
+            return 1e300;
+        }
+    }
+
     public static BigDecimal getDrain(UUID uuid) {
         SkillData skillData = getSkills(uuid);
         Map<String, Integer> active = getActiveEffects(uuid);
@@ -981,8 +1110,8 @@ public class StorePriceManager {
         for (Map.Entry<String, Integer> entry : active.entrySet()) {
             BigDecimal basePrice = getEffectBasePrice(entry.getKey());
             int level = entry.getValue();
-            // Use BigDecimal.pow for safety against large levels
-            totalCost = totalCost.add(basePrice.multiply(BigDecimal.valueOf(2).pow(level - 1)));
+            // Use BigDecimal.pow for safety against large levels, with damped exponent
+            totalCost = totalCost.add(basePrice.multiply(BigDecimal.valueOf(2).pow(dampedExponent(level - 1))));
         }
         
         AbilitySettings abilities = getAbilities(uuid);
@@ -1076,7 +1205,7 @@ public class StorePriceManager {
 
     public static void setAttributeBonus(UUID uuid, String attribute, double value) {
         getAttributeBonuses(uuid).put(attribute, value);
-        saveData();
+        markDirty(uuid);
     }
 
     public static void applyAllAttributes(net.minecraft.server.level.ServerPlayer player) {
@@ -1107,7 +1236,8 @@ public class StorePriceManager {
             // Neural Link (Combat Branch)
             int neuralRank = SkillManager.getActiveRank(skillData, "COMBAT_NEURAL_LINK");
             if (neuralRank > 0) {
-                double billions = money.divide(BD_BILLION, 10, RoundingMode.HALF_UP).doubleValue();
+                BigDecimal billionsBD = money.divide(BD_BILLION, 10, RoundingMode.HALF_UP);
+                double billions = dampedDouble(billionsBD, 1000.0); // Grows linearly up to 1000 ($1T), then sqrt
                 if (billions > 0) {
                     if (id.equals("minecraft:generic.movement_speed")) skillBonus += billions * 0.1 * neuralRank;
                     if (id.equals("minecraft:generic.attack_speed")) skillBonus += billions * 0.1 * neuralRank;
@@ -1151,14 +1281,8 @@ public class StorePriceManager {
             }
 
             // Apply aggregate skill bonus (correctly handles removal if skillBonus == 0)
-            // Engine Safety Protocols (Hard Caps & Infinity Guard)
-            if (Double.isInfinite(skillBonus)) skillBonus = 1e18;
-
-            if (id.equals("forge:reach_distance")) skillBonus = Math.min(skillBonus, 16.0);
-            if (id.equals("minecraft:generic.attack_speed")) skillBonus = Math.min(skillBonus, 20.0);
-            if (id.equals("minecraft:generic.movement_speed")) skillBonus = Math.min(skillBonus, 1.0);
-            if (id.equals("minecraft:generic.attack_damage")) skillBonus = Math.min(skillBonus, 1e15);
-            if (id.equals("minecraft:generic.max_health")) skillBonus = Math.min(skillBonus, 1e12);
+            // Attributes are limited by Double.MAX_VALUE in Minecraft, so we cap at 1e30 for stability (avoiding Infinity)
+            if (Double.isInfinite(skillBonus) || skillBonus > 1e30) skillBonus = 1e30;
 
             applyAttribute(player, id, skillBonus, true);
         }
@@ -1184,7 +1308,39 @@ public class StorePriceManager {
                         actualBonus = isSkill ? bonus : bonus * 2.0;
                     }
                     
-                    inst.addPermanentModifier(new net.minecraft.world.entity.ai.attributes.AttributeModifier(modifierUuid, "ModMenu Bonus", actualBonus, net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADDITION));
+                    // Sane Caps for Engine Stability and Anti-Cheat
+                    double sumAdditions = 0;
+                    for (net.minecraft.world.entity.ai.attributes.AttributeModifier mod : inst.getModifiers(net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADDITION)) {
+                        sumAdditions += mod.getAmount();
+                    }
+                    double basePlusAdditions = inst.getBaseValue() + sumAdditions;
+
+                    // Engine Limit (Adequating to the game's limits)
+                    double engineMax = Double.MAX_VALUE;
+                    if (attr instanceof net.minecraft.world.entity.ai.attributes.RangedAttribute ranged) {
+                        engineMax = ranged.getMaxValue();
+                    }
+                    
+                    double finalCap = engineMax;
+
+                    if (id.equals("minecraft:generic.movement_speed")) {
+                        // Cap at 1.1 total (Base 0.1 + 1.0 addition) for chunk loading stability
+                        finalCap = Math.min(finalCap, MAX_MOVEMENT_SPEED);
+                    } else if (id.equals("minecraft:generic.attack_speed")) {
+                        // Cap at 20.0 total (Match 20Hz server tick rate) to prevent ghost hits
+                        finalCap = Math.min(finalCap, MAX_ATTACK_SPEED);
+                    } else if (id.equals("forge:reach_distance")) {
+                        // Cap at 20.0 total (Anti-cheat/Stability)
+                        finalCap = Math.min(finalCap, MAX_REACH_DISTANCE);
+                    }
+
+                    if (basePlusAdditions + actualBonus > finalCap) {
+                        actualBonus = Math.max(0, finalCap - basePlusAdditions);
+                    }
+
+                    if (actualBonus != 0) {
+                        inst.addPermanentModifier(new net.minecraft.world.entity.ai.attributes.AttributeModifier(modifierUuid, "ModMenu Bonus", actualBonus, net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADDITION));
+                    }
                 }
             }
         }
@@ -1192,7 +1348,7 @@ public class StorePriceManager {
 
     public static void setAbilities(UUID uuid, AbilitySettings settings) {
         playerAbilities.put(uuid, settings);
-        saveData();
+        markDirty(uuid);
     }
 
     public static void sync(net.minecraft.server.level.ServerPlayer player) {
@@ -1233,7 +1389,7 @@ public class StorePriceManager {
 
     public static void unlockHouse(UUID uuid, String houseId) {
         getUnlockedHouses(uuid).add(houseId);
-        saveData();
+        markDirty(uuid);
     }
 
     public static boolean isHouseUnlocked(UUID uuid, String houseId) {
@@ -1243,7 +1399,7 @@ public class StorePriceManager {
     public static void setReturnPoint(UUID uuid, String dimension, double x, double y, double z) {
         playerReturnDimension.put(uuid, dimension);
         playerReturnPosition.put(uuid, new double[]{x, y, z});
-        saveData();
+        markDirty(uuid);
     }
 
     public static String getReturnDimension(UUID uuid) {

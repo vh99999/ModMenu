@@ -247,6 +247,18 @@ public class PacketHandler {
                 .encoder(ToggleItemLockPacket::encode)
                 .consumerMainThread(ToggleItemLockPacket::handle)
                 .add();
+
+        INSTANCE.messageBuilder(DataCorruptionPacket.class, packetId++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(DataCorruptionPacket::new)
+                .encoder(DataCorruptionPacket::encode)
+                .consumerMainThread(DataCorruptionPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(HandleCorruptionPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(HandleCorruptionPacket::new)
+                .encoder(HandleCorruptionPacket::encode)
+                .consumerMainThread(HandleCorruptionPacket::handle)
+                .add();
     }
 
     public static void sendToServer(Object msg) {

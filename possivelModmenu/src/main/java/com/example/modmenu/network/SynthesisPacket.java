@@ -37,10 +37,12 @@ public class SynthesisPacket {
                 if (SkillManager.getActiveRank(data, "UTILITY_MOLECULAR_SYNTHESIS") > 0) {
                     Item item = ForgeRegistries.ITEMS.getValue(itemId);
                     if (item != null) {
-                        BigDecimal cost = BigDecimal.valueOf(1000000); // Base cost for synthesis
-                        BigDecimal itemPrice = StorePriceManager.getBuyPrice(item);
-                        if (itemPrice.compareTo(BigDecimal.ZERO) > 0) {
-                            cost = itemPrice.multiply(BigDecimal.valueOf(10)); // Synthesis is 10x more expensive than buying
+                        BigDecimal itemPrice = StorePriceManager.getBuyPrice(item, player.getUUID());
+                        BigDecimal cost = itemPrice.multiply(BigDecimal.valueOf(10));
+                        
+                        // Base cost if item has no price and not free via Monopoly
+                        if (cost.compareTo(BigDecimal.ZERO) == 0 && !data.activeToggles.contains("WEALTH_KEYSTONE_MONOPOLY")) {
+                            cost = BigDecimal.valueOf(1000000);
                         }
                         
                         if (StorePriceManager.canAfford(player.getUUID(), cost)) {

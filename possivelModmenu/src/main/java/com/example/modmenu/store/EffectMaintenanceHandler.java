@@ -35,6 +35,7 @@ public class EffectMaintenanceHandler {
     private static int tickCounter = 0;
     private static int passiveIncomeTimer = 0;
     private static int compoundInterestTimer = 0;
+    private static int saveTimer = 0;
 
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {
@@ -75,6 +76,12 @@ public class EffectMaintenanceHandler {
             tickCounter = 0;
             tick();
             SkillManager.serverTickSecond();
+            
+            saveTimer++;
+            if (saveTimer >= 300) { // Every 5 minutes
+                saveTimer = 0;
+                StorePriceManager.saveAllDirty();
+            }
         }
     }
 
@@ -245,13 +252,12 @@ public class EffectMaintenanceHandler {
         int vacuumRank = SkillManager.getActiveRank(skillData, "UTILITY_QUANTUM_VACUUM");
         
         double range = settings.itemMagnetRange;
-        if (vacuumRank > 0) range += 128 * vacuumRank;
-        if (vacuumRank >= 5) range = 1000; // Singularity: Global-ish
+        if (vacuumRank > 0) range += 128 * StorePriceManager.dampedDouble(BigDecimal.valueOf(vacuumRank), 5.0);
 
         // Magnet Throttling (Phase 3.3)
         if (range > 32 && player.level().getGameTime() % 5 != 0) return;
 
-        net.minecraft.world.phys.AABB area = player.getBoundingBox().inflate(range);
+        net.minecraft.world.phys.AABB area = player.getBoundingBox().inflate(Math.min(range, 10000)); // Cap physics scan for safety
         java.util.List<net.minecraft.world.entity.item.ItemEntity> items = player.level().getEntitiesOfClass(net.minecraft.world.entity.item.ItemEntity.class, area);
         
         // Dynamic Optimization: prioritize items with higher value per slot (Value Density)
@@ -265,8 +271,7 @@ public class EffectMaintenanceHandler {
 
         int processed = 0;
         int maxOps = settings.itemMagnetOpsPerTick;
-        if (vacuumRank > 0) maxOps += 100 * vacuumRank;
-        if (vacuumRank >= 5) maxOps = 10000; // No speed limit
+        if (vacuumRank > 0) maxOps += (int)(100 * StorePriceManager.dampedDouble(BigDecimal.valueOf(vacuumRank), 5.0));
 
         int batchRank = SkillManager.getActiveRank(skillData, "UTILITY_BATCH_PROCESSING");
         
@@ -395,7 +400,7 @@ public class EffectMaintenanceHandler {
                             }
                         }
                     }
-                    if (grown > 5) return; 
+                    if (grown > 100) return; 
                 }
             }
         }

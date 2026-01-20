@@ -13,9 +13,12 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 
 import net.minecraft.world.entity.ai.attributes.Attribute;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.RangedAttribute;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraft.resources.ResourceLocation;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -120,14 +123,42 @@ public class SystemScreen extends BaseResponsiveLodestoneScreen {
             g.fill(getX() + getWidth() - 1, getY(), getX() + getWidth(), getY() + getHeight(), borderColor);
 
             g.drawString(Minecraft.getInstance().font, "§l" + name, getX() + 10, getY() + 10, 0xFFFFFFFF);
-            g.drawString(Minecraft.getInstance().font, "Bonus: +" + String.format("%.1f", bonus), getX() + 10, getY() + 22, 0xFF55FF55);
+            
+            net.minecraft.client.player.LocalPlayer player = Minecraft.getInstance().player;
+            Attribute attrObj = ForgeRegistries.ATTRIBUTES.getValue(ResourceLocation.tryParse(id));
+            double totalValue = 0;
+            double maxValue = Double.MAX_VALUE;
+            if (player != null && attrObj != null) {
+                AttributeInstance inst = player.getAttribute(attrObj);
+                if (inst != null) {
+                    totalValue = inst.getValue();
+                    if (attrObj instanceof RangedAttribute ranged) {
+                        maxValue = ranged.getMaxValue();
+                    }
+                }
+            }
+            
+            // Adjust for technical stability caps
+            if (id.equals("minecraft:generic.movement_speed")) maxValue = Math.min(maxValue, StorePriceManager.MAX_MOVEMENT_SPEED);
+            else if (id.equals("minecraft:generic.attack_speed")) maxValue = Math.min(maxValue, StorePriceManager.MAX_ATTACK_SPEED);
+            else if (id.equals("forge:reach_distance")) maxValue = Math.min(maxValue, StorePriceManager.MAX_REACH_DISTANCE);
+
+            boolean isCapped = totalValue >= maxValue - 0.0001;
+            String bonusText = "Bonus: +" + String.format("%.1f", bonus);
+            if (isCapped) bonusText += " §c(MAX)";
+            
+            g.drawString(Minecraft.getInstance().font, bonusText, getX() + 10, getY() + 22, isCapped ? 0xFFFF5555 : 0xFF55FF55);
+            
+            String totalText = "Total: " + String.format("%.2f", totalValue) + "/" + (maxValue > 1e12 ? "INF" : String.format("%.1f", maxValue));
+            g.drawString(Minecraft.getInstance().font, totalText, getX() + 120, getY() + 22, 0xFFAAAAAA);
 
             int valX = getX() + getWidth() - 50;
             renderBtn(g, valX - 35, getY() + 12, 20, 16, "-", mx, my);
             g.drawCenteredString(Minecraft.getInstance().font, String.valueOf((int)bonus), valX, getY() + 16, 0xFFFFFFFF);
             renderBtn(g, valX + 15, getY() + 12, 20, 16, "+", mx, my);
             
-            String costText = "$1.000.000";
+            BigDecimal cost = BigDecimal.valueOf(1000000).multiply(BigDecimal.valueOf(2).pow(StorePriceManager.dampedExponent((int)bonus)));
+            String costText = "$" + StorePriceManager.formatCurrency(cost);
             g.drawString(Minecraft.getInstance().font, costText, valX - 100, getY() + 16, 0xFFFFFF55);
         }
 

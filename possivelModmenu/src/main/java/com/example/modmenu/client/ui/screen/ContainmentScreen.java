@@ -70,8 +70,9 @@ public class ContainmentScreen extends BaseResponsiveLodestoneScreen {
         java.math.BigDecimal cost = new java.math.BigDecimal("5000");
         int chambersToCalc = unlocked - 1;
         if (chambersToCalc > 0) {
-            cost = cost.multiply(new java.math.BigDecimal("3").pow(chambersToCalc))
-                       .divide(new java.math.BigDecimal("2").pow(chambersToCalc), 10, java.math.RoundingMode.HALF_UP);
+            int damped = StorePriceManager.dampedExponent(chambersToCalc);
+            cost = cost.multiply(new java.math.BigDecimal("3").pow(damped))
+                       .divide(new java.math.BigDecimal("2").pow(damped), 10, java.math.RoundingMode.HALF_UP);
         }
         cost = cost.setScale(0, java.math.RoundingMode.HALF_UP);
 

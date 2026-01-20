@@ -7,6 +7,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.entity.PartEntity;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.registries.ForgeRegistries;
 
@@ -87,6 +88,7 @@ public class CaptureMobPacket {
                         chamber.lastHarvestTime = player.level().getGameTime();
                         data.chambers.add(chamber);
                         player.displayClientMessage(Component.literal("§6[Containment] §aExcavation Protocol Initialized! §dCost: " + cost + " SP"), true);
+                        StorePriceManager.markDirty(player.getUUID());
                         StorePriceManager.sync(player);
                     } else {
                         player.displayClientMessage(Component.literal("§cNot enough SP to initialize excavation!"), true);
@@ -95,13 +97,17 @@ public class CaptureMobPacket {
                 }
 
                 Entity target = player.level().getEntity(entityId);
+                if (target instanceof PartEntity<?> part) {
+                    target = (Entity) part.getParent();
+                }
+                
                 if (target instanceof LivingEntity living) {
                     // Security: Distance check
                     if (player.distanceToSqr(target) > 256) { // 16 blocks radius
                         return;
                     }
                     
-                    BigDecimal cost = BigDecimal.valueOf(living.getMaxHealth()).multiply(BigDecimal.valueOf(isExact ? 100 : 10));
+                    BigDecimal cost = StorePriceManager.safeBD(living.getMaxHealth()).multiply(BigDecimal.valueOf(isExact ? 100 : 10));
                     
                     if (data.totalSP.subtract(data.spentSP).compareTo(cost) >= 0) {
                         data.spentSP = data.spentSP.add(cost);
@@ -120,6 +126,7 @@ public class CaptureMobPacket {
                         living.discard();
                         
                         player.displayClientMessage(Component.literal("§6[Containment] §aMob Captured! §dCost: " + cost + " SP"), true);
+                        StorePriceManager.markDirty(player.getUUID());
                         StorePriceManager.sync(player);
                     } else {
                         player.displayClientMessage(Component.literal("§cNot enough Skill Points to capture!"), true);

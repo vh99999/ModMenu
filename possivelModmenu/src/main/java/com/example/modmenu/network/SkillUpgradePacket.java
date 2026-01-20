@@ -111,6 +111,7 @@ public class SkillUpgradePacket {
                     data.skillRanks.put(skillId, currentMaxRank + 1); // Set active rank to max by default
                     data.activeToggles.add(skillId); // Auto-enable on purchase
                     player.displayClientMessage(Component.literal("§dUpgraded " + path.name + " to Rank " + (currentMaxRank + 1)), true);
+                    StorePriceManager.markDirty(player.getUUID());
                     StorePriceManager.applyAllAttributes(player);
                     StorePriceManager.sync(player);
                 } else {

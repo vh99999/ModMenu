@@ -56,7 +56,7 @@ public class EnchantmentRowComponent extends UIElement {
 
         // Price info - hide if basePrice is 0 (for mining enchants)
         if (basePrice.compareTo(java.math.BigDecimal.ZERO) > 0) {
-            java.math.BigDecimal cost = currentLevel > 0 ? basePrice.multiply(java.math.BigDecimal.valueOf(2).pow(currentLevel - 1)) : basePrice;
+            java.math.BigDecimal cost = currentLevel > 0 ? basePrice.multiply(java.math.BigDecimal.valueOf(2).pow(StorePriceManager.dampedExponent(currentLevel - 1))) : basePrice;
             String priceText = "$" + StorePriceManager.formatCurrency(cost);
             guiGraphics.drawString(Minecraft.getInstance().font, priceText, getX() + 8, getY() + 18, currentLevel > 0 ? 0xFFFFFF55 : 0xFF888844);
         }

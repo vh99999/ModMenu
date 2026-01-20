@@ -66,7 +66,8 @@ public class WikiScreen extends BaseResponsiveLodestoneScreen {
             "1. §bCompute Allocation§r: Use sliders to tune §dSimulation Speed§r and §dMulti-Threading§r. High speeds consume significantly more Money/SP Drain per second.\n" +
             "2. §bVirtual Bartering§r: If a Piglin is captured, enable Bartering Mode and provide Gold Ingots in the chamber's Input Buffer to simulate trades.\n" +
             "3. §bIntelligent Condensation§r: Automatically craft items in the buffer (e.g., Ingots -> Blocks). §eSafe Mode§r only allows reversible crafts.\n" +
-            "4. §bYield Targets§r: Middle-click an item in the loot grid to set a production cap. The chamber will stop generating that item once reached.\n\n" +
+            "4. §bYield Targets§r: Middle-click an item in the loot grid to set a production cap. The chamber will stop generating that item once reached.\n" +
+            "5. §bLoot Transfer§r: Use the §eTransfer§r button to move items directly to a world container. After clicking, §bShift-Right Click§r any chest or barrel to move all stored loot into it.\n\n" +
             "§lAdvanced Filtering§r\n" +
             "Upgrade to §dAdvanced Filtering§r to create precise per-chamber rules:\n" +
             "- §bKEEP§r: Store in buffer.\n" +
@@ -78,10 +79,10 @@ public class WikiScreen extends BaseResponsiveLodestoneScreen {
             "Protect your valuable gear using the System's stability protocols.\n\n" +
             "§lHow to use:§r\n" +
             "Hover over an item in any inventory and use §bShift + Right Click§r to cycle through protection modes:\n\n" +
-            "1. §cLocked§r (Red Indicator): Prevents the item from being §lsold§r in the Store or §ldropped§r into the world.\n" +
-            "2. §bFrozen§r (Blue Indicator): Prevents the item from being §lsold§r, §ldropped§r, or §lmoved§r within your inventory. Perfect for securing your hotbar during combat.\n" +
+            "1. §cLocked§r (Red Indicator & 🔒): Prevents the item from being §lsold§r in the Store or §ldropped§r into the world.\n" +
+            "2. §bFrozen§r (Blue Indicator & ❄): Prevents the item from being §lsold§r, §ldropped§r, or §lmoved§r within your inventory. Perfect for securing your hotbar during combat.\n" +
             "3. §aDisabled§r: Removes all protections.\n\n" +
-            "§7Note: Protected items are completely ignored by the 'Sell All' functionality.");
+            "§7Note: Protected items are completely ignored by the 'Sell All' functionality and display prominent visual feedback in all System interfaces.");
 
         addSection(list, "Diagnostics & Analysis",
             "The System provides several analytical tools to monitor your progress and efficiency.\n\n" +
