@@ -122,34 +122,34 @@ public class DiagnosticsScreen extends BaseResponsiveLodestoneScreen {
         int x = 50;
         int spacing = 15;
 
-        g.drawString(font, "§b§l[ SYSTEM DIAGNOSTICS ]", x, startY - 10, 0xFFFFFFFF);
+        g.drawString(font, "\u00A7b\u00A7l[ SYSTEM DIAGNOSTICS ]", x, startY - 10, 0xFFFFFFFF);
         startY += spacing;
 
-        g.drawString(font, "§6[ Economic Analysis ]", x, startY, 0xFFFFFFFF);
+        g.drawString(font, "\u00A76[ Economic Analysis ]", x, startY, 0xFFFFFFFF);
         startY += spacing;
         
-        g.drawString(font, "Global Income Multiplier: §e" + StorePriceManager.formatCurrency(cachedMultiplier) + "x", x + 10, startY, 0xFFFFFFFF);
+        g.drawString(font, "Global Income Multiplier: \u00A7e" + StorePriceManager.formatCurrency(cachedMultiplier) + "x", x + 10, startY, 0xFFFFFFFF);
         startY += spacing;
 
         if (cachedInterestGain != null) {
-            g.drawString(font, "Projected Interest (30s): §e$" + StorePriceManager.formatCurrency(cachedInterestGain), x + 10, startY, 0xFFFFFFFF);
+            g.drawString(font, "Projected Interest (30s): \u00A7e$" + StorePriceManager.formatCurrency(cachedInterestGain), x + 10, startY, 0xFFFFFFFF);
         } else {
-            g.drawString(font, "Projected Interest (30s): §7N/A", x + 10, startY, 0xFFFFFFFF);
+            g.drawString(font, "Projected Interest (30s): \u00A77N/A", x + 10, startY, 0xFFFFFFFF);
         }
         startY += spacing;
 
         // Drain
-        g.drawString(font, "System Drain: §c-$" + StorePriceManager.formatCurrency(StorePriceManager.playerDrain) + "/s", x + 10, startY, 0xFFFFFFFF);
+        g.drawString(font, "System Drain: \u00A7c-$" + StorePriceManager.formatCurrency(StorePriceManager.playerDrain) + "/s", x + 10, startY, 0xFFFFFFFF);
         startY += spacing * 2;
 
-        g.drawString(font, "§6[ Combat Metrics ]", x, startY, 0xFFFFFFFF);
+        g.drawString(font, "\u00A76[ Combat Metrics ]", x, startY, 0xFFFFFFFF);
         startY += spacing;
         
-        g.drawString(font, "Total Souls Reaped: §d" + StorePriceManager.formatCurrency(StorePriceManager.clientSkills.totalKills), x + 10, startY, 0xFFFFFFFF);
+        g.drawString(font, "Total Souls Reaped: \u00A7d" + StorePriceManager.formatCurrency(StorePriceManager.clientSkills.totalKills), x + 10, startY, 0xFFFFFFFF);
         startY += spacing;
 
         // Soul Reap Stats
-        g.drawString(font, "§7- Permanent Attribute Gains:", x + 10, startY, 0xFFFFFFFF);
+        g.drawString(font, "\u00A77- Permanent Attribute Gains:", x + 10, startY, 0xFFFFFFFF);
         startY += spacing;
         for (java.util.Map.Entry<String, BigDecimal> entry : StorePriceManager.clientSkills.permanentAttributes.entrySet()) {
             String attrId = entry.getKey();
@@ -181,41 +181,41 @@ public class DiagnosticsScreen extends BaseResponsiveLodestoneScreen {
                 }
             }
 
-            String line = "  " + name + ": §a+" + StorePriceManager.formatCurrency(val);
-            if (currentVal >= maxAttr - 0.0001) line += " §c(MAX)";
+            String line = "  " + name + ": \u00A7a+" + StorePriceManager.formatCurrency(val);
+            if (currentVal >= maxAttr - 0.0001) line += " \u00A7c(MAX)";
             g.drawString(font, line, x + 10, startY, 0xFFFFFFFF);
             startY += spacing;
         }
         
-        g.drawString(font, "Total Damage Reflected: §d" + StorePriceManager.formatCurrency(StorePriceManager.clientSkills.damageReflected), x + 10, startY, 0xFFFFFFFF);
+        g.drawString(font, "Total Damage Reflected: \u00A7d" + StorePriceManager.formatCurrency(StorePriceManager.clientSkills.damageReflected), x + 10, startY, 0xFFFFFFFF);
         startY += spacing;
 
-        g.drawString(font, "Total Damage Converted: §a" + StorePriceManager.formatCurrency(StorePriceManager.clientSkills.damageHealed), x + 10, startY, 0xFFFFFFFF);
+        g.drawString(font, "Total Damage Converted: \u00A7a" + StorePriceManager.formatCurrency(StorePriceManager.clientSkills.damageHealed), x + 10, startY, 0xFFFFFFFF);
         startY += spacing;
         
         if (cachedHpLimit.compareTo(BigDecimal.ZERO) > 0) {
-            g.drawString(font, "Stasis Threshold: §b" + StorePriceManager.formatCurrency(cachedHpLimit) + " HP", x + 10, startY, 0xFFFFFFFF);
+            g.drawString(font, "Stasis Threshold: \u00A7b" + StorePriceManager.formatCurrency(cachedHpLimit) + " HP", x + 10, startY, 0xFFFFFFFF);
         } else {
-            g.drawString(font, "Stasis Threshold: §7N/A", x + 10, startY, 0xFFFFFFFF);
+            g.drawString(font, "Stasis Threshold: \u00A77N/A", x + 10, startY, 0xFFFFFFFF);
         }
         startY += spacing * 2;
 
-        g.drawString(font, "§6[ Virtualization Performance ]", x, startY, 0xFFFFFFFF);
+        g.drawString(font, "\u00A76[ Virtualization Performance ]", x, startY, 0xFFFFFFFF);
         startY += spacing;
         
         int chamberCount = StorePriceManager.clientSkills.chambers.size();
-        g.drawString(font, "Active Chambers: §e" + chamberCount, x + 10, startY, 0xFFFFFFFF);
+        g.drawString(font, "Active Chambers: \u00A7e" + chamberCount, x + 10, startY, 0xFFFFFFFF);
         startY += spacing;
 
         if (chamberCount > 0) {
-            g.drawString(font, "Simulation Throughput: §b" + String.format("%.2f", cachedKillsPerSecond) + " Kills/s", x + 10, startY, 0xFFFFFFFF);
+            g.drawString(font, "Simulation Throughput: \u00A7b" + String.format("%.2f", cachedKillsPerSecond) + " Kills/s", x + 10, startY, 0xFFFFFFFF);
             startY += spacing;
         }
         
         if (cachedSpGain.compareTo(BigDecimal.ZERO) > 0) {
-            g.drawString(font, "Passive SP Flow: §d" + StorePriceManager.formatCurrency(cachedSpGain) + " SP/min", x + 10, startY, 0xFFFFFFFF);
+            g.drawString(font, "Passive SP Flow: \u00A7d" + StorePriceManager.formatCurrency(cachedSpGain) + " SP/min", x + 10, startY, 0xFFFFFFFF);
         } else {
-            g.drawString(font, "Passive SP Flow: §70 SP/min", x + 10, startY, 0xFFFFFFFF);
+            g.drawString(font, "Passive SP Flow: \u00A770 SP/min", x + 10, startY, 0xFFFFFFFF);
         }
     }
 }

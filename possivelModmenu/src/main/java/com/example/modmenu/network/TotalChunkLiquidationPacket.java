@@ -42,7 +42,7 @@ public class TotalChunkLiquidationPacket {
                     ServerForgeEvents.LiquidationRegion region = new ServerForgeEvents.LiquidationRegion(minX, maxX, minY, maxY, minZ, maxZ);
                     ServerForgeEvents.pendingRegions.computeIfAbsent(player.getUUID(), k -> new ArrayList<>()).add(region);
                     
-                    player.displayClientMessage(net.minecraft.network.chat.Component.literal("§6[Chunk Liquidation] §aQueued region for liquidation."), true);
+                    player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00A76[Chunk Liquidation] \u00A7aQueued region for liquidation."), true);
                     StorePriceManager.sync(player);
                 }
             }

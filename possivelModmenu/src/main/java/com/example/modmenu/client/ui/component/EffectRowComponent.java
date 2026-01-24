@@ -38,7 +38,7 @@ public class EffectRowComponent extends UIElement {
         MobEffect effect = ForgeRegistries.MOB_EFFECTS.getValue(ResourceLocation.tryParse(effectId));
         String name = effect != null ? effect.getDisplayName().getString() : effectId;
         
-        guiGraphics.drawString(Minecraft.getInstance().font, "§l" + name, getX() + 8, getY() + 6, 0xFFFFFFFF);
+        guiGraphics.drawString(Minecraft.getInstance().font, "\u00A7l" + name, getX() + 8, getY() + 6, 0xFFFFFFFF);
         
         int activeLevel = StorePriceManager.clientActiveEffects.getOrDefault(effectId, 0);
         

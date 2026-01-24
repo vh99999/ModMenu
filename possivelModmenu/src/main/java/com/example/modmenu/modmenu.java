@@ -46,6 +46,8 @@ public class modmenu
         com.example.modmenu.network.PacketHandler.register();
         com.example.modmenu.store.StorePriceManager.load();
         com.example.modmenu.worldgen.WorldGenRegistry.register(modEventBus);
+        com.example.modmenu.registry.BlockRegistry.register(modEventBus);
+        com.example.modmenu.registry.BlockEntityRegistry.register(modEventBus);
         com.example.modmenu.registry.ItemRegistry.register(modEventBus);
     }
 
@@ -65,10 +67,21 @@ public class modmenu
     // Add the example block item to the building blocks tab
     private void addCreative(BuildCreativeModeTabContentsEvent event)
     {
-
+        if (event.getTabKey() == net.minecraft.world.item.CreativeModeTabs.OP_BLOCKS || event.getTabKey() == net.minecraft.world.item.CreativeModeTabs.FUNCTIONAL_BLOCKS) {
+            event.accept(com.example.modmenu.registry.ItemRegistry.VIRTUAL_PROXY);
+            event.accept(com.example.modmenu.registry.ItemRegistry.LOOT_DATA_FRAGMENT);
+            event.accept(com.example.modmenu.registry.ItemRegistry.LOGISTICS_TOOL);
+        }
     }
 
     // You can use SubscribeEvent and let the Event Bus discover methods to call
+
+    @SubscribeEvent
+    public void onServerAboutToStart(net.minecraftforge.event.server.ServerAboutToStartEvent event)
+    {
+        java.io.File worldDir = event.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).toFile();
+        com.example.modmenu.store.StorePriceManager.initWorldData(worldDir);
+    }
 
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event)
@@ -76,9 +89,6 @@ public class modmenu
         // Do something when the server starts
         LOGGER.info("HELLO from server starting");
         com.example.modmenu.commands.StoreCommands.register(event.getServer().getCommands().getDispatcher());
-        
-        java.io.File worldDir = event.getServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT).toFile();
-        com.example.modmenu.store.StorePriceManager.initWorldData(worldDir);
     }
 
     @SubscribeEvent

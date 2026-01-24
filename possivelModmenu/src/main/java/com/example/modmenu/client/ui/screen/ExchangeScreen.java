@@ -57,10 +57,10 @@ public class ExchangeScreen extends BaseResponsiveLodestoneScreen {
         super.render(g, mx, my, pt);
         
         int center = this.width / 2;
-        g.drawCenteredString(font, "Current Balance: §e$" + StorePriceManager.formatCurrency(StorePriceManager.playerMoney), center, 40, 0xFFFFFFFF);
+        g.drawCenteredString(font, "Current Balance: \u00A7e$" + StorePriceManager.formatCurrency(StorePriceManager.playerMoney), center, 40, 0xFFFFFFFF);
         BigDecimal availableSP = StorePriceManager.clientSkills.totalSP.subtract(StorePriceManager.clientSkills.spentSP);
-        g.drawCenteredString(font, "Available SP: §d" + availableSP, center, 50, 0xFFFFFFFF);
+        g.drawCenteredString(font, "Available SP: \u00A7d" + availableSP, center, 50, 0xFFFFFFFF);
         
-        g.drawCenteredString(font, "§7Note: Meta-Trading allows bypassing mob farming for SP.", center, this.height - 30, 0xFFAAAAAA);
+        g.drawCenteredString(font, "\u00A77Note: Meta-Trading allows bypassing mob farming for SP.", center, this.height - 30, 0xFFAAAAAA);
     }
 }

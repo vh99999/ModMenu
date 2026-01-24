@@ -80,6 +80,19 @@ public class UIContainer extends UIElement {
         return false;
     }
 
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        double relMouseX = mouseX - getX();
+        double relMouseY = mouseY - getY();
+        
+        for (int i = children.size() - 1; i >= 0; i--) {
+            if (children.get(i).mouseDragged(relMouseX, relMouseY, button, dragX, dragY)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     public List<UIElement> getChildren() {
         return children;
     }

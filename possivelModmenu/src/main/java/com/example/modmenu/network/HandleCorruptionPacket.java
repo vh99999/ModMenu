@@ -29,10 +29,10 @@ public class HandleCorruptionPacket {
                     StorePriceManager.backupCorruptedData(); // Safety first
                     StorePriceManager.isDataCorrupted = false;
                     StorePriceManager.saveData(); // Overwrites with current (empty) data
-                    player.displayClientMessage(net.minecraft.network.chat.Component.literal("§6[ModMenu] §aData has been reset. Corrupted files backed up."), false);
+                    player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00A76[ModMenu] \u00A7aData has been reset. Corrupted files backed up."), false);
                 } else {
                     // Try to persist: we don't unset the flag to prevent overwriting
-                    player.displayClientMessage(net.minecraft.network.chat.Component.literal("§6[ModMenu] §eEntering world in read-only mode to prevent data loss."), false);
+                    player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00A76[ModMenu] \u00A7eEntering world in read-only mode to prevent data loss."), false);
                 }
                 StorePriceManager.sync(player);
             }

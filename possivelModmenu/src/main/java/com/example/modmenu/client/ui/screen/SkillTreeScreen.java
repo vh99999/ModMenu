@@ -171,10 +171,10 @@ public class SkillTreeScreen extends BaseResponsiveLodestoneScreen {
     }
 
     private void renderOverlay(GuiGraphics g) {
-        String spText = "§dTotal SP: " + StorePriceManager.clientSkills.totalSP + " §7| §6Available: " + (StorePriceManager.clientSkills.totalSP.subtract(StorePriceManager.clientSkills.spentSP));
+        String spText = "\u00A7dTotal SP: " + StorePriceManager.clientSkills.totalSP + " \u00A77| \u00A76Available: " + (StorePriceManager.clientSkills.totalSP.subtract(StorePriceManager.clientSkills.spentSP));
         g.drawString(font, spText, 10, this.height - 20, 0xFFFFFFFF);
         
-        String helpText = "§7Scroll to Zoom | Drag to Pan | Left-Click to Buy | Right-Click to Toggle | +/- Key to select Rank";
+        String helpText = "\u00A77Scroll to Zoom | Drag to Pan | Left-Click to Buy | Right-Click to Toggle | +/- Key to select Rank";
         g.drawCenteredString(font, helpText, this.width / 2, this.height - 20, 0xFFAAAAAA);
     }
 
@@ -184,21 +184,21 @@ public class SkillTreeScreen extends BaseResponsiveLodestoneScreen {
         int current = StorePriceManager.clientSkills.skillRanks.getOrDefault(skill.id, 0);
         boolean active = StorePriceManager.clientSkills.activeToggles.contains(skill.id);
         
-        lines.add(Component.literal("§e§l" + skill.name));
-        lines.add(Component.literal("§7" + skill.description));
+        lines.add(Component.literal("\u00A7e\u00A7l" + skill.name));
+        lines.add(Component.literal("\u00A77" + skill.description));
         lines.add(Component.literal(""));
-        lines.add(Component.literal("§bRank: §f" + current + " / " + skill.maxRank + " §7(Unlocked: " + unlocked + ")"));
-        lines.add(Component.literal("§bStatus: " + (active ? "§aACTIVE" : "§cINACTIVE")));
+        lines.add(Component.literal("\u00A7bRank: \u00A7f" + current + " / " + skill.maxRank + " \u00A77(Unlocked: " + unlocked + ")"));
+        lines.add(Component.literal("\u00A7bStatus: " + (active ? "\u00A7aACTIVE" : "\u00A7cINACTIVE")));
         
         if (unlocked < skill.maxRank) {
             BigDecimal mult = getClientMultiplier(skill.branch.name());
             BigDecimal cost = SkillManager.getSkillCost(skill.id, unlocked + 1, mult, Minecraft.getInstance().player.getUUID());
-            lines.add(Component.literal("§dUpgrade Cost: " + cost + " SP"));
+            lines.add(Component.literal("\u00A7dUpgrade Cost: " + cost + " SP"));
         }
         
         if (skill.prerequisiteId != null) {
             int prereqOwned = StorePriceManager.clientSkills.unlockedRanks.getOrDefault(skill.prerequisiteId, 0);
-            String color = prereqOwned >= skill.prerequisiteRank ? "§a" : "§c";
+            String color = prereqOwned >= skill.prerequisiteRank ? "\u00A7a" : "\u00A7c";
             lines.add(Component.literal(color + "Requires: " + SkillDefinitions.ALL_SKILLS.get(skill.prerequisiteId).name + " Rank " + skill.prerequisiteRank));
         }
 

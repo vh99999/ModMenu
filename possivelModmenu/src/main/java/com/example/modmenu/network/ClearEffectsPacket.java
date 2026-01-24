@@ -45,11 +45,11 @@ public class ClearEffectsPacket {
                     if (clearEverything) {
                         StorePriceManager.setAbilities(player.getUUID(), new StorePriceManager.AbilitySettings());
                     }
-                    player.displayClientMessage(net.minecraft.network.chat.Component.literal("§aCleared all for §e$" + StorePriceManager.formatCurrency(cost)), true);
+                    player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00A7aCleared all for \u00A7e$" + StorePriceManager.formatCurrency(cost)), true);
                     StorePriceManager.save();
                     StorePriceManager.sync(player);
                 } else {
-                    player.displayClientMessage(net.minecraft.network.chat.Component.literal("§cNot enough money to clear effects! Cost: $" + StorePriceManager.formatCurrency(cost)), true);
+                    player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00A7cNot enough money to clear effects! Cost: $" + StorePriceManager.formatCurrency(cost)), true);
                 }
             }
         });

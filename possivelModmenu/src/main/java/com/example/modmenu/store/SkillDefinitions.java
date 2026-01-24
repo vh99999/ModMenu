@@ -125,7 +125,7 @@ public class SkillDefinitions {
         add("UTILITY_VECTOR_MANIPULATION", "Vector Manipulation", "Control physics engine velocity and Time Stop.", 5, Branch.UTILITY, "UTILITY_MOLECULAR_SYNTHESIS", 1, 0, 1400);
         add("UTILITY_TECTONIC_SHIFT", "Tectonic Shift", "Macro-scale world editing (Push/Pull earth).", 5, Branch.UTILITY, "UTILITY_VECTOR_MANIPULATION", 1, 0, 1500);
         add("UTILITY_QUANTUM_STORAGE", "Quantum Storage", "Remote access to any container via Shift-click sync.", 1, Branch.UTILITY, "UTILITY_TECTONIC_SHIFT", 1, 0, 1600);
-        add("UTILITY_MATTER_SYNTHESIS_PASSIVE", "Matter Synthesis (Passive)", "Passively generate stacks of items every 60 seconds.", 5, Branch.UTILITY, "UTILITY_QUANTUM_STORAGE", 1, 0, 1700);
+                                        add("UTILITY_MATTER_SYNTHESIS_PASSIVE", "Matter Synthesis (Passive)", "Passively generate stacks of items every 60 seconds.", 5, Branch.UTILITY, "UTILITY_QUANTUM_STORAGE", 1, 0, 1700);
         add("UTILITY_STATIC_RIFTS", "Dimensional Anchor", "Prevents forced teleports and sets 10 Static Rifts.", 5, Branch.UTILITY, "UTILITY_MATTER_SYNTHESIS_PASSIVE", 1, 0, 1800);
         add("UTILITY_NBT_REFACTOR", "NBT Refactor", "Modify item names and base attributes using SP.", 5, Branch.UTILITY, "UTILITY_STATIC_RIFTS", 1, 0, 1900);
         add("UTILITY_TIME_DILATION_AURA", "Time Dilation Aura", "16-block field where everything moves at 0.1x speed.", 5, Branch.UTILITY, "UTILITY_NBT_REFACTOR", 1, 0, 2000);

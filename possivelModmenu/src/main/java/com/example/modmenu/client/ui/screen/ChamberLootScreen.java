@@ -57,6 +57,18 @@ public class ChamberLootScreen extends BaseResponsiveLodestoneScreen {
         }));
         bx += 85;
 
+        this.layoutRoot.addElement(new ResponsiveButton(bx, 10, 80, 20, Component.literal("Link"), btn -> {
+            com.example.modmenu.client.ClientForgeEvents.linkModeChamberIndex = chamberIndex;
+            this.minecraft.setScreen(null);
+        }));
+        bx += 85;
+
+        this.layoutRoot.addElement(new ResponsiveButton(bx, 10, 80, 20, Component.literal("Provider"), btn -> {
+            com.example.modmenu.client.ClientForgeEvents.linkModeProviderChamberIndex = chamberIndex;
+            this.minecraft.setScreen(null);
+        }));
+        bx += 85;
+
         this.layoutRoot.addElement(new ResponsiveButton(bx, 10, 80, 20, Component.literal("Collect XP"), btn -> {
             PacketHandler.sendToServer(new ActionChamberPacket(chamberIndex, 0));
         }));
@@ -97,17 +109,17 @@ public class ChamberLootScreen extends BaseResponsiveLodestoneScreen {
                 if (isMouseOver(mx, my)) {
                     addPostRenderTask(gui -> {
                         java.util.List<Component> lines = new java.util.ArrayList<>();
-                        lines.add(Component.literal("§6Virtualization Controls:"));
-                        lines.add(Component.literal("§eLeft Click Item: §7Collect 64 items"));
-                        lines.add(Component.literal("§eRight Click Item: §7Void all of that item"));
-                        lines.add(Component.literal("§eMiddle Click Item: §7Set Yield Target"));
-                        lines.add(Component.literal("§eTransfer Button: §7Click, then Shift+Right-Click a container."));
+                        lines.add(Component.literal("\u00A76Virtualization Controls:"));
+                        lines.add(Component.literal("\u00A7eLeft Click Item: \u00A77Collect 64 items"));
+                        lines.add(Component.literal("\u00A7eRight Click Item: \u00A77Void all of that item"));
+                        lines.add(Component.literal("\u00A7eMiddle Click Item: \u00A77Set Yield Target"));
+                        lines.add(Component.literal("\u00A7eTransfer Button: \u00A77Click, then Shift+Right-Click a container."));
                         lines.add(Component.literal(""));
-                        lines.add(Component.literal("§6Advanced Filtering:"));
-                        lines.add(Component.literal("§7Hold an item in main hand to add rules."));
-                        lines.add(Component.literal("§bID: §7Matches exactly that item."));
-                        lines.add(Component.literal("§bTags: §7Matches any item with those tags."));
-                        lines.add(Component.literal("§bNBT: §7Matches item ID AND specific NBT data."));
+                        lines.add(Component.literal("\u00A76Advanced Filtering:"));
+                        lines.add(Component.literal("\u00A77Hold an item in main hand to add rules."));
+                        lines.add(Component.literal("\u00A7bID: \u00A77Matches exactly that item."));
+                        lines.add(Component.literal("\u00A7bTags: \u00A77Matches any item with those tags."));
+                        lines.add(Component.literal("\u00A7bNBT: \u00A77Matches item ID AND specific NBT data."));
                         gui.renderComponentTooltip(font, lines, absMouseX, absMouseY);
                     });
                 }
@@ -174,9 +186,9 @@ public class ChamberLootScreen extends BaseResponsiveLodestoneScreen {
 
             // Bartering Toggle
             if (SkillManager.getActiveRank(StorePriceManager.clientSkills, "VIRT_BARTERING_PROTOCOL") > 0 && chamber.mobId.contains("piglin")) {
-                this.layoutRoot.addElement(new ResponsiveButton(leftX, currentY, 100, 20, Component.literal("Barter: " + (chamber.barteringMode ? "§aON" : "§cOFF")), btn -> {
+                this.layoutRoot.addElement(new ResponsiveButton(leftX, currentY, 100, 20, Component.literal("Barter: " + (chamber.barteringMode ? "\u00A7aON" : "\u00A7cOFF")), btn -> {
                     chamber.barteringMode = !chamber.barteringMode;
-                    btn.setText(Component.literal("Barter: " + (chamber.barteringMode ? "§aON" : "§cOFF")));
+                    btn.setText(Component.literal("Barter: " + (chamber.barteringMode ? "\u00A7aON" : "\u00A7cOFF")));
                     PacketHandler.sendToServer(new ActionChamberPacket(chamberIndex, 9));
                 }));
                 currentY += 25;
@@ -212,6 +224,48 @@ public class ChamberLootScreen extends BaseResponsiveLodestoneScreen {
                     PacketHandler.sendToServer(new ActionChamberPacket(chamberIndex, 10));
                 }));
                 currentY += 25;
+            }
+
+            // Simulation Toggle (Stop/Start)
+            this.layoutRoot.addElement(new ResponsiveButton(leftX, currentY, 100, 20, Component.literal(chamber.paused ? "\u00A7aStart" : "\u00A7cStop"), btn -> {
+                chamber.paused = !chamber.paused;
+                btn.setText(Component.literal(chamber.paused ? "\u00A7aStart" : "\u00A7cStop"));
+                PacketHandler.sendToServer(new ActionChamberPacket(chamberIndex, 7));
+            }));
+            currentY += 25;
+
+            // Link Status
+            if (chamber.linkedContainerPos != null) {
+                this.layoutRoot.addElement(new ResponsiveButton(leftX, currentY, 100, 20, Component.literal("\u00A7cUnlink"), btn -> {
+                    PacketHandler.sendToServer(new ActionChamberPacket(chamberIndex, 19));
+                }));
+                this.layoutRoot.addElement(new UIElement(leftX, currentY + 22, 140, 20) {
+                    @Override
+                    public void render(GuiGraphics g, int mx, int my, float pt) {
+                        g.drawString(font, "Linked: \u00A7a" + chamber.linkedContainerPos.toShortString(), getX(), getY(), 0xFFFFFFFF);
+                        String dim = chamber.linkedContainerDimension;
+                        if (dim != null && dim.contains(":")) dim = dim.substring(dim.indexOf(":") + 1);
+                        g.drawString(font, "Dim: \u00A7e" + (dim != null ? dim : "unknown"), getX(), getY() + 10, 0xFFAAAAAA);
+                    }
+                });
+                currentY += 45;
+            }
+
+            // Provider Link Status
+            if (chamber.inputLinkPos != null) {
+                this.layoutRoot.addElement(new ResponsiveButton(leftX, currentY, 100, 20, Component.literal("\u00A7cUnlink Provider"), btn -> {
+                    PacketHandler.sendToServer(new ActionChamberPacket(chamberIndex, 21));
+                }));
+                this.layoutRoot.addElement(new UIElement(leftX, currentY + 22, 140, 20) {
+                    @Override
+                    public void render(GuiGraphics g, int mx, int my, float pt) {
+                        g.drawString(font, "Provider: \u00A7d" + chamber.inputLinkPos.toShortString(), getX(), getY(), 0xFFFFFFFF);
+                        String dim = chamber.inputLinkDimension;
+                        if (dim != null && dim.contains(":")) dim = dim.substring(dim.indexOf(":") + 1);
+                        g.drawString(font, "Dim: \u00A7e" + (dim != null ? dim : "unknown"), getX(), getY() + 10, 0xFFAAAAAA);
+                    }
+                });
+                currentY += 45;
             }
         }
 
@@ -278,7 +332,7 @@ public class ChamberLootScreen extends BaseResponsiveLodestoneScreen {
             // Draw Mob Info
             int infoX = this.width - 95;
             String xpText = chamber.storedXP.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString();
-            g.drawString(font, "XP: §a" + xpText, infoX, 50, 0xFFFFFFFF);
+            g.drawString(font, "XP: \u00A7a" + xpText, infoX, 50, 0xFFFFFFFF);
             
             if (renderEntity != null) {
                 InventoryScreen.renderEntityInInventoryFollowsMouse(g, this.width - 50, 150, 30, (float)(this.width - 50) - mx, (float)(150 - 50) - my, renderEntity);
@@ -334,13 +388,13 @@ public class ChamberLootScreen extends BaseResponsiveLodestoneScreen {
                 g.pose().pushPose();
                 g.pose().translate(getX() + getWidth() - 10, getY() + 2, 300);
                 g.pose().scale(0.5f, 0.5f, 1.0f);
-                g.drawString(Minecraft.getInstance().font, "❄", 0, 0, 0xFFFFFFFF);
+                g.drawString(Minecraft.getInstance().font, "\u2744", 0, 0, 0xFFFFFFFF);
                 g.pose().popPose();
             } else if (lockState == 1) {
                 g.pose().pushPose();
                 g.pose().translate(getX() + getWidth() - 10, getY() + 2, 300);
                 g.pose().scale(0.5f, 0.5f, 1.0f);
-                g.drawString(Minecraft.getInstance().font, "🔒", 0, 0, 0xFFFFFFFF);
+                g.drawString(Minecraft.getInstance().font, "\uD83D\uDD12", 0, 0, 0xFFFFFFFF);
                 g.pose().popPose();
             }
 

@@ -91,6 +91,7 @@ public class SyncSkillsPacket {
                 chamber.voidFilter.add(buf.readUtf());
             }
             chamber.updateVersion = buf.readInt();
+            chamber.paused = buf.readBoolean();
 
             chamber.barteringMode = buf.readBoolean();
             chamber.condensationMode = buf.readInt();
@@ -107,6 +108,10 @@ public class SyncSkillsPacket {
             }
             chamber.isExcavation = buf.readBoolean();
             if (buf.readBoolean()) chamber.lootTableId = buf.readUtf();
+            if (buf.readBoolean()) chamber.linkedContainerPos = buf.readBlockPos();
+            if (buf.readBoolean()) chamber.linkedContainerDimension = buf.readUtf();
+            if (buf.readBoolean()) chamber.inputLinkPos = buf.readBlockPos();
+            if (buf.readBoolean()) chamber.inputLinkDimension = buf.readUtf();
 
             this.data.chambers.add(chamber);
         }
@@ -186,6 +191,7 @@ public class SyncSkillsPacket {
                 buf.writeUtf(filterId);
             }
             buf.writeInt(chamber.updateVersion);
+            buf.writeBoolean(chamber.paused);
 
             buf.writeBoolean(chamber.barteringMode);
             buf.writeInt(chamber.condensationMode);
@@ -202,6 +208,14 @@ public class SyncSkillsPacket {
             buf.writeBoolean(chamber.isExcavation);
             buf.writeBoolean(chamber.lootTableId != null);
             if (chamber.lootTableId != null) buf.writeUtf(chamber.lootTableId);
+            buf.writeBoolean(chamber.linkedContainerPos != null);
+            if (chamber.linkedContainerPos != null) buf.writeBlockPos(chamber.linkedContainerPos);
+            buf.writeBoolean(chamber.linkedContainerDimension != null);
+            if (chamber.linkedContainerDimension != null) buf.writeUtf(chamber.linkedContainerDimension);
+            buf.writeBoolean(chamber.inputLinkPos != null);
+            if (chamber.inputLinkPos != null) buf.writeBlockPos(chamber.inputLinkPos);
+            buf.writeBoolean(chamber.inputLinkDimension != null);
+            if (chamber.inputLinkDimension != null) buf.writeUtf(chamber.inputLinkDimension);
         }
     }
 
@@ -249,6 +263,10 @@ public class SyncSkillsPacket {
                         c.advancedFilters.clear(); c.advancedFilters.addAll(other.advancedFilters);
                         c.isExcavation = other.isExcavation;
                         c.lootTableId = other.lootTableId;
+                        c.linkedContainerPos = other.linkedContainerPos;
+                        c.linkedContainerDimension = other.linkedContainerDimension;
+                        c.inputLinkPos = other.inputLinkPos;
+                        c.inputLinkDimension = other.inputLinkDimension;
                         // Stored loot, input buffer, and yield targets are kept as is on client
                         // until SyncChamberLootPacket arrives
                     } else {

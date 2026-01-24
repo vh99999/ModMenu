@@ -18,6 +18,12 @@ import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.living.LivingDropsEvent;
 import net.minecraftforge.event.entity.living.LivingExperienceDropEvent;
 import net.minecraftforge.common.ForgeHooks;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.minecraftforge.items.IItemHandler;
+import net.minecraftforge.items.ItemHandlerHelper;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.world.level.Level;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -153,7 +159,7 @@ public class SkillManager {
                     }
                 }
                 
-                player.displayClientMessage(net.minecraft.network.chat.Component.literal("§6[Virtualization] §aOffline Processing: Simulating " + totalKills + " virtual kills."), false);
+                player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00A76[Virtualization] \u00A7aOffline Processing: Simulating " + totalKills + " virtual kills."), false);
             }
             chamber.lastOfflineProcessingTime = now;
         }
@@ -167,8 +173,13 @@ public class SkillManager {
 
         if (chronosLockActive) {
             net.minecraft.server.MinecraftServer server = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
-            server.overworld().setDayTime(6000); // Fixed at noon
-            server.overworld().setWeatherParameters(6000, 0, false, false);
+            ServerLevel overworld = server.overworld();
+            if (overworld.getDayTime() != 6000) {
+                overworld.setDayTime(6000); // Fixed at noon
+            }
+            if (overworld.isRaining() || overworld.isThundering()) {
+                overworld.setWeatherParameters(6000, 0, false, false);
+            }
             chronosLockActive = false; // Reset for next second check
         }
 
@@ -217,7 +228,7 @@ public class SkillManager {
                 // identify targeted resource
                 List<net.minecraft.world.item.Item> items = new ArrayList<>(ForgeRegistries.ITEMS.getValues());
                 net.minecraft.world.item.Item target = items.get(player.level().random.nextInt(items.size()));
-                player.displayClientMessage(Component.literal("§6[Market Speculation] §aTargeted Resource identified: §e" + target.getDescriptionId() + "§a. Sell for 10x payout within 1 min!"), false);
+                player.displayClientMessage(Component.literal("\u00A76[Market Speculation] \u00A7aTargeted Resource identified: \u00A7e" + target.getDescriptionId() + "\u00A7a. Sell for 10x payout within 1 min!"), false);
                 // logic to actually apply multiplier is in StorePriceManager or packets
             }
 
@@ -256,6 +267,7 @@ public class SkillManager {
                 
                 if (spGain.compareTo(BigDecimal.ZERO) > 0) {
                     data.totalSP = data.totalSP.add(spGain);
+                    StorePriceManager.markDirty(uuid);
                 }
             }
 
@@ -386,6 +398,57 @@ public class SkillManager {
         if (secondTimer >= 3600) secondTimer = 0;
     }
 
+    private static void handleInputLink(ServerPlayer player, StorePriceManager.ChamberData chamber) {
+        if (chamber.inputLinkPos == null || chamber.inputLinkDimension == null) return;
+        
+        // Performance: Only restock if input buffer is relatively empty
+        if (chamber.inputBuffer.size() >= 32) return;
+        
+        net.minecraft.server.MinecraftServer server = player.serverLevel().getServer();
+        ResourceLocation dimLoc = ResourceLocation.tryParse(chamber.inputLinkDimension);
+        if (dimLoc == null) return;
+        
+        ResourceKey<Level> dimKey = ResourceKey.create(Registries.DIMENSION, dimLoc);
+        ServerLevel targetLevel = server.getLevel(dimKey);
+        if (targetLevel != null && targetLevel.hasChunkAt(chamber.inputLinkPos)) {
+            if (!targetLevel.mayInteract(player, chamber.inputLinkPos)) return;
+            
+            net.minecraft.world.level.block.entity.BlockEntity be = targetLevel.getBlockEntity(chamber.inputLinkPos);
+            if (be != null) {
+                be.getCapability(ForgeCapabilities.ITEM_HANDLER).ifPresent(handler -> {
+                    // For Piglin Bartering, we need Gold Ingots
+                    if (chamber.barteringMode && chamber.mobId.contains("piglin")) {
+                        net.minecraft.tags.TagKey<net.minecraft.world.item.Item> barteringTag = net.minecraft.tags.TagKey.create(net.minecraft.core.registries.Registries.ITEM, ResourceLocation.tryParse("minecraft:piglin_bartering_items"));
+                        
+                        // Check if we already have enough gold
+                        int currentGold = chamber.inputBuffer.stream().filter(s -> s.is(barteringTag)).mapToInt(ItemStack::getCount).sum();
+                        if (currentGold < 64) {
+                            for (int i = 0; i < handler.getSlots(); i++) {
+                                ItemStack stack = handler.getStackInSlot(i);
+                                if (!stack.isEmpty() && stack.is(barteringTag)) {
+                                    ItemStack extracted = handler.extractItem(i, 64 - currentGold, false);
+                                    if (!extracted.isEmpty()) {
+                                        boolean merged = false;
+                                        for (ItemStack input : chamber.inputBuffer) {
+                                            if (ItemStack.isSameItemSameTags(input, extracted)) {
+                                                input.grow(extracted.getCount());
+                                                merged = true;
+                                                break;
+                                            }
+                                        }
+                                        if (!merged) chamber.inputBuffer.add(extracted);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    // Future proofing: could pull other things if needed
+                });
+            }
+        }
+    }
+
     private static void handleChamberSimulation(ServerPlayer player, StorePriceManager.SkillData data) {
         if (data.chambers.isEmpty()) return;
         long time = player.level().getGameTime();
@@ -397,6 +460,11 @@ public class SkillManager {
         for (StorePriceManager.ChamberData chamber : data.chambers) {
             if (chamber.paused) continue;
             
+            // Provider Link Restock
+            if (chamber.inputLinkPos != null && chamber.inputLinkDimension != null) {
+                handleInputLink(player, chamber);
+            }
+
             // Use per-chamber sliders, capped by global unlocked rank
             int effectiveClock = Math.min(chamber.speedSlider, maxClockRank);
             int effectiveThread = Math.min(chamber.threadSlider, maxThreadRank);
@@ -430,16 +498,20 @@ public class SkillManager {
                     applyLootCondensation(player.serverLevel(), chamber);
                 }
 
-                if (chamber.storedLoot.size() > 500) {
-                    chamber.storedLoot.sort((a, b) -> {
-                        BigDecimal valA = StorePriceManager.getSellPrice(a.getItem()).multiply(BigDecimal.valueOf(a.getCount()));
-                        BigDecimal valB = StorePriceManager.getSellPrice(b.getItem()).multiply(BigDecimal.valueOf(b.getCount()));
-                        return valA.compareTo(valB);
-                    });
-                    while (chamber.storedLoot.size() > 500) chamber.storedLoot.remove(0);
+                if (chamber.storedLoot.size() > 2000) {
+                    synchronized (chamber.storedLoot) {
+                        chamber.storedLoot.sort((a, b) -> {
+                            BigDecimal valA = StorePriceManager.getSellPrice(a.getItem()).multiply(BigDecimal.valueOf(a.getCount()));
+                            BigDecimal valB = StorePriceManager.getSellPrice(b.getItem()).multiply(BigDecimal.valueOf(b.getCount()));
+                            return valA.compareTo(valB);
+                        });
+                        while (chamber.storedLoot.size() > 2000) chamber.storedLoot.remove(0);
+                    }
                 }
                 // Stable sort for UI consistency
-                chamber.storedLoot.sort((a, b) -> ForgeRegistries.ITEMS.getKey(a.getItem()).toString().compareTo(ForgeRegistries.ITEMS.getKey(b.getItem()).toString()));
+                synchronized (chamber.storedLoot) {
+                    chamber.storedLoot.sort((a, b) -> ForgeRegistries.ITEMS.getKey(a.getItem()).toString().compareTo(ForgeRegistries.ITEMS.getKey(b.getItem()).toString()));
+                }
                 chamber.updateVersion++;
             }
         }
@@ -474,6 +546,7 @@ public class SkillManager {
                 if (chamber.storedXP.compareTo(spCost) >= 0) {
                     BigDecimal spToGain = chamber.storedXP.divide(spCost, 0, RoundingMode.FLOOR);
                     data.totalSP = data.totalSP.add(spToGain);
+                    StorePriceManager.markDirty(player.getUUID());
                     chamber.storedXP = chamber.storedXP.remainder(spCost);
                 }
             } else {
@@ -606,18 +679,20 @@ public class SkillManager {
             living.setHealth(0); // Mark as dead
             living.setPos(player.getX(), player.getY(), player.getZ());
 
-            // Firing LivingDeathEvent: Used by mods to initialize loot modifiers
-            MinecraftForge.EVENT_BUS.post(new LivingDeathEvent(living, src));
+            // 1. Properly notify mods that the entity has died.
+            // Apotheosis rolls affix gear and attaches it to the 'living' entity here.
+            net.minecraftforge.common.ForgeHooks.onLivingDeath(living, src);
 
-            // Determine looting level via event (respects modded looting modifiers)
-            int lootingLevel = ForgeHooks.getLootingLevel(living, player, src);
+            // 2. Determine looting level (respects modded modifiers from the player/weapon).
+            int lootingLevel = net.minecraftforge.common.ForgeHooks.getLootingLevel(living, player, src);
 
-            // Add physical equipment drops (Armor/Held items)
+            // 3. Add physical equipment drops (Armor/Held items).
+            // This now catches the affix gear Apotheosis attached during the death hook.
             if (living instanceof net.minecraft.world.entity.Mob mob) {
                 addEquipmentDrops(mob, drops, level.random);
             }
 
-            // Wrap drops into ItemEntities for the Drops Event
+            // 4. Wrap current drops into ItemEntities for the next hook.
             java.util.Collection<ItemEntity> itemEntities = new java.util.ArrayList<>();
             for (ItemStack stack : drops) {
                 if (!stack.isEmpty()) {
@@ -625,19 +700,19 @@ public class SkillManager {
                 }
             }
 
-            // Firing LivingDropsEvent: THIS is where most mods (Apotheosis, Draconic Evolution, etc.) inject loot
-            LivingDropsEvent dropsEvent = new LivingDropsEvent(living, src, itemEntities, lootingLevel, true);
-            MinecraftForge.EVENT_BUS.post(dropsEvent);
+            // 5. Fire the drops hook.
+            // Apotheosis injects Gems and rolls for additional drop modifiers here.
+            net.minecraftforge.common.ForgeHooks.onLivingDrops(living, src, itemEntities, lootingLevel, true);
 
-            // Re-collect the final list of drops
+            // 6. Re-collect the final, potentially modified list of drops.
             drops.clear();
-            for (ItemEntity ie : dropsEvent.getDrops()) {
+            for (ItemEntity ie : itemEntities) {
                 if (ie != null && !ie.getItem().isEmpty()) {
                     drops.add(ie.getItem().copy());
                 }
             }
 
-            // Experience Pipeline
+            // 7. Experience Pipeline
             int baseXP = living.getExperienceReward();
             LivingExperienceDropEvent xpEvent = new LivingExperienceDropEvent(living, player, baseXP);
             MinecraftForge.EVENT_BUS.post(xpEvent);
@@ -670,6 +745,25 @@ public class SkillManager {
             drops.removeIf(stack -> chamber.voidFilter.contains(net.minecraftforge.registries.ForgeRegistries.ITEMS.getKey(stack.getItem()).toString()));
         }
 
+        // Linked Container Resolution
+        IItemHandler linkedHandler = null;
+        if (chamber.linkedContainerPos != null && chamber.linkedContainerDimension != null) {
+            net.minecraft.server.MinecraftServer server = level.getServer();
+            if (server != null) {
+                ResourceLocation dimLoc = ResourceLocation.tryParse(chamber.linkedContainerDimension);
+                if (dimLoc != null) {
+                    ResourceKey<Level> dimKey = ResourceKey.create(Registries.DIMENSION, dimLoc);
+                    ServerLevel targetLevel = server.getLevel(dimKey);
+                    if (targetLevel != null && targetLevel.hasChunkAt(chamber.linkedContainerPos)) {
+                        net.minecraft.world.level.block.entity.BlockEntity be = targetLevel.getBlockEntity(chamber.linkedContainerPos);
+                        if (be != null) {
+                            linkedHandler = be.getCapability(ForgeCapabilities.ITEM_HANDLER).orElse(null);
+                        }
+                    }
+                }
+            }
+        }
+
         int marketLink = getActiveRank(data, "VIRT_MARKET_LINK");
         for (ItemStack drop : drops) {
             if (drop.isEmpty()) continue;
@@ -679,9 +773,12 @@ public class SkillManager {
             // Yield Targets
             if (chamber.yieldTargets.containsKey(itemId)) {
                 int target = chamber.yieldTargets.get(itemId);
-                int current = chamber.storedLoot.stream()
-                    .filter(s -> ForgeRegistries.ITEMS.getKey(s.getItem()).toString().equals(itemId))
-                    .mapToInt(ItemStack::getCount).sum();
+                int current;
+                synchronized (chamber.storedLoot) {
+                    current = chamber.storedLoot.stream()
+                        .filter(s -> ForgeRegistries.ITEMS.getKey(s.getItem()).toString().equals(itemId))
+                        .mapToInt(ItemStack::getCount).sum();
+                }
                 if (current >= target) continue;
             }
 
@@ -699,14 +796,27 @@ public class SkillManager {
                 
                 StorePriceManager.recordSale(drop.getItem(), countBD);
             } else {
+                if (linkedHandler != null) {
+                    ItemStack toInsert = drop.copy();
+                    int count = countBD.compareTo(BigDecimal.valueOf(Integer.MAX_VALUE)) >= 0 ? Integer.MAX_VALUE : Math.max(1, countBD.intValue());
+                    toInsert.setCount(count);
+                    
+                    ItemStack remainder = ItemHandlerHelper.insertItemStacked(linkedHandler, toInsert, false);
+                    if (remainder.isEmpty()) continue;
+                    
+                    countBD = BigDecimal.valueOf(remainder.getCount());
+                }
+
                 boolean merged = false;
-                for (ItemStack existing : chamber.storedLoot) {
-                    if (ItemStack.isSameItemSameTags(existing, drop)) {
-                        BigDecimal totalCountBD = BigDecimal.valueOf(existing.getCount()).add(countBD);
-                        int newCount = totalCountBD.compareTo(BigDecimal.valueOf(Integer.MAX_VALUE)) >= 0 ? Integer.MAX_VALUE : Math.max(1, totalCountBD.intValue());
-                        existing.setCount(newCount);
-                        merged = true;
-                        break;
+                synchronized (chamber.storedLoot) {
+                    for (ItemStack existing : chamber.storedLoot) {
+                        if (ItemStack.isSameItemSameTags(existing, drop)) {
+                            BigDecimal totalCountBD = BigDecimal.valueOf(existing.getCount()).add(countBD);
+                            int newCount = totalCountBD.compareTo(BigDecimal.valueOf(Integer.MAX_VALUE)) >= 0 ? Integer.MAX_VALUE : Math.max(1, totalCountBD.intValue());
+                            existing.setCount(newCount);
+                            merged = true;
+                            break;
+                        }
                     }
                 }
                 if (!merged) {
@@ -736,6 +846,7 @@ public class SkillManager {
                 chamber.storedXP = chamber.storedXP.add(xpGain);
                 if (chamber.storedXP.compareTo(spCost) >= 0) {
                     data.totalSP = data.totalSP.add(chamber.storedXP.divide(spCost, 0, RoundingMode.FLOOR));
+                    StorePriceManager.markDirty(player.getUUID());
                     chamber.storedXP = chamber.storedXP.remainder(spCost);
                 }
             } else {
@@ -803,60 +914,62 @@ public class SkillManager {
         boolean changed = false;
         List<ItemStack> loot = chamber.storedLoot;
         
-        for (int i = 0; i < loot.size(); i++) {
-            ItemStack stack = loot.get(i);
-            if (stack.isEmpty()) continue;
+        synchronized (loot) {
+            for (int i = 0; i < loot.size(); i++) {
+                ItemStack stack = loot.get(i);
+                if (stack.isEmpty()) continue;
 
-            CondensationRecipe recipe = condensationCache.computeIfAbsent(stack.getItem(), item -> {
-                net.minecraft.world.item.crafting.RecipeManager rm = level.getRecipeManager();
-                for (net.minecraft.world.item.crafting.CraftingRecipe r : rm.getAllRecipesFor(net.minecraft.world.item.crafting.RecipeType.CRAFTING)) {
-                    if (r.getIngredients().size() == 9 || r.getIngredients().size() == 4) {
-                        boolean allSame = true;
-                        for (net.minecraft.world.item.crafting.Ingredient ing : r.getIngredients()) {
-                            if (!ing.test(new ItemStack(item))) { allSame = false; break; }
-                        }
-                        
-                        if (allSame) {
-                            int req = r.getIngredients().size();
-                            ItemStack res = r.getResultItem(level.registryAccess());
-                            if (!res.isEmpty()) {
-                                boolean rev = false;
-                                for (net.minecraft.world.item.crafting.CraftingRecipe deR : rm.getAllRecipesFor(net.minecraft.world.item.crafting.RecipeType.CRAFTING)) {
-                                    if (deR.getIngredients().size() == 1 && deR.getIngredients().get(0).test(res)) {
-                                        ItemStack deRes = deR.getResultItem(level.registryAccess());
-                                        if (deRes.is(item) && deRes.getCount() == req) {
-                                            rev = true;
-                                            break;
+                CondensationRecipe recipe = condensationCache.computeIfAbsent(stack.getItem(), item -> {
+                    net.minecraft.world.item.crafting.RecipeManager rm = level.getRecipeManager();
+                    for (net.minecraft.world.item.crafting.CraftingRecipe r : rm.getAllRecipesFor(net.minecraft.world.item.crafting.RecipeType.CRAFTING)) {
+                        if (r.getIngredients().size() == 9 || r.getIngredients().size() == 4) {
+                            boolean allSame = true;
+                            for (net.minecraft.world.item.crafting.Ingredient ing : r.getIngredients()) {
+                                if (!ing.test(new ItemStack(item))) { allSame = false; break; }
+                            }
+                            
+                            if (allSame) {
+                                int req = r.getIngredients().size();
+                                ItemStack res = r.getResultItem(level.registryAccess());
+                                if (!res.isEmpty()) {
+                                    boolean rev = false;
+                                    for (net.minecraft.world.item.crafting.CraftingRecipe deR : rm.getAllRecipesFor(net.minecraft.world.item.crafting.RecipeType.CRAFTING)) {
+                                        if (deR.getIngredients().size() == 1 && deR.getIngredients().get(0).test(res)) {
+                                            ItemStack deRes = deR.getResultItem(level.registryAccess());
+                                            if (deRes.is(item) && deRes.getCount() == req) {
+                                                rev = true;
+                                                break;
+                                            }
                                         }
                                     }
+                                    return new CondensationRecipe(res.getItem(), req, rev);
                                 }
-                                return new CondensationRecipe(res.getItem(), req, rev);
                             }
                         }
                     }
-                }
-                return null;
-            });
+                    return null;
+                });
 
-            if (recipe != null) {
-                if (chamber.condensationMode == 1 && !recipe.reversible) continue;
-                
-                if (stack.getCount() >= recipe.required) {
-                    int craftCount = stack.getCount() / recipe.required;
-                    stack.shrink(craftCount * recipe.required);
-                    ItemStack result = new ItemStack(recipe.result, craftCount);
+                if (recipe != null) {
+                    if (chamber.condensationMode == 1 && !recipe.reversible) continue;
                     
-                    boolean merged = false;
-                    for (ItemStack existing : loot) {
-                        if (ItemStack.isSameItemSameTags(existing, result)) {
-                            long newCount = (long)existing.getCount() + result.getCount();
-                            existing.setCount(newCount > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int)newCount);
-                            merged = true;
-                            break;
+                    if (stack.getCount() >= recipe.required) {
+                        int craftCount = stack.getCount() / recipe.required;
+                        stack.shrink(craftCount * recipe.required);
+                        ItemStack result = new ItemStack(recipe.result, craftCount);
+                        
+                        boolean merged = false;
+                        for (ItemStack existing : loot) {
+                            if (ItemStack.isSameItemSameTags(existing, result)) {
+                                long newCount = (long)existing.getCount() + result.getCount();
+                                existing.setCount(newCount > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int)newCount);
+                                merged = true;
+                                break;
+                            }
                         }
+                        if (!merged) loot.add(result);
+                        changed = true;
                     }
-                    if (!merged) loot.add(result);
-                    changed = true;
                 }
             }
         }
@@ -890,6 +1003,8 @@ public class SkillManager {
     }
 
     private static Map<Long, BigDecimal> chunkValueCache = new HashMap<>();
+    private static final net.minecraft.core.BlockPos.MutableBlockPos REUSABLE_POS = new net.minecraft.core.BlockPos.MutableBlockPos();
+
     private static BigDecimal getChunkValue(net.minecraft.server.level.ServerLevel level, int cx, int cz, UUID playerUuid) {
         long key = ((long)cx << 32) | (cz & 0xFFFFFFFFL);
         // Clear cache periodically (once every minute) handled in tick
@@ -902,7 +1017,8 @@ public class SkillManager {
         for (int y = level.getMinBuildHeight(); y < level.getMaxBuildHeight(); y += 16) {
             for (int x = 0; x < 16; x += 4) {
                 for (int z = 0; z < 16; z += 4) {
-                    net.minecraft.world.item.Item item = chunk.getBlockState(new net.minecraft.core.BlockPos(x, y, z)).getBlock().asItem();
+                    REUSABLE_POS.set(x, y, z);
+                    net.minecraft.world.item.Item item = chunk.getBlockState(REUSABLE_POS).getBlock().asItem();
                     if (item != net.minecraft.world.item.Items.AIR) {
                         BigDecimal price = StorePriceManager.getSellPrice(item, playerUuid);
                         value = value.add(price.multiply(BigDecimal.valueOf(256)));

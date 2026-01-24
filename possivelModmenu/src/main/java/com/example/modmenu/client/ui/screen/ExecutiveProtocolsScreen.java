@@ -86,13 +86,13 @@ public class ExecutiveProtocolsScreen extends BaseResponsiveLodestoneScreen {
             g.fill(getX(), getY(), getX() + getWidth(), getY() + getHeight(), hovered ? 0xCC2D3A2D : 0xCC1A1A1A);
             g.renderOutline(getX(), getY(), getWidth(), getHeight(), 0xFF00FF00);
 
-            g.drawString(Minecraft.getInstance().font, "§a§l" + name, getX() + 5, getY() + 5, 0xFFFFFFFF);
-            g.drawString(Minecraft.getInstance().font, "§7" + desc, getX() + 5, getY() + 18, 0xFFFFFFFF);
+            g.drawString(Minecraft.getInstance().font, "\u00A7a\u00A7l" + name, getX() + 5, getY() + 5, 0xFFFFFFFF);
+            g.drawString(Minecraft.getInstance().font, "\u00A77" + desc, getX() + 5, getY() + 18, 0xFFFFFFFF);
             
             int bx = getX() + getWidth() - 95;
             java.math.BigDecimal availableSP = StorePriceManager.clientSkills.totalSP.subtract(StorePriceManager.clientSkills.spentSP);
             boolean canAfford = availableSP.compareTo(java.math.BigDecimal.valueOf(cost)) >= 0;
-            renderBtn(g, bx, getY() + 12, 90, 20, "§d" + cost + " SP", mx, my, canAfford);
+            renderBtn(g, bx, getY() + 12, 90, 20, "\u00A7d" + cost + " SP", mx, my, canAfford);
         }
 
         private void renderBtn(GuiGraphics g, int bx, int by, int bw, int bh, String txt, int mx, int my, boolean enabled) {

@@ -38,9 +38,9 @@ public class ToggleItemLockPacket {
                     stack.getOrCreateTag().putInt("modmenu_lock_state", newState);
 
                     String message = switch (newState) {
-                        case 1 -> "§cItem Locked (No Sell/Drop)";
-                        case 2 -> "§bItem Frozen (No Move)";
-                        default -> "§aItem Protection Disabled";
+                        case 1 -> "\u00A7cItem Locked (No Sell/Drop)";
+                        case 2 -> "\u00A7bItem Frozen (No Move)";
+                        default -> "\u00A7aItem Protection Disabled";
                     };
                     player.displayClientMessage(Component.literal(message), true);
                     

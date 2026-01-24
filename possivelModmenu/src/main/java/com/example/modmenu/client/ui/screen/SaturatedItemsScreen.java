@@ -90,7 +90,7 @@ public class SaturatedItemsScreen extends BaseResponsiveLodestoneScreen {
                 factor = Math.pow(0.95, volume / 1000.0);
             }
             
-            String info = "Volume: §e" + volume + " §7| Efficiency: " + (factor < 1.0 ? "§c" : "§a") + (int)(factor * 100) + "%";
+            String info = "Volume: \u00A7e" + volume + " \u00A77| Efficiency: " + (factor < 1.0 ? "\u00A7c" : "\u00A7a") + (int)(factor * 100) + "%";
             g.drawString(Minecraft.getInstance().font, info, getX() + 30, getY() + 18, 0xFFAAAAAA);
             
             if (hovered && !stack.isEmpty()) {

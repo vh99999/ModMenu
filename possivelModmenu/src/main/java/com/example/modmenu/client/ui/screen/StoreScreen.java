@@ -157,7 +157,7 @@ public class StoreScreen extends BaseResponsiveLodestoneScreen {
         list.addElement(new UIContainer(0, 0, list.getWidth(), 15) {
             @Override
             public void render(net.minecraft.client.gui.GuiGraphics g, int mx, int my, float pt) {
-                g.drawString(font, "§7" + title, getX() + 2, getY() + 4, 0xAAAAAA);
+                g.drawString(font, "\u00A77" + title, getX() + 2, getY() + 4, 0xAAAAAA);
             }
         });
     }

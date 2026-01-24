@@ -49,11 +49,11 @@ public class CaptureMobScreen extends BaseResponsiveLodestoneScreen {
         if (lootTableId == null) {
             this.layoutRoot.addElement(new ResponsiveButton(cx - bw - 5, cy + 40, bw, bh, Component.literal("Mode: Generic"), btn -> {
                 isExact = !isExact;
-                btn.setText(Component.literal("Mode: " + (isExact ? "§eExact" : "§7Generic")));
+                btn.setText(Component.literal("Mode: " + (isExact ? "\u00A7eExact" : "\u00A77Generic")));
             }));
         }
 
-        this.layoutRoot.addElement(new ResponsiveButton(cx + 5, cy + 40, bw, bh, Component.literal("§aCapture"), btn -> {
+        this.layoutRoot.addElement(new ResponsiveButton(cx + 5, cy + 40, bw, bh, Component.literal("\u00A7aCapture"), btn -> {
             if (lootTableId != null) {
                 PacketHandler.sendToServer(new CaptureMobPacket(lootTableId));
             } else {
@@ -72,15 +72,15 @@ public class CaptureMobScreen extends BaseResponsiveLodestoneScreen {
         super.render(g, mx, my, pt);
         if (lootTableId != null) {
             g.drawCenteredString(font, "Initialize Excavation Protocol?", this.width / 2, this.height / 2 - 20, 0xFFFFFFFF);
-            g.drawCenteredString(font, "Loot Table: §b" + lootTableId, this.width / 2, this.height / 2, 0xFFFFFFFF);
-            g.drawCenteredString(font, "Cost: §d10,000 SP", this.width / 2, this.height / 2 + 15, 0xFFFFFFFF);
+            g.drawCenteredString(font, "Loot Table: \u00A7b" + lootTableId, this.width / 2, this.height / 2, 0xFFFFFFFF);
+            g.drawCenteredString(font, "Cost: \u00A7d10,000 SP", this.width / 2, this.height / 2 + 15, 0xFFFFFFFF);
         } else if (entity instanceof LivingEntity living) {
             String name = living.getName().getString();
             java.math.BigDecimal cost = java.math.BigDecimal.valueOf(living.getMaxHealth()).multiply(java.math.BigDecimal.valueOf(isExact ? 100 : 10));
             g.drawCenteredString(font, "Capture " + name + "?", this.width / 2, this.height / 2 - 20, 0xFFFFFFFF);
-            g.drawCenteredString(font, "Cost: §d" + cost + " SP", this.width / 2, this.height / 2, 0xFFFFFFFF);
+            g.drawCenteredString(font, "Cost: \u00A7d" + cost + " SP", this.width / 2, this.height / 2, 0xFFFFFFFF);
             if (isExact) {
-                g.drawCenteredString(font, "§eExact mode stores all NBT (gear, HP, effects)", this.width / 2, this.height / 2 + 15, 0xFFFFFF55);
+                g.drawCenteredString(font, "\u00A7eExact mode stores all NBT (gear, HP, effects)", this.width / 2, this.height / 2 + 15, 0xFFFFFF55);
             }
         }
     }

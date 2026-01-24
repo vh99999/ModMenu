@@ -53,6 +53,11 @@ public class MainMenuScreen extends BaseResponsiveLodestoneScreen {
             this.minecraft.setScreen(new AbilitiesScreen(this));
         }));
 
+        // 4.1 Networks
+        menuLayout.addElement(new ResponsiveButton(0, 0, buttonWidth, buttonHeight, Component.literal("Logistics Networks"), btn -> {
+            this.minecraft.setScreen(new NetworkListScreen(this));
+        }));
+
         // 4.2 Containment
         menuLayout.addElement(new ResponsiveButton(0, 0, buttonWidth, buttonHeight, Component.literal("Virtual Containment"), btn -> {
             this.minecraft.setScreen(new ContainmentScreen(this));

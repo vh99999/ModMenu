@@ -122,7 +122,7 @@ public class SystemScreen extends BaseResponsiveLodestoneScreen {
             g.fill(getX(), getY(), getX() + 1, getY() + getHeight(), borderColor);
             g.fill(getX() + getWidth() - 1, getY(), getX() + getWidth(), getY() + getHeight(), borderColor);
 
-            g.drawString(Minecraft.getInstance().font, "§l" + name, getX() + 10, getY() + 10, 0xFFFFFFFF);
+            g.drawString(Minecraft.getInstance().font, "\u00A7l" + name, getX() + 10, getY() + 10, 0xFFFFFFFF);
             
             net.minecraft.client.player.LocalPlayer player = Minecraft.getInstance().player;
             Attribute attrObj = ForgeRegistries.ATTRIBUTES.getValue(ResourceLocation.tryParse(id));
@@ -145,7 +145,7 @@ public class SystemScreen extends BaseResponsiveLodestoneScreen {
 
             boolean isCapped = totalValue >= maxValue - 0.0001;
             String bonusText = "Bonus: +" + String.format("%.1f", bonus);
-            if (isCapped) bonusText += " §c(MAX)";
+            if (isCapped) bonusText += " \u00A7c(MAX)";
             
             g.drawString(Minecraft.getInstance().font, bonusText, getX() + 10, getY() + 22, isCapped ? 0xFFFF5555 : 0xFF55FF55);
             

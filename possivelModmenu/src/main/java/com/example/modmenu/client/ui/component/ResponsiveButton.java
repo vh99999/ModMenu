@@ -13,6 +13,7 @@ import java.util.function.Consumer;
 public class ResponsiveButton extends UIElement {
     private Component text;
     private final Consumer<ResponsiveButton> onPress;
+    public int lastClickedButton = 0;
     private float hoverTimer = 0;
     private boolean isHovered = false;
     private boolean active = true;
@@ -107,7 +108,8 @@ public class ResponsiveButton extends UIElement {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (active && isMouseOver(mouseX, mouseY) && button == 0) {
+        if (active && isMouseOver(mouseX, mouseY) && (button == 0 || button == 1)) {
+            this.lastClickedButton = button;
             onPress.accept(this);
             return true;
         }

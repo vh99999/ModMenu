@@ -36,7 +36,7 @@ public class SellPacket {
             ServerPlayer player = ctx.get().getSender();
             if (player != null) {
                 if (StorePriceManager.isOre(item)) {
-                    player.displayClientMessage(Component.literal("§cYou cannot sell ore blocks! Only buying is allowed."), true);
+                    player.displayClientMessage(Component.literal("\u00A7cYou cannot sell ore blocks! Only buying is allowed."), true);
                     return;
                 }
                 BigDecimal pricePerItem = StorePriceManager.getSellPrice(item, player.getUUID());
@@ -58,7 +58,7 @@ public class SellPacket {
                 int actualQty = Math.min(quantity, totalInInventory);
 
                 if (actualQty <= 0) {
-                    player.displayClientMessage(Component.literal("§cYou don't have any unprotected " + item.getDescription().getString() + " to sell!"), true);
+                    player.displayClientMessage(Component.literal("\u00A7cYou don't have any unprotected " + item.getDescription().getString() + " to sell!"), true);
                     return;
                 }
 
@@ -78,7 +78,7 @@ public class SellPacket {
                 StorePriceManager.addMoney(player.getUUID(), totalGain);
                 StorePriceManager.recordSale(item, BigDecimal.valueOf(actualQty));
 
-                player.displayClientMessage(Component.literal("§aSold " + actualQty + "x " + item.getDescription().getString() + " for §e$" + StorePriceManager.formatCurrency(totalGain)), true);
+                player.displayClientMessage(Component.literal("\u00A7aSold " + actualQty + "x " + item.getDescription().getString() + " for \u00A7e$" + StorePriceManager.formatCurrency(totalGain)), true);
 
                 // Sync money to client
                 StorePriceManager.sync(player);

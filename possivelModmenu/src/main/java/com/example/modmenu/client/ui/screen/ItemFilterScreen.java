@@ -136,7 +136,7 @@ public class ItemFilterScreen extends BaseResponsiveLodestoneScreen {
             listContainer.addElement(new ResponsiveButton(
                 0, i * (rowHeight + spacing), 
                 listContainer.getWidth() - 10, rowHeight, 
-                Component.literal(item.getDescription().getString() + ": " + (active ? "§aON" : "§cOFF")), b -> {
+                Component.literal(item.getDescription().getString() + ": " + (active ? "\u00A7aON" : "\u00A7cOFF")), b -> {
                     if (targetList.contains(id)) {
                         targetList.remove(id);
                     } else {

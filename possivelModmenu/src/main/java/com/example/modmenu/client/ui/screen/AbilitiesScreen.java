@@ -167,7 +167,7 @@ public class AbilitiesScreen extends BaseResponsiveLodestoneScreen {
         list.addElement(new UIContainer(0, 0, list.getWidth(), 20) {
             @Override
             public void render(net.minecraft.client.gui.GuiGraphics g, int mx, int my, float pt) {
-                g.drawString(font, "§l" + title, getX() + 2, getY() + 6, 0xAAAAAA);
+                g.drawString(font, "\u00A7l" + title, getX() + 2, getY() + 6, 0xAAAAAA);
                 g.fill(getX(), getY() + 18, getX() + getWidth(), getY() + 19, 0xFF888888);
             }
         });
@@ -179,8 +179,8 @@ public class AbilitiesScreen extends BaseResponsiveLodestoneScreen {
                 toggle.run();
                 refreshContent();
             });
-        if (active) btn.setText(Component.literal("§a" + label + ": ON"));
-        else btn.setText(Component.literal("§c" + label + ": OFF"));
+        if (active) btn.setText(Component.literal("\u00A7a" + label + ": ON"));
+        else btn.setText(Component.literal("\u00A7c" + label + ": OFF"));
         list.addElement(btn);
     }
 

@@ -70,14 +70,14 @@ public class SatietyRegistryScreen extends BaseResponsiveLodestoneScreen {
             g.fill(getX(), getY(), getX() + getWidth(), getY() + getHeight(), 0x66000000);
             g.renderOutline(getX(), getY(), getWidth(), getHeight(), 0xFF888888);
 
-            g.drawString(Minecraft.getInstance().font, "§e" + mobId, getX() + 5, getY() + 5, 0xFFFFFFFF);
-            g.drawString(Minecraft.getInstance().font, "Satiety: §c" + String.format("%.1f", satiety), getX() + 5, getY() + 15, 0xFFFFFFFF);
+            g.drawString(Minecraft.getInstance().font, "\u00A7e" + mobId, getX() + 5, getY() + 5, 0xFFFFFFFF);
+            g.drawString(Minecraft.getInstance().font, "Satiety: \u00A7c" + String.format("%.1f", satiety), getX() + 5, getY() + 15, 0xFFFFFFFF);
             
             // Efficiency: 1 / (1 + satiety)
             int eff = (int) (100.0 / (1.0 + satiety));
-            g.drawString(Minecraft.getInstance().font, "Efficiency: §a" + eff + "%", getX() + 150, getY() + 15, 0xFFFFFFFF);
+            g.drawString(Minecraft.getInstance().font, "Efficiency: \u00A7a" + eff + "%", getX() + 150, getY() + 15, 0xFFFFFFFF);
 
-            renderBtn(g, getX() + getWidth() - 80, getY() + 5, 75, 20, "§4PURGE", mx, my);
+            renderBtn(g, getX() + getWidth() - 80, getY() + 5, 75, 20, "\u00A74PURGE", mx, my);
         }
 
         private void renderBtn(GuiGraphics g, int bx, int by, int bw, int bh, String txt, int mx, int my) {

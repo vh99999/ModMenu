@@ -36,10 +36,43 @@ public class EffectMaintenanceHandler {
     private static int passiveIncomeTimer = 0;
     private static int compoundInterestTimer = 0;
     private static int saveTimer = 0;
+    private static final Map<String, Integer> ruleOverrides = new java.util.HashMap<>();
+
+    public static void setRuleOverride(String rule, int ticks) {
+        ruleOverrides.put(rule, ticks);
+    }
+
+    private static void handleRuleOverrides() {
+        if (ruleOverrides.isEmpty()) return;
+        net.minecraft.server.MinecraftServer server = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
+        if (server == null) return;
+
+        java.util.Iterator<java.util.Map.Entry<String, Integer>> it = ruleOverrides.entrySet().iterator();
+        while (it.hasNext()) {
+            java.util.Map.Entry<String, Integer> entry = it.next();
+            int remaining = entry.getValue() - 1;
+            if (remaining <= 0) {
+                revertRule(server, entry.getKey());
+                it.remove();
+            } else {
+                entry.setValue(remaining);
+            }
+        }
+    }
+
+    private static void revertRule(net.minecraft.server.MinecraftServer server, String rule) {
+        switch (rule) {
+            case "fireTick" -> server.getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_DOFIRETICK).set(true, server);
+            case "mobSpawning" -> server.getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_DOMOBSPAWNING).set(true, server);
+            case "randomTicking" -> server.getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_RANDOMTICKING).set(3, server);
+        }
+    }
 
     @SubscribeEvent
     public static void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
+        
+        handleRuleOverrides();
         
         if (net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer() != null) {
             long time = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer().overworld().getGameTime();
@@ -96,6 +129,9 @@ public class EffectMaintenanceHandler {
         }
         
         if (attempts <= 0) return;
+        
+        // Security: Cap attempts per tick to prevent server crash
+        if (attempts > 50) attempts = 50;
         
         BigDecimal costPerAttempt = StorePriceManager.formulas.spawnBoostPerSpawnBase.divide(BigDecimal.valueOf(20), 10, RoundingMode.HALF_UP); 
         
@@ -303,7 +339,7 @@ public class EffectMaintenanceHandler {
                     BigDecimal totalGain = price.multiply(BigDecimal.valueOf(stack.getCount()));
                     StorePriceManager.addMoney(player.getUUID(), totalGain);
                     StorePriceManager.recordSale(stack.getItem(), BigDecimal.valueOf(stack.getCount()));
-                    player.displayClientMessage(net.minecraft.network.chat.Component.literal("§6[AutoSeller] §aSold " + stack.getCount() + "x " + stack.getHoverName().getString() + " for §e$" + StorePriceManager.formatCurrency(totalGain)), true);
+                    player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00A76[AutoSeller] \u00A7aSold " + stack.getCount() + "x " + stack.getHoverName().getString() + " for \u00A7e$" + StorePriceManager.formatCurrency(totalGain)), true);
                     itemEntity.discard();
                     continue;
                 }
@@ -345,64 +381,57 @@ public class EffectMaintenanceHandler {
         ServerLevel level = player.serverLevel();
         
         int grown = 0;
-        // Optimization: Only scan chunks in range and use BlockPos.MutableBlockPos
-        int minX = (pos.getX() - range);
-        int maxX = (pos.getX() + range);
-        int minZ = (pos.getZ() - range);
-        int maxZ = (pos.getZ() + range);
-        int minY = (pos.getY() - 2);
-        int maxY = (pos.getY() + 2);
-
         BlockPos.MutableBlockPos mutablePos = new BlockPos.MutableBlockPos();
+        
+        // Performance: Use random sampling for constant performance regardless of range
+        int attempts = 50; 
+        for (int i = 0; i < attempts; i++) {
+            int x = pos.getX() + level.random.nextInt(range * 2 + 1) - range;
+            int z = pos.getZ() + level.random.nextInt(range * 2 + 1) - range;
+            int y = pos.getY() + level.random.nextInt(5) - 2;
+            
+            mutablePos.set(x, y, z);
+            if (!level.hasChunkAt(mutablePos)) continue;
+            
+            BlockState state = level.getBlockState(mutablePos);
+            if (state.isAir()) continue;
 
-        for (int x = minX; x <= maxX; x++) {
-            for (int z = minZ; z <= maxZ; z++) {
-                // Check if chunk is loaded for this column
-                if (!level.hasChunk(x >> 4, z >> 4)) continue;
-                
-                for (int y = minY; y <= maxY; y++) {
-                    mutablePos.set(x, y, z);
-                    BlockState state = level.getBlockState(mutablePos);
-                    if (state.isAir()) continue;
-
-                    if (state.getBlock() instanceof BonemealableBlock growable) {
-                        if (growable.isValidBonemealTarget(level, mutablePos, state, false)) {
-                            if (StorePriceManager.canAfford(player.getUUID(), opCost)) {
-                                growable.performBonemeal(level, level.random, mutablePos.immutable(), state);
-                                StorePriceManager.addMoney(player.getUUID(), opCost.negate());
-                                grown++;
-                            }
-                        }
-                    } else if (state.is(net.minecraft.world.level.block.Blocks.SUGAR_CANE) || state.is(net.minecraft.world.level.block.Blocks.CACTUS)) {
-                        BlockPos topPos = mutablePos.above();
-                        if (level.isEmptyBlock(topPos)) {
-                            int height = 1;
-                            BlockPos below = mutablePos.below();
-                            while (level.getBlockState(below).is(state.getBlock())) {
-                                height++;
-                                below = below.below();
-                            }
-                            if (height < 3) {
-                                if (StorePriceManager.canAfford(player.getUUID(), opCost)) {
-                                    level.setBlockAndUpdate(topPos, state.getBlock().defaultBlockState());
-                                    StorePriceManager.addMoney(player.getUUID(), opCost.negate());
-                                    grown++;
-                                }
-                            }
-                        }
-                    } else if (state.is(net.minecraft.world.level.block.Blocks.NETHER_WART)) {
-                        int age = state.getValue(net.minecraft.world.level.block.NetherWartBlock.AGE);
-                        if (age < 3) {
-                            if (StorePriceManager.canAfford(player.getUUID(), opCost)) {
-                                level.setBlockAndUpdate(mutablePos, state.setValue(net.minecraft.world.level.block.NetherWartBlock.AGE, age + 1));
-                                StorePriceManager.addMoney(player.getUUID(), opCost.negate());
-                                grown++;
-                            }
+            if (state.getBlock() instanceof BonemealableBlock growable) {
+                if (growable.isValidBonemealTarget(level, mutablePos, state, false)) {
+                    if (StorePriceManager.canAfford(player.getUUID(), opCost)) {
+                        growable.performBonemeal(level, level.random, mutablePos.immutable(), state);
+                        StorePriceManager.addMoney(player.getUUID(), opCost.negate());
+                        grown++;
+                    }
+                }
+            } else if (state.is(net.minecraft.world.level.block.Blocks.SUGAR_CANE) || state.is(net.minecraft.world.level.block.Blocks.CACTUS)) {
+                BlockPos topPos = mutablePos.above();
+                if (level.isEmptyBlock(topPos)) {
+                    int height = 1;
+                    BlockPos below = mutablePos.below();
+                    while (level.getBlockState(below).is(state.getBlock())) {
+                        height++;
+                        below = below.below();
+                    }
+                    if (height < 3) {
+                        if (StorePriceManager.canAfford(player.getUUID(), opCost)) {
+                            level.setBlockAndUpdate(topPos, state.getBlock().defaultBlockState());
+                            StorePriceManager.addMoney(player.getUUID(), opCost.negate());
+                            grown++;
                         }
                     }
-                    if (grown > 100) return; 
+                }
+            } else if (state.is(net.minecraft.world.level.block.Blocks.NETHER_WART)) {
+                int age = state.getValue(net.minecraft.world.level.block.NetherWartBlock.AGE);
+                if (age < 3) {
+                    if (StorePriceManager.canAfford(player.getUUID(), opCost)) {
+                        level.setBlockAndUpdate(mutablePos, state.setValue(net.minecraft.world.level.block.NetherWartBlock.AGE, age + 1));
+                        StorePriceManager.addMoney(player.getUUID(), opCost.negate());
+                        grown++;
+                    }
                 }
             }
+            if (grown > 20) break; // Limit growth per call
         }
     }
 
@@ -508,7 +537,7 @@ public class EffectMaintenanceHandler {
             if (price.compareTo(BigDecimal.ZERO) > 0) {
                 BigDecimal totalGain = price.multiply(BigDecimal.valueOf(stack.getCount()));
                 StorePriceManager.addMoney(player.getUUID(), totalGain);
-                player.displayClientMessage(net.minecraft.network.chat.Component.literal("§6[AutoSeller] §aSold " + stack.getCount() + "x " + stack.getHoverName().getString() + " for §e$" + StorePriceManager.formatCurrency(totalGain)), true);
+                player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00A76[AutoSeller] \u00A7aSold " + stack.getCount() + "x " + stack.getHoverName().getString() + " for \u00A7e$" + StorePriceManager.formatCurrency(totalGain)), true);
                 event.getItem().discard();
                 event.setCanceled(true);
             }

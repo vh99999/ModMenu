@@ -52,14 +52,14 @@ public class WormholePacket {
                             // Safe check for coordinates
                             if (y < targetDim.getMinBuildHeight() - 64 || y > targetDim.getMaxBuildHeight() + 64 || 
                                 Math.abs(x) > 30000000 || Math.abs(z) > 30000000) {
-                                player.displayClientMessage(net.minecraft.network.chat.Component.literal("§cInvalid coordinates!"), true);
+                                player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00A7cInvalid coordinates!"), true);
                                 return;
                             }
 
                             // Safe check: Ensure destination is not inside a solid block
                             BlockPos targetPos = new BlockPos((int)x, (int)y, (int)z);
                             if (targetDim.getBlockState(targetPos).isSolid() && targetDim.getBlockState(targetPos.above()).isSolid()) {
-                                player.displayClientMessage(net.minecraft.network.chat.Component.literal("§cTarget location is obstructed!"), true);
+                                player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00A7cTarget location is obstructed!"), true);
                                 return;
                             }
 

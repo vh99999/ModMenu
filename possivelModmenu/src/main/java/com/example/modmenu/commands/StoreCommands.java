@@ -48,6 +48,7 @@ public class StoreCommands {
                         try {
                             BigDecimal amount = new BigDecimal(amountStr);
                             StorePriceManager.getSkills(player.getUUID()).totalSP = amount;
+                            StorePriceManager.markDirty(player.getUUID());
                             StorePriceManager.sync(player);
                             context.getSource().sendSuccess(() -> Component.literal("Set SP for " + player.getName().getString() + " to " + amount), true);
                             return 1;

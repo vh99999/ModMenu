@@ -74,7 +74,7 @@ public class ServerForgeEvents {
 
                         event.setCanceled(true);
                         player.setHealth(player.getMaxHealth());
-                        player.displayClientMessage(Component.literal("§6[Contractual Immortality] §aLife Restored! Cost: §e$" + StorePriceManager.formatCurrency(cost)), true);
+                        player.displayClientMessage(Component.literal("\u00A76[Contractual Immortality] \u00A7aLife Restored! Cost: \u00A7e$" + StorePriceManager.formatCurrency(cost)), true);
                         return;
                     }
                 }
@@ -111,7 +111,7 @@ public class ServerForgeEvents {
                             p.setOwner(player);
                         }
                     }
-                    player.displayClientMessage(Component.literal("§c[Overclocked Reflexes] §6Projectile Parried!"), true);
+                    player.displayClientMessage(Component.literal("\u00A7c[Overclocked Reflexes] \u00A76Projectile Parried!"), true);
                     return;
                 }
             }
@@ -125,7 +125,7 @@ public class ServerForgeEvents {
                 if (StorePriceManager.canAfford(player.getUUID(), cost)) {
                     if (cost.compareTo(BigDecimal.ZERO) > 0) StorePriceManager.addMoney(player.getUUID(), cost.negate());
                     event.setCanceled(true);
-                    player.displayClientMessage(Component.literal("§bDamage Cancelled!" + (cost.compareTo(BigDecimal.ZERO) > 0 ? " Cost: §e$" + StorePriceManager.formatCurrency(cost) : "")), true);
+                    player.displayClientMessage(Component.literal("\u00A7bDamage Cancelled!" + (cost.compareTo(BigDecimal.ZERO) > 0 ? " Cost: \u00A7e$" + StorePriceManager.formatCurrency(cost) : "")), true);
                     StorePriceManager.sync(player);
                 }
             }
@@ -277,7 +277,7 @@ public class ServerForgeEvents {
                 // Value is hard to determine for all entities, use HP based?
                 java.math.BigDecimal value = StorePriceManager.safeBD(victim.getMaxHealth()).multiply(java.math.BigDecimal.valueOf(100));
                 StorePriceManager.addMoney(player.getUUID(), value);
-                player.displayClientMessage(Component.literal("§6[Entity Defrag] §aHarvested for §e$" + StorePriceManager.formatCurrency(value)), true);
+                player.displayClientMessage(Component.literal("\u00A76[Entity Defrag] \u00A7aHarvested for \u00A7e$" + StorePriceManager.formatCurrency(value)), true);
                 event.setCanceled(true);
                 return;
             }
@@ -340,7 +340,7 @@ public class ServerForgeEvents {
                     processingSureKill = true;
                     victim.hurt(event.getSource(), Float.MAX_VALUE);
                     processingSureKill = false;
-                    player.displayClientMessage(Component.literal("§4Sure Kill Active!" + (cost.compareTo(BigDecimal.ZERO) > 0 ? " Cost: §e$" + StorePriceManager.formatCurrency(cost) : "")), true);
+                    player.displayClientMessage(Component.literal("\u00A74Sure Kill Active!" + (cost.compareTo(BigDecimal.ZERO) > 0 ? " Cost: \u00A7e$" + StorePriceManager.formatCurrency(cost) : "")), true);
                     
                     // Executioner's Tax (Combat Branch)
                     int taxRank = SkillManager.getActiveRank(skillData, "COMBAT_EXECUTIONERS_TAX");
@@ -350,7 +350,7 @@ public class ServerForgeEvents {
                         skillData.activeToggles.removeIf(s -> s.startsWith("SUREKILL_COUNT_"));
                         if (count >= 10) {
                             skillData.activeToggles.add("FREE_PURCHASE_TOKEN");
-                            player.displayClientMessage(Component.literal("§c[Executioner's Tax] §6Free Purchase Token Granted!"), true);
+                            player.displayClientMessage(Component.literal("\u00A7c[Executioner's Tax] \u00A76Free Purchase Token Granted!"), true);
                             count = 0;
                         }
                         skillData.activeToggles.add("SUREKILL_COUNT_" + count);
@@ -451,7 +451,7 @@ public class ServerForgeEvents {
         if (!toBreak.isEmpty()) {
             StorePriceManager.addMoney(player.getUUID(), totalCost.negate());
             pendingMining.computeIfAbsent(player.getUUID(), k -> new ArrayList<>()).addAll(toBreak);
-            player.displayClientMessage(Component.literal("§6[Area Mining] §aQueued " + toBreak.size() + " blocks for liquidation."), true);
+            player.displayClientMessage(Component.literal("\u00A76[Area Mining] \u00A7aQueued " + toBreak.size() + " blocks for liquidation."), true);
             StorePriceManager.sync(player);
         }
     }
@@ -549,7 +549,7 @@ public class ServerForgeEvents {
             if (region.isDone()) {
                 regions.remove(0);
                 if (regions.isEmpty()) {
-                    player.displayClientMessage(Component.literal("§6[Chunk Liquidation] §aLiquidation scan complete."), true);
+                    player.displayClientMessage(Component.literal("\u00A76[Chunk Liquidation] \u00A7aLiquidation scan complete."), true);
                 }
             }
         }
@@ -565,7 +565,7 @@ public class ServerForgeEvents {
             for (int i = 0; i < toProcess; i++) {
                 BlockPos p = list.remove(0);
                 if (player.level().hasChunkAt(p)) {
-                    player.level().destroyBlock(p, true, player);
+                    player.level().destroyBlock(p, false, player);
                 }
             }
         }
@@ -581,36 +581,39 @@ public class ServerForgeEvents {
             
             if (!pricesCalculated && !pricesCalculating) {
                 pricesCalculating = true;
-                player.displayClientMessage(Component.literal("§6[ModMenu] §eCalculating item prices in background... Some features may be delayed."), false);
+                player.displayClientMessage(Component.literal("\u00A76[ModMenu] \u00A7eCalculating item prices... Some features may be delayed."), false);
                 
-                Thread calculationThread = new Thread(() -> {
-                    try {
-                        StorePriceManager.addAllItems(player.level());
-                        pricesCalculated = true;
-                        pricesCalculating = false;
-                        
-                        net.minecraft.server.MinecraftServer server = player.getServer();
-                        if (server != null) {
-                            server.execute(() -> {
-                                server.getPlayerList().broadcastSystemMessage(Component.literal("§6[ModMenu] §aItem pricing calculation complete!"), false);
-                                for (ServerPlayer p : server.getPlayerList().getPlayers()) {
-                                    StorePriceManager.syncPrices(p);
-                                }
-                            });
+                net.minecraft.server.MinecraftServer server = player.getServer();
+                if (server != null) {
+                    server.execute(() -> {
+                        try {
+                            StorePriceManager.addAllItems(player.level());
+                            pricesCalculated = true;
+                            pricesCalculating = false;
+                            
+                            server.getPlayerList().broadcastSystemMessage(Component.literal("\u00A76[ModMenu] \u00A7aItem pricing calculation complete!"), false);
+                            for (ServerPlayer p : server.getPlayerList().getPlayers()) {
+                                StorePriceManager.syncPrices(p);
+                            }
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            pricesCalculating = false;
                         }
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                        pricesCalculating = false;
-                    }
-                }, "ModMenu-PricingThread");
-                calculationThread.setPriority(Thread.MIN_PRIORITY);
-                calculationThread.start();
+                    });
+                }
             }
             
             SkillManager.handleOfflineProcessing(player);
             StorePriceManager.applyAllAttributes(player);
             StorePriceManager.sync(player);
             if (pricesCalculated) StorePriceManager.syncPrices(player);
+
+            com.example.modmenu.store.logistics.LogisticsCapability.getNetworks(player).ifPresent(data -> {
+                com.example.modmenu.network.PacketHandler.sendToPlayer(
+                    new com.example.modmenu.network.SyncNetworksPacket(data.getNetworks()),
+                    player
+                );
+            });
 
             if (StorePriceManager.isDataCorrupted) {
                 com.example.modmenu.network.PacketHandler.sendToPlayer(
@@ -624,12 +627,32 @@ public class ServerForgeEvents {
     @SubscribeEvent
     public static void onPlayerLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
-            StorePriceManager.savePlayerData(player.getUUID());
+            UUID uuid = player.getUUID();
+            StorePriceManager.savePlayerData(uuid);
+            StorePriceManager.unloadPlayerData(uuid);
+            scheduledDamages.remove(uuid);
+            pendingMining.remove(uuid);
+            pendingRegions.remove(uuid);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onLevelSave(net.minecraftforge.event.level.LevelEvent.Save event) {
+        if (event.getLevel() instanceof net.minecraft.server.level.ServerLevel level && level.dimension() == net.minecraft.world.level.Level.OVERWORLD) {
+            StorePriceManager.saveAllDirty();
         }
     }
 
     @SubscribeEvent
     public static void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
+        if (event.getEntity() instanceof ServerPlayer player) {
+            StorePriceManager.applyAllAttributes(player);
+            StorePriceManager.sync(player);
+        }
+    }
+
+    @SubscribeEvent
+    public static void onPlayerChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             StorePriceManager.applyAllAttributes(player);
             StorePriceManager.sync(player);
@@ -647,7 +670,7 @@ public class ServerForgeEvents {
                     // This case shouldn't really happen during a toss but good to have
                     event.getPlayer().drop(stack, false);
                 }
-                event.getPlayer().displayClientMessage(Component.literal("§cThis item is protected and cannot be dropped!"), true);
+                event.getPlayer().displayClientMessage(Component.literal("\u00A7cThis item is protected and cannot be dropped!"), true);
             }
         }
     }
@@ -682,13 +705,13 @@ public class ServerForgeEvents {
                 if (bloodData > 0 && player.level().random.nextFloat() < 0.10f) {
                     BigDecimal bonus = spGain.multiply(BigDecimal.valueOf(bloodData)).multiply(new BigDecimal("0.5"));
                     spGain = spGain.add(bonus.max(BigDecimal.ONE));
-                    player.displayClientMessage(Component.literal("§c[Blood Data] §dExtra SP harvested!"), true);
+                    player.displayClientMessage(Component.literal("\u00A7c[Blood Data] \u00A7dExtra SP harvested!"), true);
                 }
 
                 if (spGain.compareTo(BigDecimal.ZERO) > 0) {
                     spGain = spGain.setScale(0, RoundingMode.FLOOR);
                     skillData.totalSP = skillData.totalSP.add(spGain);
-                    player.displayClientMessage(Component.literal("§d+ " + spGain.toPlainString() + " Skill Points"), true);
+                    player.displayClientMessage(Component.literal("\u00A7d+ " + spGain.toPlainString() + " Skill Points"), true);
                 }
             }
 
@@ -730,7 +753,7 @@ public class ServerForgeEvents {
             
             if (reward.compareTo(BigDecimal.ZERO) > 0) {
                 StorePriceManager.addMoney(player.getUUID(), reward);
-                player.displayClientMessage(Component.literal("§aMob Reward: §e$" + StorePriceManager.formatCurrency(reward) + " §7(Eff: " + (int)(rewardMultiplier.doubleValue() * 100) + "%)"), true);
+                player.displayClientMessage(Component.literal("\u00A7aMob Reward: \u00A7e$" + StorePriceManager.formatCurrency(reward) + " \u00A77(Eff: " + (int)(rewardMultiplier.doubleValue() * 100) + "%)"), true);
             }
             
             // 3. Increase Satiety
@@ -827,20 +850,20 @@ public class ServerForgeEvents {
 
                 if (totalValue.compareTo(BigDecimal.ZERO) > 0) {
                     StorePriceManager.addMoney(player.getUUID(), totalValue);
-                    player.displayClientMessage(Component.literal("§6[Asset Seizure] §aLiquidated gear for §e$" + StorePriceManager.formatCurrency(totalValue)), true);
+                    player.displayClientMessage(Component.literal("\u00A76[Asset Seizure] \u00A7aLiquidated gear for \u00A7e$" + StorePriceManager.formatCurrency(totalValue)), true);
                     skillData.lastCaptureTimes.put("SEIZURE_COOLDOWN", player.level().getGameTime());
                     event.setCanceled(true);
                     return;
                 }
             } else {
-                player.displayClientMessage(Component.literal("§cAsset Seizure on cooldown!"), true);
+                player.displayClientMessage(Component.literal("\u00A7cAsset Seizure on cooldown!"), true);
             }
         }
 
         // Quantum Storage (Utility Branch)
         if (SkillManager.getActiveRank(skillData, "UTILITY_QUANTUM_STORAGE") > 0 && player.isShiftKeyDown() && event.getTarget() instanceof net.minecraft.world.entity.vehicle.ContainerEntity container) {
             // For entities like minecart with chest
-            player.displayClientMessage(Component.literal("§b[Quantum Storage] §aContainer Synced!"), true);
+            player.displayClientMessage(Component.literal("\u00A7b[Quantum Storage] \u00A7aContainer Synced!"), true);
             // logic to store reference
         }
         
@@ -869,7 +892,7 @@ public class ServerForgeEvents {
                 BigDecimal value = StorePriceManager.getBuyPrice(state.getBlock().asItem());
                 StorePriceManager.addMoney(player.getUUID(), value);
                 player.level().setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
-                player.displayClientMessage(Component.literal("§6[Architect's Will] §aDeleted & Sold for §e$" + StorePriceManager.formatCurrency(value)), true);
+                player.displayClientMessage(Component.literal("\u00A76[Architect's Will] \u00A7aDeleted & Sold for \u00A7e$" + StorePriceManager.formatCurrency(value)), true);
                 event.setCanceled(true);
                 return;
             }
@@ -879,7 +902,7 @@ public class ServerForgeEvents {
         if (SkillManager.getActiveRank(skillData, "UTILITY_QUANTUM_STORAGE") > 0 && player.isShiftKeyDown()) {
             BlockPos pos = event.getPos();
             if (player.level().getBlockEntity(pos) instanceof net.minecraft.world.level.block.entity.BaseContainerBlockEntity) {
-                player.displayClientMessage(Component.literal("§b[Quantum Storage] §aContainer Synced!"), true);
+                player.displayClientMessage(Component.literal("\u00A7b[Quantum Storage] \u00A7aContainer Synced!"), true);
                 // logic to store location
                 event.setCanceled(true);
                 return;
@@ -896,7 +919,7 @@ public class ServerForgeEvents {
                 if (skillData.totalSP.subtract(skillData.spentSP).compareTo(spCost) >= 0) {
                     skillData.spentSP = skillData.spentSP.add(spCost);
                     player.level().setBlock(pos, targetBlock.defaultBlockState(), 3);
-                    player.displayClientMessage(Component.literal("§6[Matter Transmutation] §aTransmuted! §dCost: " + spCost + " SP"), true);
+                    player.displayClientMessage(Component.literal("\u00A76[Matter Transmutation] \u00A7aTransmuted! \u00A7dCost: " + spCost + " SP"), true);
                     StorePriceManager.sync(player);
                     event.setCanceled(true);
                     return;
@@ -923,7 +946,7 @@ public class ServerForgeEvents {
                     }
                 }
             }
-            player.displayClientMessage(Component.literal("§6[Tectonic Shift] §aEarth Pushed!"), true);
+            player.displayClientMessage(Component.literal("\u00A76[Tectonic Shift] \u00A7aEarth Pushed!"), true);
             event.setCanceled(true);
             return;
         }
@@ -970,7 +993,7 @@ public class ServerForgeEvents {
         StorePriceManager.SkillData skillData = StorePriceManager.getSkills(player.getUUID());
         if (targetState.isAir() || targetState.getBlock() == Blocks.BEDROCK) return;
         if (isMiningBlacklisted(targetState, settings.miningBlacklist)) {
-            player.displayClientMessage(Component.literal("§cBlacklisted Item"), true);
+            player.displayClientMessage(Component.literal("\u00A7cBlacklisted Item"), true);
             return;
         }
         
@@ -1084,7 +1107,7 @@ public class ServerForgeEvents {
         BigDecimal currentMoney = StorePriceManager.getMoney(player.getUUID());
         
         if (blocksToMine.isEmpty()) {
-            player.displayClientMessage(Component.literal("§cNo suitable blocks found or not enough money!"), true);
+            player.displayClientMessage(Component.literal("\u00A7cNo suitable blocks found or not enough money!"), true);
             return;
         }
 
@@ -1158,7 +1181,7 @@ public class ServerForgeEvents {
         }
         
         StorePriceManager.setMoney(player.getUUID(), currentMoney.subtract(totalCost).add(totalValue));
-        player.displayClientMessage(Component.literal("§aMined " + minedCount + " blocks. Cost: §e$" + StorePriceManager.formatCurrency(totalCost) + (settings.autoSell ? " §aEarned: §e$" + StorePriceManager.formatCurrency(totalValue) : "")), true);
+        player.displayClientMessage(Component.literal("\u00A7aMined " + minedCount + " blocks. Cost: \u00A7e$" + StorePriceManager.formatCurrency(totalCost) + (settings.autoSell ? " \u00A7aEarned: \u00A7e$" + StorePriceManager.formatCurrency(totalValue) : "")), true);
         StorePriceManager.sync(player);
     }
 

@@ -38,10 +38,11 @@ public class ExecuteProtocolPacket {
                     boolean success = execute(player, protocolId, data);
                     if (success) {
                         data.spentSP = data.spentSP.add(cost);
+                        StorePriceManager.markDirty(player.getUUID());
                         StorePriceManager.sync(player);
                     }
                 } else {
-                    player.displayClientMessage(Component.literal("§cNot enough SP!"), true);
+                    player.displayClientMessage(Component.literal("\u00A7cNot enough SP!"), true);
                 }
             }
         });
@@ -84,85 +85,99 @@ public class ExecuteProtocolPacket {
         switch (id) {
             case 0 -> { // Personal Nexus
                 player.setRespawnPosition(player.level().dimension(), player.blockPosition(), player.getYRot(), true, true);
-                player.displayClientMessage(Component.literal("§6[Root] §aPersonal Nexus Synchronized!"), true);
+                player.displayClientMessage(Component.literal("\u00A76[Root] \u00A7aPersonal Nexus Synchronized!"), true);
                 return true;
             }
             case 1 -> { // Sector Zero
                 player.serverLevel().setDefaultSpawnPos(player.blockPosition(), player.getYRot());
-                player.displayClientMessage(Component.literal("§6[Root] §aWorld Spawn Realigned to Sector Zero!"), true);
+                player.displayClientMessage(Component.literal("\u00A76[Root] \u00A7aWorld Spawn Realigned to Sector Zero!"), true);
                 return true;
             }
             case 2 -> { // Dimensional Anchor
                 data.activeToggles.add("PROTOCOL_DIM_ANCHOR");
-                player.displayClientMessage(Component.literal("§6[Root] §aDimensional Anchor Active!"), true);
+                player.displayClientMessage(Component.literal("\u00A76[Root] \u00A7aDimensional Anchor Active!"), true);
                 return true;
             }
             case 3 -> { // Inventory Preservation
                 data.activeToggles.add("PROTOCOL_KEEP_INV");
-                player.displayClientMessage(Component.literal("§6[Root] §aInventory Preservation Active!"), true);
+                player.displayClientMessage(Component.literal("\u00A76[Root] \u00A7aInventory Preservation Active!"), true);
                 return true;
             }
             case 4 -> { // Neural XP Backup
                 data.activeToggles.add("PROTOCOL_KEEP_XP");
-                player.displayClientMessage(Component.literal("§6[Root] §aNeural Experience Backup Active!"), true);
+                player.displayClientMessage(Component.literal("\u00A76[Root] \u00A7aNeural Experience Backup Active!"), true);
                 return true;
             }
             case 5 -> { // Anti-Griefing Aura
                 data.activeToggles.add("PROTOCOL_ANTI_GRIEF");
-                player.displayClientMessage(Component.literal("§6[Root] §aAnti-Griefing Aura Active!"), true);
+                player.displayClientMessage(Component.literal("\u00A76[Root] \u00A7aAnti-Griefing Aura Active!"), true);
                 return true;
             }
             case 6 -> { // Emergency System Restore (Handled on death screen, just unlock here?)
                 data.activeToggles.add("PROTOCOL_SYSTEM_RESTORE");
-                player.displayClientMessage(Component.literal("§6[Root] §aEmergency System Restore Protocol Enabled!"), true);
+                player.displayClientMessage(Component.literal("\u00A76[Root] \u00A7aEmergency System Restore Protocol Enabled!"), true);
                 return true;
             }
             case 7 -> { // Global Registry Purge
                 data.mobSatiety.clear();
-                player.displayClientMessage(Component.literal("§6[Root] §aGlobal Satiety Registry Purged!"), true);
+                player.displayClientMessage(Component.literal("\u00A76[Root] \u00A7aGlobal Satiety Registry Purged!"), true);
                 return true;
             }
             case 8 -> { // Chronos Lock
                 data.activeToggles.add("PROTOCOL_CHRONOS_LOCK");
-                player.displayClientMessage(Component.literal("§6[Root] §aChronos Lock Active!"), true);
+                player.displayClientMessage(Component.literal("\u00A76[Root] \u00A7aChronos Lock Active!"), true);
                 return true;
             }
             case 9 -> { // Tectonic Stabilization
                 data.activeToggles.add("PROTOCOL_FALL_IMMUNE");
-                player.displayClientMessage(Component.literal("§6[Root] §aTectonic Stabilization Active!"), true);
+                player.displayClientMessage(Component.literal("\u00A76[Root] \u00A7aTectonic Stabilization Active!"), true);
                 return true;
             }
             case 10 -> { // Species Blacklist
                 if (entityHit != null && entityHit.getEntity() instanceof net.minecraft.world.entity.LivingEntity living) {
+                    boolean isPet = living instanceof net.minecraft.world.entity.OwnableEntity ownable && ownable.getOwnerUUID() != null;
+                    if (living instanceof net.minecraft.world.entity.player.Player || isPet || player.distanceToSqr(living) > 36.0 || !player.level().mayInteract(player, living.blockPosition())) {
+                        player.displayClientMessage(Component.literal("\u00A7cCannot blacklist this entity!"), true);
+                        return false;
+                    }
                     String typeId = ForgeRegistries.ENTITY_TYPES.getKey(living.getType()).toString();
                     data.blacklistedSpecies.add(typeId);
                     living.discard();
-                    player.displayClientMessage(Component.literal("§6[Root] §cBlacklisted Species: §e" + typeId), true);
+                    player.displayClientMessage(Component.literal("\u00A76[Root] \u00A7cBlacklisted Species: \u00A7e" + typeId), true);
                     return true;
                 }
-                player.displayClientMessage(Component.literal("§cLook at a mob to blacklist its species!"), true);
+                player.displayClientMessage(Component.literal("\u00A7cLook at a mob to blacklist its species!"), true);
                 return false;
             }
             case 11 -> { // Substrate Injection
                 if (hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK && !player.getOffhandItem().isEmpty()) {
                     net.minecraft.core.BlockPos pos = ((net.minecraft.world.phys.BlockHitResult)hit).getBlockPos();
+                    if (!player.mayBuild() || !player.level().mayInteract(player, pos)) {
+                        player.displayClientMessage(Component.literal("\u00A7cYou do not have permission to modify blocks here!"), true);
+                        return false;
+                    }
                     net.minecraft.world.level.block.Block target = net.minecraft.world.level.block.Block.byItem(player.getOffhandItem().getItem());
                     if (target != net.minecraft.world.level.block.Blocks.AIR) {
                         player.level().setBlock(pos, target.defaultBlockState(), 3);
-                        player.displayClientMessage(Component.literal("§6[Root] §aSubstrate Injected!"), true);
+                        player.displayClientMessage(Component.literal("\u00A76[Root] \u00A7aSubstrate Injected!"), true);
                         return true;
                     }
                 }
-                player.displayClientMessage(Component.literal("§cLook at a block and hold target material in off-hand!"), true);
+                player.displayClientMessage(Component.literal("\u00A7cLook at a block and hold target material in off-hand!"), true);
                 return false;
             }
             case 12 -> { // Loot Table Overclock
                 data.overclockKillsRemaining += 100;
-                player.displayClientMessage(Component.literal("§6[Root] §aLoot Table Overclocked for 100 kills!"), true);
+                player.displayClientMessage(Component.literal("\u00A76[Root] \u00A7aLoot Table Overclocked for 100 kills!"), true);
                 return true;
             }
             case 13 -> { // Registry Editor
                 if (entityHit != null && entityHit.getEntity() instanceof net.minecraft.world.entity.LivingEntity living) {
+                    boolean isPet = living instanceof net.minecraft.world.entity.OwnableEntity ownable && ownable.getOwnerUUID() != null;
+                    if (living instanceof net.minecraft.world.entity.player.Player || isPet || player.distanceToSqr(living) > 36.0 || !player.level().mayInteract(player, living.blockPosition())) {
+                        player.displayClientMessage(Component.literal("\u00A7cCannot modify this entity!"), true);
+                        return false;
+                    }
                     // Open simple UI to select new type? For now, cycle or random?
                     // User said "Turn Warden into a Pig".
                     // Let's use whatever is in off-hand (if it's a spawn egg?) or just cycle.
@@ -175,22 +190,22 @@ public class ExecuteProtocolPacket {
                             newEntity.moveTo(living.position());
                             living.discard();
                             player.level().addFreshEntity(newEntity);
-                            player.displayClientMessage(Component.literal("§6[Root] §aEntity type overwritten!"), true);
+                            player.displayClientMessage(Component.literal("\u00A76[Root] \u00A7aEntity type overwritten!"), true);
                             return true;
                         }
                     }
                 }
-                player.displayClientMessage(Component.literal("§cLook at a mob and hold a Spawn Egg in off-hand!"), true);
+                player.displayClientMessage(Component.literal("\u00A7cLook at a mob and hold a Spawn Egg in off-hand!"), true);
                 return false;
             }
             case 14 -> { // Code Optimization
                 data.activeToggles.add("PROTOCOL_SP_REDUCTION");
-                player.displayClientMessage(Component.literal("§6[Root] §aCode Optimized! SP costs reduced by 15%."), true);
+                player.displayClientMessage(Component.literal("\u00A76[Root] \u00A7aCode Optimized! SP costs reduced by 15%."), true);
                 return true;
             }
             case 15 -> { // God Strength
                 data.activeToggles.add("PROTOCOL_GOD_STRENGTH");
-                player.displayClientMessage(Component.literal("§6[Root] §aGod Strength Protocol Initialized!"), true);
+                player.displayClientMessage(Component.literal("\u00A76[Root] \u00A7aGod Strength Protocol Initialized!"), true);
                 return true;
             }
         }

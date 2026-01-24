@@ -58,10 +58,10 @@ public class PurgeSatietyPacket {
                 if (StorePriceManager.canAfford(player.getUUID(), cost)) {
                     StorePriceManager.addMoney(player.getUUID(), cost.negate());
                     data.mobSatiety.remove(mobId);
-                    player.displayClientMessage(Component.literal("§aPurged Satiety for " + mobId + "! Cost: §e$" + StorePriceManager.formatCurrency(cost)), true);
+                    player.displayClientMessage(Component.literal("\u00A7aPurged Satiety for " + mobId + "! Cost: \u00A7e$" + StorePriceManager.formatCurrency(cost)), true);
                     StorePriceManager.sync(player);
                 } else {
-                    player.displayClientMessage(Component.literal("§cNot enough money to purge! Need §e$" + StorePriceManager.formatCurrency(cost)), true);
+                    player.displayClientMessage(Component.literal("\u00A7cNot enough money to purge! Need \u00A7e$" + StorePriceManager.formatCurrency(cost)), true);
                 }
             }
         });

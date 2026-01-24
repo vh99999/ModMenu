@@ -6,6 +6,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.reflect.TypeToken;
 import com.example.modmenu.store.pricing.PricingEngine;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -27,6 +28,7 @@ import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class StorePriceManager {
     private static final Gson GSON = new GsonBuilder()
@@ -51,19 +53,20 @@ public class StorePriceManager {
     
     private static Map<String, BigDecimal> itemBuyPrices = new HashMap<>();
     private static Map<String, BigDecimal> itemSellPrices = new HashMap<>();
-    private static Map<String, Long> totalSoldVolume = new HashMap<>(); // Dynamic Economy
+    private static Map<String, Long> totalSoldVolume = new ConcurrentHashMap<>(); // Dynamic Economy
     private static Map<String, BigDecimal> enchantPrices = new HashMap<>();
     private static Map<String, BigDecimal> effectBasePrices = new HashMap<>();
-    private static Set<String> editedPrices = new HashSet<>();
-    private static Map<UUID, BigDecimal> playerMoneyMap = new HashMap<>();
-    private static Map<UUID, Map<String, Integer>> activeEffects = new HashMap<>();
-    private static Map<UUID, AbilitySettings> playerAbilities = new HashMap<>();
-    private static Map<UUID, Set<String>> unlockedHousesMap = new HashMap<>();
-    private static Map<UUID, Map<String, Double>> playerAttributeBonuses = new HashMap<>();
-    private static Map<UUID, SkillData> playerSkills = new HashMap<>();
-    private static Map<UUID, String> playerReturnDimension = new HashMap<>();
-    private static Map<UUID, double[]> playerReturnPosition = new HashMap<>();
-    private static Set<UUID> editors = new HashSet<>();
+    private static Set<String> editedPrices = ConcurrentHashMap.newKeySet();
+    private static Map<UUID, BigDecimal> playerMoneyMap = new ConcurrentHashMap<>();
+    private static Map<UUID, Map<String, Integer>> activeEffects = new ConcurrentHashMap<>();
+    private static Map<UUID, AbilitySettings> playerAbilities = new ConcurrentHashMap<>();
+    private static Map<UUID, Set<String>> unlockedHousesMap = new ConcurrentHashMap<>();
+    private static Map<UUID, Map<String, Double>> playerAttributeBonuses = new ConcurrentHashMap<>();
+    private static Map<UUID, SkillData> playerSkills = new ConcurrentHashMap<>();
+    private static Map<UUID, String> playerReturnDimension = new ConcurrentHashMap<>();
+    private static Map<UUID, double[]> playerReturnPosition = new ConcurrentHashMap<>();
+    private static Set<UUID> editors = ConcurrentHashMap.newKeySet();
+    private static final Set<UUID> successfulLoads = Collections.synchronizedSet(new HashSet<>());
     private static final Set<UUID> dirtyPlayers = Collections.synchronizedSet(new HashSet<>());
     private static boolean globalDirty = false;
     public static boolean globalSkillsDisabled = false;
@@ -115,9 +118,9 @@ public class StorePriceManager {
         public boolean autoSell = false;
         public boolean autoSellerIsBlacklist = false;
         public boolean useEnchantments = false;
-        public Map<String, Integer> miningEnchants = new HashMap<>();
-        public List<String> miningBlacklist = new ArrayList<>();
-        public List<String> selectedEnchantments = new ArrayList<>(); 
+        public Map<String, Integer> miningEnchants = new ConcurrentHashMap<>();
+        public List<String> miningBlacklist = new CopyOnWriteArrayList<>();
+        public List<String> selectedEnchantments = new CopyOnWriteArrayList<>(); 
         
         public boolean focusedMiningActive = false;
         public int focusedMiningRange = 16;
@@ -133,12 +136,12 @@ public class StorePriceManager {
         public int xpMagnetOpsPerTick = 1;
         
         public boolean autoSellerActive = false;
-        public List<String> autoSellerWhitelist = new ArrayList<>();
+        public List<String> autoSellerWhitelist = new CopyOnWriteArrayList<>();
         public boolean sellAllWhitelistActive = false;
-        public List<String> sellAllWhitelist = new ArrayList<>();
-        public List<String> sellAllBlacklist = new ArrayList<>();
+        public List<String> sellAllWhitelist = new CopyOnWriteArrayList<>();
+        public List<String> sellAllBlacklist = new CopyOnWriteArrayList<>();
 
-        public List<String> smelterWhitelist = new ArrayList<>();
+        public List<String> smelterWhitelist = new CopyOnWriteArrayList<>();
 
         public boolean chestHighlightActive = false;
         public int chestHighlightRange = 16;
@@ -166,8 +169,8 @@ public class StorePriceManager {
 
         public boolean spawnBoostActive = false;
         public double spawnBoostMultiplier = 2.0;
-        public List<String> spawnBoostTargets = new ArrayList<>();
-        public List<String> disabledSpawnConditions = new ArrayList<>();
+        public List<String> spawnBoostTargets = new CopyOnWriteArrayList<>();
+        public List<String> disabledSpawnConditions = new CopyOnWriteArrayList<>();
 
         public boolean growCropsActive = false;
         public int growCropsRange = 5;
@@ -237,10 +240,10 @@ public class StorePriceManager {
         public Map<String, Integer> unlockedRanks = new ConcurrentHashMap<>();
         public Set<String> activeToggles = Collections.newSetFromMap(new ConcurrentHashMap<>());
         public Map<String, Float> mobSatiety = new ConcurrentHashMap<>();
-        public List<String> branchOrder = new ArrayList<>();
+        public List<String> branchOrder = new CopyOnWriteArrayList<>();
         public Map<String, BigDecimal> permanentAttributes = new ConcurrentHashMap<>();
         public Map<String, Long> lastCaptureTimes = new ConcurrentHashMap<>(); // For Chamber harvesting
-        public List<ChamberData> chambers = new ArrayList<>();
+        public List<ChamberData> chambers = new CopyOnWriteArrayList<>();
         public int unlockedChambers = 1;
         public Set<String> blacklistedSpecies = Collections.newSetFromMap(new ConcurrentHashMap<>());
         public int overclockKillsRemaining = 0;
@@ -323,26 +326,30 @@ public class StorePriceManager {
         public String customName;
         public net.minecraft.nbt.CompoundTag nbt;
         public boolean isExact;
-        public List<ItemStack> storedLoot = new ArrayList<>();
+        public List<ItemStack> storedLoot = new CopyOnWriteArrayList<>();
         public BigDecimal storedXP = BigDecimal.ZERO;
         public long lastHarvestTime = 0;
         public ItemStack killerWeapon = ItemStack.EMPTY;
         public int rerollCount = 0;
         public boolean paused = false;
         public long lastOfflineProcessingTime = 0;
-        public List<String> voidFilter = new ArrayList<>();
+        public List<String> voidFilter = new CopyOnWriteArrayList<>();
         public int updateVersion = 0;
 
         // New Advanced Features
         public boolean barteringMode = false;
-        public List<ItemStack> inputBuffer = new ArrayList<>();
+        public List<ItemStack> inputBuffer = new CopyOnWriteArrayList<>();
         public int condensationMode = 0; // 0: OFF, 1: SAFE, 2: ALL
-        public Map<String, Integer> yieldTargets = new HashMap<>();
+        public Map<String, Integer> yieldTargets = new ConcurrentHashMap<>();
         public int speedSlider = 1;
         public int threadSlider = 1;
-        public List<FilterRule> advancedFilters = new ArrayList<>();
+        public List<FilterRule> advancedFilters = new CopyOnWriteArrayList<>();
         public boolean isExcavation = false;
         public String lootTableId = null;
+        public BlockPos linkedContainerPos = null;
+        public String linkedContainerDimension = null;
+        public BlockPos inputLinkPos = null;
+        public String inputLinkDimension = null;
 
         public ChamberData snapshot() {
             ChamberData snap = new ChamberData();
@@ -350,8 +357,10 @@ public class StorePriceManager {
             snap.customName = this.customName;
             snap.nbt = this.nbt != null ? this.nbt.copy() : null;
             snap.isExact = this.isExact;
-            for (ItemStack stack : this.storedLoot) {
-                snap.storedLoot.add(stack.copy());
+            synchronized (this.storedLoot) {
+                for (ItemStack stack : this.storedLoot) {
+                    snap.storedLoot.add(stack.copy());
+                }
             }
             snap.storedXP = this.storedXP;
             snap.lastHarvestTime = this.lastHarvestTime;
@@ -375,6 +384,10 @@ public class StorePriceManager {
             }
             snap.isExcavation = this.isExcavation;
             snap.lootTableId = this.lootTableId;
+            snap.linkedContainerPos = this.linkedContainerPos;
+            snap.linkedContainerDimension = this.linkedContainerDimension;
+            snap.inputLinkPos = this.inputLinkPos;
+            snap.inputLinkDimension = this.inputLinkDimension;
             return snap;
         }
     }
@@ -482,6 +495,9 @@ public class StorePriceManager {
         playerAttributeBonuses.clear();
         playerReturnDimension.clear();
         playerReturnPosition.clear();
+        successfulLoads.clear();
+        WORLD_DATA_DIR = null;
+        PLAYER_DATA_DIR = null;
         DATA_FILE = new File(FMLPaths.CONFIGDIR.get().toFile(), "store_data.json"); // Reset to default
         isDataCorrupted = false;
     }
@@ -689,6 +705,7 @@ public class StorePriceManager {
     }
 
     public static void loadPlayerData(UUID uuid) {
+        successfulLoads.add(uuid); // Mark as attempt made; if it fails to parse, we still might want to know we tried
         File playerFile = new File(PLAYER_DATA_DIR, uuid.toString() + ".json");
         if (!playerFile.exists()) return;
         try (FileReader reader = new FileReader(playerFile)) {
@@ -704,6 +721,7 @@ public class StorePriceManager {
                 if (data.returnPosition != null) playerReturnPosition.put(uuid, data.returnPosition);
             }
         } catch (Exception e) {
+            successfulLoads.remove(uuid); // Error during load, do NOT mark as successfully loaded
             e.printStackTrace();
         }
     }
@@ -718,7 +736,15 @@ public class StorePriceManager {
     }
 
     public static void savePlayerData(UUID uuid) {
-        if (isDataCorrupted) return;
+        if (PLAYER_DATA_DIR == null) return;
+        if (!successfulLoads.contains(uuid)) {
+            File playerFile = new File(PLAYER_DATA_DIR, uuid.toString() + ".json");
+            if (playerFile.exists()) {
+                System.err.println("[StorePriceManager] Skipping save for player " + uuid + " because load failed previously. This prevents data loss.");
+                return;
+            }
+        }
+        
         SinglePlayerData data = new SinglePlayerData();
         data.money = getMoney(uuid);
         data.activeEffects = activeEffects.get(uuid);
@@ -732,6 +758,18 @@ public class StorePriceManager {
         
         File playerFile = new File(PLAYER_DATA_DIR, uuid.toString() + ".json");
         atomicWrite(playerFile, data);
+        dirtyPlayers.remove(uuid);
+    }
+
+    public static void unloadPlayerData(UUID uuid) {
+        playerMoneyMap.remove(uuid);
+        activeEffects.remove(uuid);
+        playerAbilities.remove(uuid);
+        unlockedHousesMap.remove(uuid);
+        playerAttributeBonuses.remove(uuid);
+        playerSkills.remove(uuid);
+        playerReturnDimension.remove(uuid);
+        playerReturnPosition.remove(uuid);
         dirtyPlayers.remove(uuid);
     }
 
@@ -836,11 +874,11 @@ public class StorePriceManager {
     }
 
     public static Map<String, Integer> getActiveEffects(UUID uuid) {
-        return activeEffects.computeIfAbsent(uuid, k -> new HashMap<>());
+        return activeEffects.computeIfAbsent(uuid, k -> new ConcurrentHashMap<>());
     }
 
     public static void toggleEffect(UUID uuid, String effectId, int level) {
-        Map<String, Integer> effects = activeEffects.computeIfAbsent(uuid, k -> new HashMap<>());
+        Map<String, Integer> effects = activeEffects.computeIfAbsent(uuid, k -> new ConcurrentHashMap<>());
         if (level <= 0) {
             effects.remove(effectId);
         } else {
@@ -966,9 +1004,20 @@ public class StorePriceManager {
 
     public static void recordSale(Item item, java.math.BigDecimal count) {
         String id = ForgeRegistries.ITEMS.getKey(item).toString();
-        long oldVolume = totalSoldVolume.getOrDefault(id, 0L);
-        long newVolume = oldVolume + count.longValue();
-        totalSoldVolume.put(id, newVolume);
+        long added = count.longValue();
+        
+        long oldVolume;
+        long newVolume;
+        
+        // Atomic update for ConcurrentHashMap
+        while (true) {
+            oldVolume = totalSoldVolume.getOrDefault(id, 0L);
+            newVolume = oldVolume + added;
+            if (totalSoldVolume.replace(id, oldVolume, newVolume)) break;
+            if (!totalSoldVolume.containsKey(id)) {
+                if (totalSoldVolume.putIfAbsent(id, newVolume) == null) break;
+            }
+        }
         
         if (newVolume / 100 > oldVolume / 100) { // Mark dirty every 100
             markDirty(null);
@@ -1178,9 +1227,6 @@ public class StorePriceManager {
     }
 
     public static SkillData getSkills(UUID uuid) {
-        if (net.minecraftforge.fml.loading.FMLEnvironment.dist == net.minecraftforge.api.distmarker.Dist.CLIENT) {
-            return clientSkills;
-        }
         return playerSkills.computeIfAbsent(uuid, k -> new SkillData());
     }
 
@@ -1200,7 +1246,7 @@ public class StorePriceManager {
     }
 
     public static Map<String, Double> getAttributeBonuses(UUID uuid) {
-        return playerAttributeBonuses.computeIfAbsent(uuid, k -> new HashMap<>());
+        return playerAttributeBonuses.computeIfAbsent(uuid, k -> new ConcurrentHashMap<>());
     }
 
     public static void setAttributeBonus(UUID uuid, String attribute, double value) {
@@ -1384,7 +1430,7 @@ public class StorePriceManager {
     }
 
     public static Set<String> getUnlockedHouses(UUID uuid) {
-        return unlockedHousesMap.computeIfAbsent(uuid, k -> new HashSet<>());
+        return unlockedHousesMap.computeIfAbsent(uuid, k -> ConcurrentHashMap.newKeySet());
     }
 
     public static void unlockHouse(UUID uuid, String houseId) {

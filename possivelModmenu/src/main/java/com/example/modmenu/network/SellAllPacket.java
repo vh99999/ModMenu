@@ -76,11 +76,11 @@ public class SellAllPacket {
                 
                 if (totalEarned.compareTo(BigDecimal.ZERO) > 0) {
                     StorePriceManager.addMoney(player.getUUID(), totalEarned);
-                    player.displayClientMessage(Component.literal("§aSold items for §e$" + StorePriceManager.formatCurrency(totalEarned)), true);
+                    player.displayClientMessage(Component.literal("\u00A7aSold items for \u00A7e$" + StorePriceManager.formatCurrency(totalEarned)), true);
                     StorePriceManager.sync(player);
                     player.containerMenu.broadcastChanges();
                 } else {
-                    player.displayClientMessage(Component.literal("§cNothing to sell!"), true);
+                    player.displayClientMessage(Component.literal("\u00A7cNothing to sell!"), true);
                 }
             }
         });

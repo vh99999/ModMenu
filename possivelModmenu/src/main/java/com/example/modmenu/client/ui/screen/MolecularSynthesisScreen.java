@@ -81,7 +81,7 @@ public class MolecularSynthesisScreen extends BaseResponsiveLodestoneScreen {
     public void render(GuiGraphics g, int mx, int my, float pt) {
         super.render(g, mx, my, pt);
         g.drawCenteredString(font, "Molecular Synthesis (System Crafting)", this.width / 2, 20, 0xFFFFCC00);
-        g.drawCenteredString(font, "Current Balance: §e$" + StorePriceManager.formatCurrency(StorePriceManager.playerMoney), this.width / 2, 32, 0xFFFFFFFF);
+        g.drawCenteredString(font, "Current Balance: \u00A7e$" + StorePriceManager.formatCurrency(StorePriceManager.playerMoney), this.width / 2, 32, 0xFFFFFFFF);
     }
 
     private class SynthesisSlot extends UIElement {
@@ -121,13 +121,13 @@ public class MolecularSynthesisScreen extends BaseResponsiveLodestoneScreen {
                 g.pose().pushPose();
                 g.pose().translate(getX() + getWidth() - 10, getY() + 2, 300);
                 g.pose().scale(0.5f, 0.5f, 1.0f);
-                g.drawString(Minecraft.getInstance().font, "❄", 0, 0, 0xFFFFFFFF);
+                g.drawString(Minecraft.getInstance().font, "\u2744", 0, 0, 0xFFFFFFFF);
                 g.pose().popPose();
             } else if (lockState == 1) {
                 g.pose().pushPose();
                 g.pose().translate(getX() + getWidth() - 10, getY() + 2, 300);
                 g.pose().scale(0.5f, 0.5f, 1.0f);
-                g.drawString(Minecraft.getInstance().font, "🔒", 0, 0, 0xFFFFFFFF);
+                g.drawString(Minecraft.getInstance().font, "\uD83D\uDD12", 0, 0, 0xFFFFFFFF);
                 g.pose().popPose();
             }
 
@@ -135,8 +135,8 @@ public class MolecularSynthesisScreen extends BaseResponsiveLodestoneScreen {
                 List<Component> tooltip = new ArrayList<>();
                 tooltip.add(stack.getHoverName());
                 java.math.BigDecimal cost = StorePriceManager.getBuyPrice(item).multiply(java.math.BigDecimal.valueOf(10));
-                tooltip.add(Component.literal("§eSynthesis Cost: $" + StorePriceManager.formatCurrency(cost)));
-                tooltip.add(Component.literal("§6Click to Synthesize"));
+                tooltip.add(Component.literal("\u00A7eSynthesis Cost: $" + StorePriceManager.formatCurrency(cost)));
+                tooltip.add(Component.literal("\u00A76Click to Synthesize"));
                 addPostRenderTask(gui -> {
                     gui.renderComponentTooltip(Minecraft.getInstance().font, tooltip, absMouseX, absMouseY);
                 });

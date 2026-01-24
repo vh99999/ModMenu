@@ -104,13 +104,13 @@ public class LootRecalibrationScreen extends BaseResponsiveLodestoneScreen {
                 g.pose().pushPose();
                 g.pose().translate(getX() + getWidth() - 10, getY() + 2, 300);
                 g.pose().scale(0.5f, 0.5f, 1.0f);
-                g.drawString(Minecraft.getInstance().font, "❄", 0, 0, 0xFFFFFFFF);
+                g.drawString(Minecraft.getInstance().font, "\u2744", 0, 0, 0xFFFFFFFF);
                 g.pose().popPose();
             } else if (lockState == 1) {
                 g.pose().pushPose();
                 g.pose().translate(getX() + getWidth() - 10, getY() + 2, 300);
                 g.pose().scale(0.5f, 0.5f, 1.0f);
-                g.drawString(Minecraft.getInstance().font, "🔒", 0, 0, 0xFFFFFFFF);
+                g.drawString(Minecraft.getInstance().font, "\uD83D\uDD12", 0, 0, 0xFFFFFFFF);
                 g.pose().popPose();
             }
 

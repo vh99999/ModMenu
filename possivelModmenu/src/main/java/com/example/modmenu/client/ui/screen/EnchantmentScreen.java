@@ -142,7 +142,7 @@ public class EnchantmentScreen extends BaseResponsiveLodestoneScreen {
             Map<Enchantment, Integer> enchants = net.minecraft.world.item.enchantment.EnchantmentHelper.getEnchantments(selectedItem);
             int ey = centerY + 80;
             for (Map.Entry<Enchantment, Integer> e : enchants.entrySet()) {
-                guiGraphics.drawCenteredString(Minecraft.getInstance().font, "§b" + e.getKey().getFullname(e.getValue()).getString(), centerX, ey, 0xAAFFFF);
+                guiGraphics.drawCenteredString(Minecraft.getInstance().font, "\u00A7b" + e.getKey().getFullname(e.getValue()).getString(), centerX, ey, 0xAAFFFF);
                 ey += 12;
             }
         } else {

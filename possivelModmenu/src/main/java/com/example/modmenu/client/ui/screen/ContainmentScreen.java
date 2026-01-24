@@ -76,7 +76,7 @@ public class ContainmentScreen extends BaseResponsiveLodestoneScreen {
         }
         cost = cost.setScale(0, java.math.RoundingMode.HALF_UP);
 
-        list.addElement(new ResponsiveButton(0, currentY, list.getWidth() - 10, rowHeight - 5, Component.literal("§dUnlock Next Chamber Slot (" + cost + " SP)"), btn -> {
+        list.addElement(new ResponsiveButton(0, currentY, list.getWidth() - 10, rowHeight - 5, Component.literal("\u00A7dUnlock Next Chamber Slot (" + cost + " SP)"), btn -> {
             com.example.modmenu.network.PacketHandler.sendToServer(new com.example.modmenu.network.ActionChamberPacket(-1, 6));
             refreshList();
         }));
@@ -108,7 +108,11 @@ public class ContainmentScreen extends BaseResponsiveLodestoneScreen {
         @Override
         public void render(GuiGraphics g, int mx, int my, float pt) {
             boolean hovered = mx >= getX() && my >= getY() && mx < getX() + getWidth() && my < getY() + getHeight();
-            g.fill(getX(), getY(), getX() + getWidth(), getY() + getHeight(), hovered ? 0x66FFFFFF : 0x33FFFFFF);
+            int bgColor = hovered ? 0x66FFFFFF : 0x33FFFFFF;
+            if (data.paused) {
+                bgColor = hovered ? 0x66FF5555 : 0x33FF5555;
+            }
+            g.fill(getX(), getY(), getX() + getWidth(), getY() + getHeight(), bgColor);
 
             if (renderEntity != null) {
                 InventoryScreen.renderEntityInInventoryFollowsMouse(g, getX() + 30, getY() + 70, 25, (float)(getX() + 30) - mx, (float)(getY() + 40) - my, renderEntity);
@@ -116,15 +120,18 @@ public class ContainmentScreen extends BaseResponsiveLodestoneScreen {
 
             String name = data.customName != null ? data.customName : (data.isExcavation ? data.lootTableId : data.mobId);
             if (data.isExcavation) name = "Excavation: " + name.substring(name.lastIndexOf('/') + 1);
-            g.drawString(Minecraft.getInstance().font, "Target: §6" + name, getX() + 60, getY() + 10, 0xFFFFFFFF);
+            g.drawString(Minecraft.getInstance().font, "Target: \u00A76" + name, getX() + 60, getY() + 10, 0xFFFFFFFF);
+            if (data.linkedContainerPos != null) {
+                g.drawString(Minecraft.getInstance().font, "\u00A7b[LINKED]", getX() + 160, getY() + 10, 0xFFFFFFFF);
+            }
             
-            String status = data.paused ? "§cPAUSED" : "§aACTIVE";
-            if (data.barteringMode) status += " §e(BARTER)";
+            String status = data.paused ? "\u00A7cPAUSED" : "\u00A7aACTIVE";
+            if (data.barteringMode) status += " \u00A7e(BARTER)";
             g.drawString(Minecraft.getInstance().font, "Status: " + status, getX() + 60, getY() + 22, 0xFFFFFFFF);
             
             String xpText = data.storedXP.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString();
-            g.drawString(Minecraft.getInstance().font, "XP: §a" + xpText, getX() + 60, getY() + 34, 0xFFFFFFFF);
-            g.drawString(Minecraft.getInstance().font, "Loot: §e" + data.storedLoot.size() + " types", getX() + 60, getY() + 46, 0xFFFFFFFF);
+            g.drawString(Minecraft.getInstance().font, "XP: \u00A7a" + xpText, getX() + 60, getY() + 34, 0xFFFFFFFF);
+            g.drawString(Minecraft.getInstance().font, "Loot: \u00A7e" + data.storedLoot.size() + " types", getX() + 60, getY() + 46, 0xFFFFFFFF);
             
             g.drawString(Minecraft.getInstance().font, "S:" + data.speedSlider + " T:" + data.threadSlider, getX() + 60, getY() + 58, 0xFFAAAAAA);
 
@@ -136,7 +143,7 @@ public class ContainmentScreen extends BaseResponsiveLodestoneScreen {
             int bx = getX() + getWidth() - 85;
             renderBtn(g, bx, getY() + 5, 80, 18, "Harvest", mx, my);
             renderBtn(g, bx, getY() + 25, 80, 18, "Manage", mx, my);
-            String pauseTxt = data.paused ? "Resume" : "Stop";
+            String pauseTxt = data.paused ? "\u00A7aStart" : "\u00A7cStop";
             renderBtn(g, bx, getY() + 45, 80, 18, pauseTxt, mx, my);
         }
 

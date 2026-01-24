@@ -259,6 +259,24 @@ public class PacketHandler {
                 .encoder(HandleCorruptionPacket::encode)
                 .consumerMainThread(HandleCorruptionPacket::handle)
                 .add();
+
+        INSTANCE.messageBuilder(SyncNetworksPacket.class, packetId++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(SyncNetworksPacket::new)
+                .encoder(SyncNetworksPacket::encode)
+                .consumerMainThread(SyncNetworksPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(ActionNetworkPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(ActionNetworkPacket::new)
+                .encoder(ActionNetworkPacket::encode)
+                .consumerMainThread(ActionNetworkPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(SyncNodeInventoryPacket.class, packetId++, NetworkDirection.PLAY_TO_CLIENT)
+                .decoder(SyncNodeInventoryPacket::new)
+                .encoder(SyncNodeInventoryPacket::encode)
+                .consumerMainThread(SyncNodeInventoryPacket::handle)
+                .add();
     }
 
     public static void sendToServer(Object msg) {

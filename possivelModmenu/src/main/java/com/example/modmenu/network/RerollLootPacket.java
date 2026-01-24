@@ -49,10 +49,11 @@ public class RerollLootPacket {
                             chamber.rerollCount++;
                             chamber.storedLoot.clear();
                             SkillManager.simulateMobKillInternal(player, chamber, BigDecimal.ONE);
+                            StorePriceManager.markDirty(player.getUUID());
                             StorePriceManager.sync(player);
-                            player.displayClientMessage(net.minecraft.network.chat.Component.literal("§6[Chamber] §aLoot Rerolled! §dCost: " + cost + " SP"), true);
+                            player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00A76[Chamber] \u00A7aLoot Rerolled! \u00A7dCost: " + cost + " SP"), true);
                         } else {
-                            player.displayClientMessage(net.minecraft.network.chat.Component.literal("§cNot enough SP to reroll! Need " + cost), true);
+                            player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00A7cNot enough SP to reroll! Need " + cost), true);
                         }
                     }
                 } else {
@@ -103,10 +104,11 @@ public class RerollLootPacket {
                             // Send updated drops back to client
                             PacketHandler.sendToPlayer(new OpenLootRecalibrationPacket(index, buffer.drops, buffer.rerollCount), player);
                             
+                            StorePriceManager.markDirty(player.getUUID());
                             StorePriceManager.sync(player);
-                            player.displayClientMessage(net.minecraft.network.chat.Component.literal("§6[Loot Recalibration] §aLoot Rerolled! §dCost: " + cost + " SP"), true);
+                            player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00A76[Loot Recalibration] \u00A7aLoot Rerolled! \u00A7dCost: " + cost + " SP"), true);
                         } else {
-                            player.displayClientMessage(net.minecraft.network.chat.Component.literal("§cNot enough SP to reroll! Need " + cost), true);
+                            player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00A7cNot enough SP to reroll! Need " + cost), true);
                         }
                     }
                 }

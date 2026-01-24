@@ -61,14 +61,16 @@ public class PurchasePacket {
                         if (currentMoney.compareTo(cost) >= 0) {
                             StorePriceManager.setMoney(player.getUUID(), currentMoney.subtract(cost));
                             StorePriceManager.unlockHouse(player.getUUID(), "mining_dimension");
-                            player.displayClientMessage(Component.literal("§aHouse Unlocked!"), true);
+                            player.displayClientMessage(Component.literal("\u00A7aHouse Unlocked!"), true);
                             StorePriceManager.sync(player);
                         } else {
-                            player.displayClientMessage(Component.literal("§cNot enough money! Cost: $100,000,000"), true);
+                            player.displayClientMessage(Component.literal("\u00A7cNot enough money! Cost: $100,000,000"), true);
                         }
                     }
                     return;
                 }
+
+                if (quantity <= 0) return;
 
                 BigDecimal pricePerItem = StorePriceManager.getPrice(item, player.getUUID());
                 
@@ -82,7 +84,7 @@ public class PurchasePacket {
                 BigDecimal currentMoney = StorePriceManager.getMoney(player.getUUID());
 
                 if (!StorePriceManager.canAfford(player.getUUID(), totalCost)) {
-                    player.displayClientMessage(Component.literal("§cNot enough money!"), true);
+                    player.displayClientMessage(Component.literal("\u00A7cNot enough money!"), true);
                     return;
                 }
 
@@ -105,8 +107,8 @@ public class PurchasePacket {
                     player.drop(stackToGive, false);
                 }
 
-                String message = "§aBought " + quantity + "x " + item.getDescription().getString();
-                message += " for §e$" + StorePriceManager.formatCurrency(totalCost);
+                String message = "\u00A7aBought " + quantity + "x " + item.getDescription().getString();
+                message += " for \u00A7e$" + StorePriceManager.formatCurrency(totalCost);
                 player.displayClientMessage(Component.literal(message), true);
 
                 // Sync money to client

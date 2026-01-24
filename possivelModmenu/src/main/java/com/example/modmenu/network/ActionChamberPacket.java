@@ -20,7 +20,7 @@ import java.util.function.Supplier;
 public class ActionChamberPacket {
     private final int index;
     private final int action; // 0: Harvest XP, 1: Collect All Loot, 2: Void All Loot, 3: Set Weapon, 4: Collect Single, 5: Void Single, 6: Unlock Chamber, 7: Toggle Pause, 8: Sync Filter
-    // 9: Toggle Bartering, 10: Cycle Condensation, 11: Set Yield Target, 12: Set Speed, 13: Set Thread, 14: Update Advanced Filter, 15: Clear Input, 17: Transfer to Container
+    // 9: Toggle Bartering, 10: Cycle Condensation, 11: Set Yield Target, 12: Set Speed, 13: Set Thread, 14: Update Advanced Filter, 15: Clear Input, 17: Transfer to Container, 18: Set Link, 19: Clear Link, 20: Set Input Link, 21: Clear Input Link
     private final int itemIndex;
     private List<String> filterData;
     private String stringData;
@@ -67,6 +67,14 @@ public class ActionChamberPacket {
         this.posData = pos;
     }
 
+    public ActionChamberPacket(int index, int action, net.minecraft.core.BlockPos pos, String dimension) {
+        this.index = index;
+        this.action = action;
+        this.itemIndex = -1;
+        this.posData = pos;
+        this.stringData = dimension;
+    }
+
     public ActionChamberPacket(int index, List<String> filterData) {
         this.index = index;
         this.action = 8;
@@ -91,8 +99,9 @@ public class ActionChamberPacket {
         } else if (action == 4 || action == 5) {
             if (buf.readBoolean()) this.itemData = buf.readRegistryIdSafe(net.minecraft.world.item.Item.class);
             if (buf.readBoolean()) this.nbtData = buf.readNbt();
-        } else if (action == 17) {
+        } else if (action == 17 || action == 18 || action == 20) {
             this.posData = buf.readBlockPos();
+            if (action == 18 || action == 20) this.stringData = buf.readUtf();
         }
     }
 
@@ -115,8 +124,9 @@ public class ActionChamberPacket {
             if (itemData != null) buf.writeRegistryId(ForgeRegistries.ITEMS, itemData);
             buf.writeBoolean(nbtData != null);
             if (nbtData != null) buf.writeNbt(nbtData);
-        } else if (action == 17) {
+        } else if (action == 17 || action == 18 || action == 20) {
             buf.writeBlockPos(posData);
+            if (action == 18 || action == 20) buf.writeUtf(stringData != null ? stringData : "");
         }
     }
 
@@ -139,10 +149,10 @@ public class ActionChamberPacket {
                     if (data.totalSP.subtract(data.spentSP).compareTo(cost) >= 0) {
                         data.spentSP = data.spentSP.add(cost);
                         data.unlockedChambers++;
-                        player.displayClientMessage(net.minecraft.network.chat.Component.literal("§6[Chamber] §aUnlocked Chamber Slot " + data.unlockedChambers + "! §dCost: " + cost + " SP"), true);
+                        player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00A76[Chamber] \u00A7aUnlocked Chamber Slot " + data.unlockedChambers + "! \u00A7dCost: " + cost + " SP"), true);
                         StorePriceManager.sync(player);
                     } else {
-                        player.displayClientMessage(net.minecraft.network.chat.Component.literal("§cNot enough SP to unlock slot! Need " + cost), true);
+                        player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00A7cNot enough SP to unlock slot! Need " + cost), true);
                     }
                     return;
                 }
@@ -161,12 +171,14 @@ public class ActionChamberPacket {
                             }
                         }
                         case 1 -> {
-                            for (ItemStack stack : chamber.storedLoot) {
-                                if (!player.getInventory().add(stack)) {
-                                    player.drop(stack, false);
+                            synchronized (chamber.storedLoot) {
+                                for (ItemStack stack : chamber.storedLoot) {
+                                    if (!player.getInventory().add(stack)) {
+                                        player.drop(stack, false);
+                                    }
                                 }
+                                chamber.storedLoot.clear();
                             }
-                            chamber.storedLoot.clear();
                             chamber.updateVersion++;
                         }
                         case 2 -> {
@@ -177,10 +189,10 @@ public class ActionChamberPacket {
                             ItemStack held = player.getMainHandItem();
                             if (!held.isEmpty()) {
                                 chamber.killerWeapon = held.copy();
-                                player.displayClientMessage(net.minecraft.network.chat.Component.literal("§6[Chamber] §aKiller Weapon set to: §e" + held.getHoverName().getString()), true);
+                                player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00A76[Chamber] \u00A7aKiller Weapon set to: \u00A7e" + held.getHoverName().getString()), true);
                             } else {
                                 chamber.killerWeapon = ItemStack.EMPTY;
-                                player.displayClientMessage(net.minecraft.network.chat.Component.literal("§6[Chamber] §cKiller Weapon cleared!"), true);
+                                player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00A76[Chamber] \u00A7cKiller Weapon cleared!"), true);
                             }
                             chamber.updateVersion++;
                         }
@@ -236,7 +248,7 @@ public class ActionChamberPacket {
                         }
                         case 7 -> {
                             chamber.paused = !chamber.paused;
-                            player.displayClientMessage(net.minecraft.network.chat.Component.literal("§6[Chamber] §eSimulation " + (chamber.paused ? "PAUSED" : "RESUMED")), true);
+                            player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00A76[Chamber] \u00A7eSimulation " + (chamber.paused ? "PAUSED" : "RESUMED")), true);
                         }
                         case 8 -> {
                             if (filterData != null) {
@@ -292,7 +304,7 @@ public class ActionChamberPacket {
                         }
                         case 16 -> { // Put held item into input buffer
                             if (chamber.inputBuffer.size() >= 32) {
-                                player.displayClientMessage(net.minecraft.network.chat.Component.literal("§cInput buffer is full!"), true);
+                                player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00A7cInput buffer is full!"), true);
                                 return;
                             }
                             ItemStack held = player.getMainHandItem();
@@ -320,13 +332,37 @@ public class ActionChamberPacket {
                                         chamber.storedLoot.removeIf(ItemStack::isEmpty);
                                         chamber.updateVersion++;
                                         if (totalMoved > 0) {
-                                            player.displayClientMessage(net.minecraft.network.chat.Component.literal("§6[Chamber] §a" + String.format("%,d", totalMoved) + " items moved successfully!"), true);
+                                            player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00A76[Chamber] \u00A7a" + String.format("%,d", totalMoved) + " items moved successfully!"), true);
                                         } else {
-                                            player.displayClientMessage(net.minecraft.network.chat.Component.literal("§6[Chamber] §cContainer is full! No items were transferred."), true);
+                                            player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00A76[Chamber] \u00A7cContainer is full! No items were transferred."), true);
                                         }
                                     });
                                 }
                             }
+                        }
+                        case 18 -> {
+                            if (posData != null && stringData != null) {
+                                chamber.linkedContainerPos = posData;
+                                chamber.linkedContainerDimension = stringData;
+                                player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00A76[Chamber] \u00A7aLink established to container at " + posData.toShortString() + " in " + stringData), true);
+                            }
+                        }
+                        case 19 -> {
+                            chamber.linkedContainerPos = null;
+                            chamber.linkedContainerDimension = null;
+                            player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00A76[Chamber] \u00A7cLink cleared!"), true);
+                        }
+                        case 20 -> {
+                            if (posData != null && stringData != null) {
+                                chamber.inputLinkPos = posData;
+                                chamber.inputLinkDimension = stringData;
+                                player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00A76[Chamber] \u00A7aInput Link established to container at " + posData.toShortString() + " in " + stringData), true);
+                            }
+                        }
+                        case 21 -> {
+                            chamber.inputLinkPos = null;
+                            chamber.inputLinkDimension = null;
+                            player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00A76[Chamber] \u00A7cInput Link cleared!"), true);
                         }
                     }
                     StorePriceManager.markDirty(player.getUUID());

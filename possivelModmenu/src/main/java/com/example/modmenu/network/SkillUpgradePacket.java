@@ -43,7 +43,7 @@ public class SkillUpgradePacket {
                     int prereqRank = data.unlockedRanks.getOrDefault(path.prerequisiteId, 0);
                     if (prereqRank < path.prerequisiteRank) {
                         SkillDefinitions.SkillPath prereq = SkillDefinitions.ALL_SKILLS.get(path.prerequisiteId);
-                        player.displayClientMessage(Component.literal("§cRequires " + prereq.name + " Rank " + path.prerequisiteRank), true);
+                        player.displayClientMessage(Component.literal("\u00A7cRequires " + prereq.name + " Rank " + path.prerequisiteRank), true);
                         return;
                     }
                 }
@@ -76,12 +76,12 @@ public class SkillUpgradePacket {
                             
                             if (currentMoney.compareTo(licenseFeeMoney) >= 0) {
                                 StorePriceManager.addMoney(player.getUUID(), licenseFeeMoney.negate());
-                                player.displayClientMessage(Component.literal("§6[Access License] §aPaid $10 Trillion to open a new branch without a Keystone!"), true);
+                                player.displayClientMessage(Component.literal("\u00A76[Access License] \u00A7aPaid $10 Trillion to open a new branch without a Keystone!"), true);
                             } else if (availableSP.compareTo(licenseFeeSP) >= 0) {
                                 data.spentSP = data.spentSP.add(licenseFeeSP);
-                                player.displayClientMessage(Component.literal("§6[Access License] §aPaid 500,000 SP to open a new branch without a Keystone!"), true);
+                                player.displayClientMessage(Component.literal("\u00A76[Access License] \u00A7aPaid 500,000 SP to open a new branch without a Keystone!"), true);
                             } else {
-                                player.displayClientMessage(Component.literal("§cYou must unlock an Ultimate Keystone first, or pay the $10 Trillion / 500,000 SP License Fee!"), true);
+                                player.displayClientMessage(Component.literal("\u00A7cYou must unlock an Ultimate Keystone first, or pay the $10 Trillion / 500,000 SP License Fee!"), true);
                                 return;
                             }
                         }
@@ -96,7 +96,7 @@ public class SkillUpgradePacket {
 
                     for (String unlocked : data.unlockedRanks.keySet()) {
                         if (unlocked.contains("_KEYSTONE") && unlocked.startsWith(currentPrefix)) {
-                            player.displayClientMessage(Component.literal("§cSingle Keystone Protocol active: Only one Ultimate Keystone per branch allowed!"), true);
+                            player.displayClientMessage(Component.literal("\u00A7cSingle Keystone Protocol active: Only one Ultimate Keystone per branch allowed!"), true);
                             return;
                         }
                     }
@@ -110,12 +110,12 @@ public class SkillUpgradePacket {
                     data.unlockedRanks.put(skillId, currentMaxRank + 1);
                     data.skillRanks.put(skillId, currentMaxRank + 1); // Set active rank to max by default
                     data.activeToggles.add(skillId); // Auto-enable on purchase
-                    player.displayClientMessage(Component.literal("§dUpgraded " + path.name + " to Rank " + (currentMaxRank + 1)), true);
+                    player.displayClientMessage(Component.literal("\u00A7dUpgraded " + path.name + " to Rank " + (currentMaxRank + 1)), true);
                     StorePriceManager.markDirty(player.getUUID());
                     StorePriceManager.applyAllAttributes(player);
                     StorePriceManager.sync(player);
                 } else {
-                    player.displayClientMessage(Component.literal("§cNot enough Skill Points! Need " + cost), true);
+                    player.displayClientMessage(Component.literal("\u00A7cNot enough Skill Points! Need " + cost), true);
                 }
             }
         });

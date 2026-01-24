@@ -38,12 +38,17 @@ public class AtmosphericControlPacket {
                         case 5 -> {
                             boolean current = player.serverLevel().getGameRules().getBoolean(net.minecraft.world.level.GameRules.RULE_DOFIRETICK);
                             player.serverLevel().getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_DOFIRETICK).set(!current, player.serverLevel().getServer());
+                            com.example.modmenu.store.EffectMaintenanceHandler.setRuleOverride("fireTick", 6000); // 5 mins
                         }
                         case 6 -> {
                             boolean current = player.serverLevel().getGameRules().getBoolean(net.minecraft.world.level.GameRules.RULE_DOMOBSPAWNING);
                             player.serverLevel().getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_DOMOBSPAWNING).set(!current, player.serverLevel().getServer());
+                            com.example.modmenu.store.EffectMaintenanceHandler.setRuleOverride("mobSpawning", 6000); // 5 mins
                         }
-                        case 7 -> player.serverLevel().getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_RANDOMTICKING).set(300, player.serverLevel().getServer());
+                        case 7 -> {
+                            player.serverLevel().getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_RANDOMTICKING).set(300, player.serverLevel().getServer());
+                            com.example.modmenu.store.EffectMaintenanceHandler.setRuleOverride("randomTicking", 6000); // 5 mins
+                        }
                         case 8 -> player.serverLevel().getGameRules().getRule(net.minecraft.world.level.GameRules.RULE_RANDOMTICKING).set(3, player.serverLevel().getServer());
                     }
                 }

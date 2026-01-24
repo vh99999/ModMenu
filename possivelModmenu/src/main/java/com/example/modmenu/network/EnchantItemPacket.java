@@ -59,9 +59,9 @@ public class EnchantItemPacket {
                         EnchantmentHelper.setEnchantments(enchants, stack);
 
                         StorePriceManager.setMoney(player.getUUID(), currentMoney.subtract(cost));
-                        player.displayClientMessage(Component.literal("§aEnchanted with " + enchantment.getFullname(level).getString() + " for §e$" + StorePriceManager.formatCurrency(cost)), true);
+                        player.displayClientMessage(Component.literal("\u00A7aEnchanted with " + enchantment.getFullname(level).getString() + " for \u00A7e$" + StorePriceManager.formatCurrency(cost)), true);
                     } else {
-                        player.displayClientMessage(Component.literal("§cNot enough money!"), true);
+                        player.displayClientMessage(Component.literal("\u00A7cNot enough money!"), true);
                     }
                 } else {
                     int currentLvl = EnchantmentHelper.getItemEnchantmentLevel(enchantment, stack);
@@ -73,9 +73,9 @@ public class EnchantItemPacket {
                             EnchantmentHelper.setEnchantments(enchants, stack);
 
                             StorePriceManager.setMoney(player.getUUID(), currentMoney.subtract(cost));
-                            player.displayClientMessage(Component.literal("§cRemoved " + enchantment.getFullname(currentLvl).getString() + " for §e$" + StorePriceManager.formatCurrency(cost)), true);
+                            player.displayClientMessage(Component.literal("\u00A7cRemoved " + enchantment.getFullname(currentLvl).getString() + " for \u00A7e$" + StorePriceManager.formatCurrency(cost)), true);
                         } else {
-                            player.displayClientMessage(Component.literal("§cNot enough money to remove!"), true);
+                            player.displayClientMessage(Component.literal("\u00A7cNot enough money to remove!"), true);
                         }
                     }
                 }

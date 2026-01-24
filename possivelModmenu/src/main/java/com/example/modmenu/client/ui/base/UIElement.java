@@ -35,6 +35,10 @@ public abstract class UIElement {
         return false;
     }
 
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        return false;
+    }
+
     public void setX(int x) { this.x = x; }
     public void setY(int y) { this.y = y; }
 }

@@ -122,6 +122,23 @@ public abstract class BaseResponsiveLodestoneScreen extends Screen {
         }
         return false;
     }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        if (super.mouseDragged(mouseX, mouseY, button, dragX, dragY)) {
+            return true;
+        }
+        if (layoutRoot != null) {
+            float alpha = Easing.SINE_IN_OUT.ease(transitionTimer, 0, 1, 1);
+            float scale = 0.95f + 0.05f * alpha;
+            double scaledX = (mouseX - this.width / 2.0) / scale + this.width / 2.0;
+            double scaledY = (mouseY - this.height / 2.0) / scale + this.height / 2.0;
+            if (layoutRoot.mouseDragged(scaledX, scaledY, button, dragX, dragY)) {
+                return true;
+            }
+        }
+        return false;
+    }
     
     // Add other input handling as needed
 }

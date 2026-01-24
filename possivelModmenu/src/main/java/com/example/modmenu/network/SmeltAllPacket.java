@@ -71,13 +71,13 @@ public class SmeltAllPacket {
                             player.getInventory().setItem(slotsToSmelt.get(i), results.get(i));
                         }
                         
-                        player.displayClientMessage(Component.literal("§aSmelted " + results.size() + " stacks. Cost: §e$" + StorePriceManager.formatCurrency(totalCost)), true);
+                        player.displayClientMessage(Component.literal("\u00A7aSmelted " + results.size() + " stacks. Cost: \u00A7e$" + StorePriceManager.formatCurrency(totalCost)), true);
                         StorePriceManager.sync(player);
                     } else {
-                        player.displayClientMessage(Component.literal("§cNot enough money! Need §e$" + StorePriceManager.formatCurrency(totalCost)), true);
+                        player.displayClientMessage(Component.literal("\u00A7cNot enough money! Need \u00A7e$" + StorePriceManager.formatCurrency(totalCost)), true);
                     }
                 } else {
-                    player.displayClientMessage(Component.literal("§cNo smeltable items from whitelist in inventory!"), true);
+                    player.displayClientMessage(Component.literal("\u00A7cNo smeltable items from whitelist in inventory!"), true);
                 }
             }
         });

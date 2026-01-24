@@ -82,13 +82,13 @@ public class InventoryComponent extends UIElement {
                 guiGraphics.pose().pushPose();
                 guiGraphics.pose().translate(x + 14, y + 2, 300);
                 guiGraphics.pose().scale(0.5f, 0.5f, 1.0f);
-                guiGraphics.drawString(Minecraft.getInstance().font, "❄", 0, 0, 0xFFFFFFFF);
+                guiGraphics.drawString(Minecraft.getInstance().font, "\u2744", 0, 0, 0xFFFFFFFF);
                 guiGraphics.pose().popPose();
             } else if (lockState == 1) { // Locked: lock symbol
                 guiGraphics.pose().pushPose();
                 guiGraphics.pose().translate(x + 14, y + 2, 300);
                 guiGraphics.pose().scale(0.5f, 0.5f, 1.0f);
-                guiGraphics.drawString(Minecraft.getInstance().font, "🔒", 0, 0, 0xFFFFFFFF);
+                guiGraphics.drawString(Minecraft.getInstance().font, "\uD83D\uDD12", 0, 0, 0xFFFFFFFF);
                 guiGraphics.pose().popPose();
             }
 

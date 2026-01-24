@@ -31,6 +31,8 @@ public class ExchangePacket {
         ctx.get().enqueueWork(() -> {
             ServerPlayer player = ctx.get().getSender();
             if (player != null) {
+                if (amount.compareTo(BigDecimal.ZERO) <= 0) return;
+                
                 StorePriceManager.SkillData data = StorePriceManager.getSkills(player.getUUID());
                 BigDecimal currentMoney = StorePriceManager.getMoney(player.getUUID());
                 

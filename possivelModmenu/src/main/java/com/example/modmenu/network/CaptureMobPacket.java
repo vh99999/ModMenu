@@ -50,7 +50,7 @@ public class CaptureMobPacket {
             if (player != null) {
                 StorePriceManager.SkillData data = StorePriceManager.getSkills(player.getUUID());
                 if (data.chambers.size() >= data.unlockedChambers) {
-                    player.displayClientMessage(Component.literal("§cVirtual Containment is full! Unlock more chambers in the menu."), true);
+                    player.displayClientMessage(Component.literal("\u00A7cVirtual Containment is full! Unlock more chambers in the menu."), true);
                     return;
                 }
 
@@ -63,7 +63,7 @@ public class CaptureMobPacket {
                     }
 
                     if (fragmentCount < 4) {
-                        player.displayClientMessage(Component.literal("§cYou need 4 Loot Data Fragments to initialize excavation!"), true);
+                        player.displayClientMessage(Component.literal("\u00A7cYou need 4 Loot Data Fragments to initialize excavation!"), true);
                         return;
                     }
 
@@ -87,11 +87,11 @@ public class CaptureMobPacket {
                         chamber.mobId = "minecraft:chest"; // Display placeholder
                         chamber.lastHarvestTime = player.level().getGameTime();
                         data.chambers.add(chamber);
-                        player.displayClientMessage(Component.literal("§6[Containment] §aExcavation Protocol Initialized! §dCost: " + cost + " SP"), true);
+                        player.displayClientMessage(Component.literal("\u00A76[Containment] \u00A7aExcavation Protocol Initialized! \u00A7dCost: " + cost + " SP"), true);
                         StorePriceManager.markDirty(player.getUUID());
                         StorePriceManager.sync(player);
                     } else {
-                        player.displayClientMessage(Component.literal("§cNot enough SP to initialize excavation!"), true);
+                        player.displayClientMessage(Component.literal("\u00A7cNot enough SP to initialize excavation!"), true);
                     }
                     return;
                 }
@@ -125,11 +125,11 @@ public class CaptureMobPacket {
                         data.chambers.add(chamber);
                         living.discard();
                         
-                        player.displayClientMessage(Component.literal("§6[Containment] §aMob Captured! §dCost: " + cost + " SP"), true);
+                        player.displayClientMessage(Component.literal("\u00A76[Containment] \u00A7aMob Captured! \u00A7dCost: " + cost + " SP"), true);
                         StorePriceManager.markDirty(player.getUUID());
                         StorePriceManager.sync(player);
                     } else {
-                        player.displayClientMessage(Component.literal("§cNot enough Skill Points to capture!"), true);
+                        player.displayClientMessage(Component.literal("\u00A7cNot enough Skill Points to capture!"), true);
                     }
                 }
             }
