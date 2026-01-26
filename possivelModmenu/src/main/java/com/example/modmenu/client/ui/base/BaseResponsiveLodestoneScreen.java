@@ -60,6 +60,10 @@ public abstract class BaseResponsiveLodestoneScreen extends Screen {
         }
 
         super.render(guiGraphics, mouseX, mouseY, partialTick);
+
+        if (layoutRoot != null) {
+            layoutRoot.renderTooltip(guiGraphics, (int)scaledMouseX, (int)scaledMouseY);
+        }
         
         // Render post-render tasks (like tooltips) outside of scaling/scissoring
         for (java.util.function.Consumer<GuiGraphics> task : postRenderTasks) {
@@ -129,7 +133,7 @@ public abstract class BaseResponsiveLodestoneScreen extends Screen {
             return true;
         }
         if (layoutRoot != null) {
-            float alpha = Easing.SINE_IN_OUT.ease(transitionTimer, 0, 1, 1);
+            float alpha = team.lodestar.lodestone.systems.easing.Easing.SINE_IN_OUT.ease(transitionTimer, 0, 1, 1);
             float scale = 0.95f + 0.05f * alpha;
             double scaledX = (mouseX - this.width / 2.0) / scale + this.width / 2.0;
             double scaledY = (mouseY - this.height / 2.0) / scale + this.height / 2.0;
@@ -137,6 +141,20 @@ public abstract class BaseResponsiveLodestoneScreen extends Screen {
                 return true;
             }
         }
+        return false;
+    }
+
+    @Override
+    public boolean keyPressed(int key, int scan, int mod) {
+        if (super.keyPressed(key, scan, mod)) return true;
+        if (layoutRoot != null) return layoutRoot.keyPressed(key, scan, mod);
+        return false;
+    }
+
+    @Override
+    public boolean charTyped(char chr, int code) {
+        if (super.charTyped(chr, code)) return true;
+        if (layoutRoot != null) return layoutRoot.charTyped(chr, code);
         return false;
     }
     

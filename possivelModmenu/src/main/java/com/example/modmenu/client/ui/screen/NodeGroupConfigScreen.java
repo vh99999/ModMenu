@@ -13,6 +13,10 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.ItemStack;
+import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -70,6 +74,24 @@ public class NodeGroupConfigScreen extends BaseResponsiveLodestoneScreen {
             group.name = nameField.getValue();
             group.nodeIds.clear();
             group.nodeIds.addAll(selectedNodes);
+            
+            if (isNew && !selectedNodes.isEmpty()) {
+                int avgX = 0, avgY = 0;
+                int count = 0;
+                for (UUID id : selectedNodes) {
+                    NetworkNode n = networkData.nodes.stream().filter(node -> node.nodeId.equals(id)).findFirst().orElse(null);
+                    if (n != null) {
+                        avgX += n.guiX;
+                        avgY += n.guiY;
+                        count++;
+                    }
+                }
+                if (count > 0) {
+                    group.guiX = avgX / count;
+                    group.guiY = avgY / count;
+                }
+            }
+
             PacketHandler.sendToServer(ActionNetworkPacket.addGroup(networkId, group));
             if (isNew && !networkData.groups.contains(group)) {
                 networkData.groups.add(group);
@@ -99,8 +121,16 @@ public class NodeGroupConfigScreen extends BaseResponsiveLodestoneScreen {
             
             g.fill(getX(), getY(), getX() + getWidth(), getY() + getHeight(), selected ? 0x66AAFFAA : (hovered ? 0x66FFFFFF : 0x33FFFFFF));
             
+            String iconId = node.iconItemId != null ? node.iconItemId : (node.nodeType.equals("BLOCK") ? node.blockId : null);
+            if (iconId != null) {
+                Item item = ForgeRegistries.ITEMS.getValue(ResourceLocation.tryParse(iconId));
+                if (item != null) {
+                    g.renderItem(new ItemStack(item), getX() + 5, getY() + 3);
+                }
+            }
+
             String name = node.customName != null ? node.customName : node.nodeType;
-            g.drawString(font, name, getX() + 5, getY() + 7, 0xFFFFFFFF);
+            g.drawString(font, name, getX() + 25, getY() + 7, 0xFFFFFFFF);
             
             if (node.pos != null) {
                 String posStr = "[" + node.pos.getX() + ", " + node.pos.getY() + ", " + node.pos.getZ() + "]";

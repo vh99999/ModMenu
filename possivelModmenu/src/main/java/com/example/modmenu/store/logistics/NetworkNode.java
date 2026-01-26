@@ -13,6 +13,7 @@ public class NetworkNode {
     public BlockPos pos;
     public String dimension;
     public String blockId; // Captured for icons
+    public String iconItemId; // Custom icon item ID
     public String customName;
     public int guiX = 0, guiY = 0;
     public Map<Direction, String> sideConfig = new HashMap<>(); // Direction -> CapabilityType (ITEMS, ENERGY, FLUIDS)
@@ -31,6 +32,7 @@ public class NetworkNode {
         snap.pos = this.pos;
         snap.dimension = this.dimension;
         snap.blockId = this.blockId;
+        snap.iconItemId = this.iconItemId;
         snap.customName = this.customName;
         snap.guiX = this.guiX;
         snap.guiY = this.guiY;

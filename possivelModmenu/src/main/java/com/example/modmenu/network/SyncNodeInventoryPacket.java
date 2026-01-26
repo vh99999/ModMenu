@@ -66,6 +66,9 @@ psns.handleSyncInventory(nodeId, inventory, slotX, slotY, guiTexture);
 else if (screen instanceof com.example.modmenu.client.ui.screen.RuleConfigScreen rcs) {
 rcs.handleSyncInventory(nodeId, inventory, slotX, slotY, guiTexture);
 }
+else if (screen instanceof com.example.modmenu.client.ui.screen.FilterConfigScreen fcs) {
+fcs.handleSyncInventory(nodeId, inventory, slotX, slotY, guiTexture);
+}
 });
 ctx.get().setPacketHandled(true);
 }

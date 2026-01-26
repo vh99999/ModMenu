@@ -41,12 +41,10 @@ public class StoreItemComponent extends UIElement {
         if (item != null) {
             // Render item icon centered in the upper part
             guiGraphics.renderFakeItem(new ItemStack(item), getX() + (getWidth() - 16) / 2, getY() + 10);
-        } else if ("mining_dimension".equals(specialId)) {
-             guiGraphics.renderFakeItem(new ItemStack(net.minecraft.world.item.Items.GRASS_BLOCK), getX() + (getWidth() - 16) / 2, getY() + 10);
         }
 
         // Price in GREEN below the item
-        java.math.BigDecimal price = item != null ? (isSellMode ? StorePriceManager.getSellPrice(item) : StorePriceManager.getBuyPrice(item)) : java.math.BigDecimal.valueOf(100000000);
+        java.math.BigDecimal price = item != null ? (isSellMode ? StorePriceManager.getSellPrice(item) : StorePriceManager.getBuyPrice(item)) : java.math.BigDecimal.ZERO;
         String priceText = "$" + StorePriceManager.formatCurrency(price);
         int priceColor = 0xFF55FF55; // Always green as in the image
         
@@ -57,9 +55,6 @@ public class StoreItemComponent extends UIElement {
             if (item != null) {
                 ItemStack stack = new ItemStack(item);
                 screen.addPostRenderTask(g -> g.renderTooltip(Minecraft.getInstance().font, stack, screen.absMouseX, screen.absMouseY));
-            } else if ("mining_dimension".equals(specialId)) {
-                Component text = Component.literal("House (Mining Dimension)");
-                screen.addPostRenderTask(g -> g.renderTooltip(Minecraft.getInstance().font, text, screen.absMouseX, screen.absMouseY));
             }
         }
     }

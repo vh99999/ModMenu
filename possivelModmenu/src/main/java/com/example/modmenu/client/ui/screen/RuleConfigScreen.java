@@ -9,6 +9,7 @@ import com.example.modmenu.network.PacketHandler;
 import com.example.modmenu.store.logistics.LogisticsRule;
 import com.example.modmenu.store.logistics.NetworkData;
 import com.example.modmenu.store.logistics.NetworkNode;
+import com.example.modmenu.store.logistics.RuleTemplate;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
@@ -66,13 +67,28 @@ public class RuleConfigScreen extends BaseResponsiveLodestoneScreen {
         int nodeSize = networkData.nodes.size();
         if (sourceIdx < nodeSize && !networkData.nodes.isEmpty()) {
             PacketHandler.sendToServer(ActionNetworkPacket.requestInventoryProbe(networkId, networkData.nodes.get(sourceIdx).nodeId));
+        } else if (!networkData.groups.isEmpty()) {
+            int groupIdx = sourceIdx - nodeSize;
+            if (groupIdx >= 0 && groupIdx < networkData.groups.size()) {
+                PacketHandler.sendToServer(ActionNetworkPacket.requestGroupInventoryProbe(networkId, networkData.groups.get(groupIdx).groupId));
+            }
         }
     }
 
-    public void handleSyncInventory(UUID nodeId, List<ItemStack> inventory, List<Integer> slotX, List<Integer> slotY, net.minecraft.resources.ResourceLocation guiTexture) {
+    public void handleSyncInventory(UUID id, List<ItemStack> inventory, List<Integer> slotX, List<Integer> slotY, net.minecraft.resources.ResourceLocation guiTexture) {
         int nodeSize = networkData.nodes.size();
-        if (sourceIdx < nodeSize && !networkData.nodes.isEmpty() && networkData.nodes.get(sourceIdx).nodeId.equals(nodeId)) {
-            this.probedNodeId = nodeId;
+        boolean matched = false;
+        if (sourceIdx < nodeSize && !networkData.nodes.isEmpty()) {
+            if (networkData.nodes.get(sourceIdx).nodeId.equals(id)) matched = true;
+        } else {
+            int groupIdx = sourceIdx - nodeSize;
+            if (groupIdx >= 0 && groupIdx < networkData.groups.size()) {
+                if (networkData.groups.get(groupIdx).groupId.equals(id)) matched = true;
+            }
+        }
+
+        if (matched) {
+            this.probedNodeId = id;
             this.sourceInventoryPreview = inventory;
         }
     }
@@ -88,12 +104,11 @@ public class RuleConfigScreen extends BaseResponsiveLodestoneScreen {
 
         // Source Node
         this.layoutRoot.addElement(new ResponsiveButton(midX - 150, currentY, 145, 20, Component.literal("Src: " + getSourceLabel()), btn -> {
-            int total = networkData.nodes.size() + networkData.groups.size();
-            if (total == 0) return;
-            sourceIdx = (btn.lastClickedButton == 1) ? (sourceIdx + total - 1) % total : (sourceIdx + 1) % total;
-            btn.setText(Component.literal("Src: " + getSourceLabel()));
-            requestProbe();
-            this.init(this.minecraft, this.width, this.height);
+            this.minecraft.setScreen(new PickTargetScreen(this, networkData, (id, isGroup) -> {
+                sourceIdx = findTargetIndex(id, isGroup);
+                requestProbe();
+                this.init(this.minecraft, this.width, this.height);
+            }));
         }));
         if (sourceIdx < networkData.nodes.size()) {
             this.layoutRoot.addElement(new ResponsiveButton(midX + 5, currentY, 145, 20, Component.literal("Src Side: " + rule.sourceSide), btn -> {
@@ -137,11 +152,10 @@ public class RuleConfigScreen extends BaseResponsiveLodestoneScreen {
 
         // Destination Node
         this.layoutRoot.addElement(new ResponsiveButton(midX - 150, currentY, 145, 20, Component.literal("Dst: " + getDestLabel()), btn -> {
-            int total = networkData.nodes.size() + networkData.groups.size();
-            if (total == 0) return;
-            destIdx = (btn.lastClickedButton == 1) ? (destIdx + total - 1) % total : (destIdx + 1) % total;
-            btn.setText(Component.literal("Dst: " + getDestLabel()));
-            this.init(this.minecraft, this.width, this.height);
+            this.minecraft.setScreen(new PickTargetScreen(this, networkData, (id, isGroup) -> {
+                destIdx = findTargetIndex(id, isGroup);
+                this.init(this.minecraft, this.width, this.height);
+            }));
         }));
         if (destIdx < networkData.nodes.size()) {
             this.layoutRoot.addElement(new ResponsiveButton(midX + 5, currentY, 145, 20, Component.literal("Dst Side: " + rule.destSide), btn -> {
@@ -200,6 +214,27 @@ public class RuleConfigScreen extends BaseResponsiveLodestoneScreen {
             rule.mode = rule.mode.equals("ROUND_ROBIN") ? "PRIORITY" : "ROUND_ROBIN";
             btn.setText(Component.literal("Mode: " + rule.mode));
         }));
+        this.layoutRoot.addElement(new ResponsiveButton(midX + 5, currentY, 145, 20, Component.literal("Stockkeep: " + (rule.maintenanceMode ? "\u00A7aON" : "\u00A77OFF")), btn -> {
+            rule.maintenanceMode = !rule.maintenanceMode;
+            btn.setText(Component.literal("Stockkeep: " + (rule.maintenanceMode ? "\u00A7aON" : "\u00A77OFF")));
+        }));
+        currentY += 25;
+
+        if (!rule.type.equals("ITEMS")) {
+            this.layoutRoot.addElement(new ResponsiveButton(midX - 150, currentY, 300, 20, Component.literal("Scan items for Caps: " + (rule.scanItems ? "\u00A7aON" : "\u00A77OFF")), btn -> {
+                rule.scanItems = !rule.scanItems;
+                btn.setText(Component.literal("Scan items for Caps: " + (rule.scanItems ? "\u00A7aON" : "\u00A77OFF")));
+            }));
+            currentY += 25;
+        }
+
+        if (rule.destIsGroup) {
+            this.layoutRoot.addElement(new ResponsiveButton(midX + 5, currentY, 145, 20, Component.literal("Dist: " + rule.distributionMode), btn -> {
+                rule.distributionMode = (btn.lastClickedButton == 1) ? cycleDistBack(rule.distributionMode) : cycleDist(rule.distributionMode);
+                btn.setText(Component.literal("Dist: " + rule.distributionMode));
+            }));
+            currentY += 25;
+        }
 
         String unit = switch (rule.type) {
             case "ENERGY" -> " FE";
@@ -208,29 +243,30 @@ public class RuleConfigScreen extends BaseResponsiveLodestoneScreen {
         };
 
         if (rule.amountPerTick == -1) {
-            this.layoutRoot.addElement(new ResponsiveButton(midX + 5, currentY, 145, 20, Component.literal("Amount: MAX" + unit), btn -> {
+            this.layoutRoot.addElement(new ResponsiveButton(rule.destIsGroup ? midX - 150 : midX + 5, currentY, 145, 20, Component.literal("Amount: MAX" + unit), btn -> {
                 rule.amountPerTick = rule.type.equals("ENERGY") ? 10000 : (rule.type.equals("FLUIDS") ? 1000 : 64);
                 this.init(this.minecraft, this.width, this.height);
             }));
         } else {
-            this.layoutRoot.addElement(new ResponsiveButton(midX + 110, currentY, 40, 20, Component.literal("MAX"), btn -> {
+            this.layoutRoot.addElement(new ResponsiveButton((rule.destIsGroup ? midX - 150 : midX + 5) + 105, currentY, 40, 20, Component.literal("MAX"), btn -> {
                 rule.amountPerTick = -1;
                 this.init(this.minecraft, this.width, this.height);
             }));
-            amountInput = new EditBox(font, midX + 5, currentY, 100, 20, Component.literal("Amount"));
+            amountInput = new EditBox(font, rule.destIsGroup ? midX - 150 : midX + 5, currentY, 100, 20, Component.literal("Amount"));
             amountInput.setValue(String.valueOf(rule.amountPerTick));
             amountInput.setResponder(s -> {
                 try { rule.amountPerTick = Integer.parseInt(s); } catch (Exception e) {}
             });
             this.addRenderableWidget(amountInput);
-            this.layoutRoot.addElement(new UIElement(midX + 106, currentY + 5, 10, 10) {
+            this.layoutRoot.addElement(new UIElement((rule.destIsGroup ? midX - 150 : midX + 5) + 101, currentY + 5, 10, 10) {
                 @Override
                 public void render(GuiGraphics g, int mx, int my, float pt) {
                     g.drawString(font, unit, getX(), getY(), 0xFFAAAAAA);
                 }
             });
         }
-        currentY += 25;
+        if (!rule.destIsGroup) currentY += 25;
+        else currentY += 25; // Adjusted spacing if group mode is on
 
         // Speed & Priority
         this.layoutRoot.addElement(new ResponsiveButton(midX - 150, currentY, 145, 20, Component.literal("Speed: " + rule.speedMode), btn -> {
@@ -244,9 +280,12 @@ public class RuleConfigScreen extends BaseResponsiveLodestoneScreen {
         currentY += 25;
 
         // Status & Thresholds
-        this.layoutRoot.addElement(new ResponsiveButton(midX - 150, currentY, 300, 20, Component.literal("Status: " + (rule.active ? "\u00A7aACTIVE" : "\u00A7cPAUSED")), btn -> {
+        this.layoutRoot.addElement(new ResponsiveButton(midX - 150, currentY, 145, 20, Component.literal("Status: " + (rule.active ? "\u00A7aACTIVE" : "\u00A7cPAUSED")), btn -> {
             rule.active = !rule.active;
             btn.setText(Component.literal("Status: " + (rule.active ? "\u00A7aACTIVE" : "\u00A7cPAUSED")));
+        }));
+        this.layoutRoot.addElement(new ResponsiveButton(midX + 5, currentY, 145, 20, Component.literal("Conditions: " + rule.conditions.size()), btn -> {
+            this.minecraft.setScreen(new LogicConditionConfigScreen(this, networkData, rule));
         }));
         currentY += 25;
         this.layoutRoot.addElement(new ResponsiveButton(midX - 150, currentY, 145, 20, Component.literal("Min Src: " + rule.minAmount), btn -> {
@@ -261,70 +300,8 @@ public class RuleConfigScreen extends BaseResponsiveLodestoneScreen {
 
         // Filters (Items only)
         if (rule.type.equals("ITEMS")) {
-            this.layoutRoot.addElement(new UIElement(midX - 150, currentY, 300, 12) {
-                @Override public void render(GuiGraphics g, int mx, int my, float pt) {
-                    g.drawString(font, "Filter Configuration:", getX(), getY(), 0xFFAAAAAA);
-                }
-            });
-            currentY += 12;
-            this.layoutRoot.addElement(new ResponsiveButton(midX - 150, currentY, 105, 20, Component.literal("Type: " + rule.filter.matchType), btn -> {
-                rule.filter.matchType = (btn.lastClickedButton == 1) ? cycleMatchTypeBack(rule.filter.matchType) : cycleMatchType(rule.filter.matchType);
-                this.init(this.minecraft, this.width, this.height);
-            }));
-            this.layoutRoot.addElement(new ResponsiveButton(midX - 40, currentY, 40, 20, Component.literal("Clear"), btn -> {
-                rule.filter.matchValues.clear();
-                this.init(this.minecraft, this.width, this.height);
-            }));
-            this.layoutRoot.addElement(new ResponsiveButton(midX + 5, currentY, 145, 20, Component.literal("Filter: " + (rule.filter.blacklist ? "BLACKLIST" : "WHITELIST")), btn -> {
-                rule.filter.blacklist = !rule.filter.blacklist;
-                btn.setText(Component.literal("Filter: " + (rule.filter.blacklist ? "BLACKLIST" : "WHITELIST")));
-            }));
-            currentY += 25;
-
-            if (rule.filter.matchType.equals("NBT")) {
-                this.layoutRoot.addElement(new ResponsiveButton(midX - 150, currentY, 300, 20, Component.literal("NBT Mode: " + (rule.filter.fuzzyNbt ? "FUZZY (Keys only)" : "STRICT (Partial match)")), btn -> {
-                    rule.filter.fuzzyNbt = !rule.filter.fuzzyNbt;
-                    btn.setText(Component.literal("NBT Mode: " + (rule.filter.fuzzyNbt ? "FUZZY (Keys only)" : "STRICT (Partial match)")));
-                }));
-                currentY += 25;
-            }
-
-            if (!rule.filter.matchType.equals("ALL")) {
-                filterInput = new EditBox(font, midX - 150, currentY, 300, 20, Component.literal("Filter Value"));
-                filterInput.setValue(String.join(", ", rule.filter.matchValues));
-                filterInput.setResponder(s -> {
-                    rule.filter.matchValues.clear();
-                    for (String part : s.split(",")) {
-                        String trim = part.trim();
-                        if (!trim.isEmpty()) rule.filter.matchValues.add(trim);
-                    }
-                });
-                this.addRenderableWidget(filterInput);
-                currentY += 25;
-            }
-
-            this.layoutRoot.addElement(new ResponsiveButton(midX - 150, currentY, 145, 20, Component.literal("Set from Hand"), btn -> {
-                ItemStack held = this.minecraft.player.getMainHandItem();
-                if (!held.isEmpty()) applyItemToFilter(held);
-            }));
-            this.layoutRoot.addElement(new ResponsiveButton(midX + 5, currentY, 145, 20, Component.literal("Pick from Source"), btn -> {
-                int nodeSize = networkData.nodes.size();
-                if (sourceIdx < nodeSize) {
-                    NetworkNode src = networkData.nodes.get(sourceIdx);
-                    this.minecraft.setScreen(new PickItemFromNodeScreen(this, networkId, src, this::applyItemToFilter));
-                } else if (!networkData.groups.isEmpty()) {
-                    int groupIdx = sourceIdx - nodeSize;
-                    if (groupIdx >= 0 && groupIdx < networkData.groups.size()) {
-                        com.example.modmenu.store.logistics.NodeGroup group = networkData.groups.get(groupIdx);
-                        if (!group.nodeIds.isEmpty()) {
-                            UUID firstNodeId = group.nodeIds.get(0);
-                            NetworkNode firstNode = networkData.nodes.stream().filter(n -> n.nodeId.equals(firstNodeId)).findFirst().orElse(null);
-                            if (firstNode != null) {
-                                this.minecraft.setScreen(new PickItemFromNodeScreen(this, networkId, firstNode, this::applyItemToFilter));
-                            }
-                        }
-                    }
-                }
+            this.layoutRoot.addElement(new ResponsiveButton(midX - 150, currentY, 300, 20, Component.literal("Configure Item Filter"), btn -> {
+                this.minecraft.setScreen(new FilterConfigScreen(this, rule.filter, networkId, networkData, rule.sourceNodeId, rule.sourceIsGroup));
             }));
             currentY += 25;
             
@@ -412,25 +389,35 @@ public class RuleConfigScreen extends BaseResponsiveLodestoneScreen {
         this.layoutRoot.addElement(new ResponsiveButton(midX + 5, currentY, 100, 20, Component.literal("\u00A7bTEST RULE"), btn -> {
             if (!isNew) PacketHandler.sendToServer(ActionNetworkPacket.testRule(networkId, rule.ruleId));
         }));
-    }
+        currentY += 25;
 
-    private void applyItemToFilter(ItemStack stack) {
-        if (rule.filter.matchType.equals("ALL")) {
-            rule.filter.matchType = "ID";
-        }
-        if (rule.filter.matchType.equals("TAG")) {
-            this.minecraft.setScreen(new PickTagScreen(this, stack, tag -> {
-                if (!rule.filter.matchValues.contains(tag)) rule.filter.matchValues.add(tag);
-                init(minecraft, width, height);
+        this.layoutRoot.addElement(new ResponsiveButton(midX - 105, currentY, 100, 20, Component.literal("\u00A7eSave Blueprint"), btn -> {
+            this.minecraft.setScreen(new RenameNetworkScreen(this, networkId, "New Blueprint", name -> {
+                RuleTemplate template = new RuleTemplate(name, rule);
+                PacketHandler.sendToServer(ActionNetworkPacket.addTemplate(networkId, template));
+                this.minecraft.setScreen(this);
             }));
-        } else {
-            String id = ForgeRegistries.ITEMS.getKey(stack.getItem()).toString();
-            if (!rule.filter.matchValues.contains(id)) rule.filter.matchValues.add(id);
-            if (rule.filter.matchType.equals("NBT")) {
-                rule.filter.nbtSample = stack.hasTag() ? stack.getTag().copy() : null;
-            }
-            init(minecraft, width, height);
-        }
+        }));
+
+        this.layoutRoot.addElement(new ResponsiveButton(midX + 5, currentY, 100, 20, Component.literal("\u00A7dLoad Blueprint"), btn -> {
+            this.minecraft.setScreen(new PickTemplateScreen(this, networkData, template -> {
+                LogisticsRule tr = template.rule.snapshot();
+                // Apply template values to current rule
+                rule.type = tr.type;
+                rule.filter = tr.filter;
+                rule.mode = tr.mode;
+                rule.distributionMode = tr.distributionMode;
+                rule.amountPerTick = tr.amountPerTick;
+                rule.minAmount = tr.minAmount;
+                rule.maxAmount = tr.maxAmount;
+                rule.maintenanceMode = tr.maintenanceMode;
+                rule.scanItems = tr.scanItems;
+                rule.speedMode = tr.speedMode;
+                rule.priority = tr.priority;
+                rule.conditions = tr.conditions;
+                this.init(this.minecraft, this.width, this.height);
+            }));
+        }));
     }
 
     private boolean matchesFilterLocal(ItemStack stack) {
@@ -517,18 +504,6 @@ public class RuleConfigScreen extends BaseResponsiveLodestoneScreen {
         }
     }
 
-    private String cycleMatchType(String current) {
-        String[] types = {"ALL", "ID", "TAG", "NBT"};
-        for (int i = 0; i < types.length; i++) if (types[i].equals(current)) return types[(i + 1) % types.length];
-        return "ALL";
-    }
-
-    private String cycleMatchTypeBack(String current) {
-        String[] types = {"ALL", "ID", "TAG", "NBT"};
-        for (int i = 0; i < types.length; i++) if (types[i].equals(current)) return types[(i + types.length - 1) % types.length];
-        return "ALL";
-    }
-
     private String cycleSpeed(String current) {
         String[] speeds = {"SLOW", "NORMAL", "FAST", "HYPER", "INSTANT"};
         for (int i = 0; i < speeds.length; i++) if (speeds[i].equals(current)) return speeds[(i + 1) % speeds.length];
@@ -539,5 +514,17 @@ public class RuleConfigScreen extends BaseResponsiveLodestoneScreen {
         String[] speeds = {"SLOW", "NORMAL", "FAST", "HYPER", "INSTANT"};
         for (int i = 0; i < speeds.length; i++) if (speeds[i].equals(current)) return speeds[(i + speeds.length - 1) % speeds.length];
         return "NORMAL";
+    }
+
+    private String cycleDist(String current) {
+        String[] modes = {"BALANCED", "ROUND_ROBIN", "OVERFLOW"};
+        for (int i = 0; i < modes.length; i++) if (modes[i].equals(current)) return modes[(i + 1) % modes.length];
+        return "BALANCED";
+    }
+
+    private String cycleDistBack(String current) {
+        String[] modes = {"BALANCED", "ROUND_ROBIN", "OVERFLOW"};
+        for (int i = 0; i < modes.length; i++) if (modes[i].equals(current)) return modes[(i + modes.length - 1) % modes.length];
+        return "BALANCED";
     }
 }

@@ -22,6 +22,7 @@ public class RulesListScreen extends BaseResponsiveLodestoneScreen {
     private final UUID networkId;
     private NetworkData networkData;
     private ScrollableUIContainer list;
+    private boolean showingTemplates = false;
 
     public RulesListScreen(Screen parent, UUID networkId, NetworkData networkData) {
         super(Component.literal("Rules List"));
@@ -34,6 +35,12 @@ public class RulesListScreen extends BaseResponsiveLodestoneScreen {
     protected void setupLayout() {
         this.layoutRoot.addElement(new ResponsiveButton(10, 10, 50, 20, Component.literal("Back"), btn -> {
             this.minecraft.setScreen(parent);
+        }));
+
+        this.layoutRoot.addElement(new ResponsiveButton(70, 10, 100, 20, Component.literal(showingTemplates ? "Show Rules" : "Show Blueprints"), btn -> {
+            showingTemplates = !showingTemplates;
+            btn.setText(Component.literal(showingTemplates ? "Show Rules" : "Show Blueprints"));
+            refreshList();
         }));
 
         list = new ScrollableUIContainer(50, 40, this.width - 100, this.height - 50);
@@ -49,11 +56,71 @@ public class RulesListScreen extends BaseResponsiveLodestoneScreen {
         int currentY = 0;
         int rowHeight = 40;
 
-        for (LogisticsRule rule : networkData.rules) {
-            list.addElement(new RuleRowComponent(0, currentY, list.getWidth() - 10, rowHeight - 5, rule));
-            currentY += rowHeight;
+        if (showingTemplates) {
+            for (com.example.modmenu.store.logistics.RuleTemplate template : networkData.ruleTemplates) {
+                list.addElement(new TemplateRowComponent(0, currentY, list.getWidth() - 10, rowHeight - 5, template));
+                currentY += rowHeight;
+            }
+        } else {
+            for (LogisticsRule rule : networkData.rules) {
+                list.addElement(new RuleRowComponent(0, currentY, list.getWidth() - 10, rowHeight - 5, rule));
+                currentY += rowHeight;
+            }
         }
         list.setContentHeight(currentY);
+    }
+
+    private class TemplateRowComponent extends UIElement {
+        private final com.example.modmenu.store.logistics.RuleTemplate template;
+
+        public TemplateRowComponent(int x, int y, int width, int height, com.example.modmenu.store.logistics.RuleTemplate template) {
+            super(x, y, width, height);
+            this.template = template;
+        }
+
+        @Override
+        public void render(GuiGraphics g, int mx, int my, float pt) {
+            boolean hovered = mx >= getX() && my >= getY() && mx < getX() + getWidth() && my < getY() + getHeight();
+            g.fill(getX(), getY(), getX() + getWidth(), getY() + getHeight(), hovered ? 0x66AAFFAA : 0x33AAFFAA);
+
+            String text = template.name + " (" + template.rule.type + ")";
+            g.drawString(font, text, getX() + 10, getY() + 8, 0xFFFFFFFF);
+            
+            String filterDesc = template.rule.type.equals("ITEMS") ? "Filter: " + template.rule.filter.matchType : "";
+            g.drawString(font, filterDesc, getX() + 10, getY() + 20, 0xFFAAAAAA);
+
+            int bx = getX() + getWidth() - 150;
+            renderBtn(g, bx, getY() + 5, 70, 25, "Apply", mx, my);
+            bx += 75;
+            renderBtn(g, bx, getY() + 5, 70, 25, "\u00A7cDelete", mx, my);
+        }
+
+        private void renderBtn(GuiGraphics g, int bx, int by, int bw, int bh, String txt, int mx, int my) {
+            boolean hov = mx >= bx && my >= by && mx < bx + bw && my < by + bh;
+            g.fill(bx, by, bx + bw, by + bh, hov ? 0xFF666666 : 0xFF444444);
+            g.drawCenteredString(font, txt, bx + bw / 2, by + bh / 2 - 4, 0xFFFFFFFF);
+        }
+
+        @Override
+        public boolean mouseClicked(double mx, double my, int button) {
+            if (!isMouseOver(mx, my)) return false;
+            int bx = getX() + getWidth() - 150;
+            if (mx >= bx && mx < bx + 70) {
+                // Apply Template: needs a target. Let's open target picker.
+                minecraft.setScreen(new PickTargetScreen(RulesListScreen.this, networkData, (targetId, isGroup) -> {
+                    PacketHandler.sendToServer(ActionNetworkPacket.applyTemplate(networkId, targetId, isGroup, template.templateId));
+                }));
+                return true;
+            }
+            bx += 75;
+            if (mx >= bx && mx < bx + 70) {
+                PacketHandler.sendToServer(ActionNetworkPacket.removeTemplate(networkId, template.templateId));
+                networkData.ruleTemplates.remove(template);
+                refreshList();
+                return true;
+            }
+            return false;
+        }
     }
 
     private class RuleRowComponent extends UIElement {

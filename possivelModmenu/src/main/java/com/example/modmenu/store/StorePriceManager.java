@@ -63,9 +63,10 @@ public class StorePriceManager {
     private static Map<UUID, Set<String>> unlockedHousesMap = new ConcurrentHashMap<>();
     private static Map<UUID, Map<String, Double>> playerAttributeBonuses = new ConcurrentHashMap<>();
     private static Map<UUID, SkillData> playerSkills = new ConcurrentHashMap<>();
-    private static Map<UUID, String> playerReturnDimension = new ConcurrentHashMap<>();
-    private static Map<UUID, double[]> playerReturnPosition = new ConcurrentHashMap<>();
+    private static Map<UUID, SavedLocation> playerLastLocations = new ConcurrentHashMap<>();
     private static Set<UUID> editors = ConcurrentHashMap.newKeySet();
+    private static UUID activeGodUuid = null;
+    private static GenesisConfig globalGenesisConfig = new GenesisConfig();
     private static final Set<UUID> successfulLoads = Collections.synchronizedSet(new HashSet<>());
     private static final Set<UUID> dirtyPlayers = Collections.synchronizedSet(new HashSet<>());
     private static boolean globalDirty = false;
@@ -78,6 +79,7 @@ public class StorePriceManager {
     public static BigDecimal playerDrain = BigDecimal.ZERO;
     public static boolean isEditor = false;
     public static SkillData clientSkills = new SkillData();
+    public static GenesisConfig clientGenesisConfig = new GenesisConfig();
     public static Map<String, Integer> clientActiveEffects = new HashMap<>();
     public static AbilitySettings clientAbilities = new AbilitySettings();
     public static Set<String> clientUnlockedHouses = new HashSet<>();
@@ -101,6 +103,7 @@ public class StorePriceManager {
         playerDrain = BigDecimal.ZERO;
         isEditor = false;
         clientSkills = new SkillData();
+        clientGenesisConfig = new GenesisConfig();
         clientActiveEffects.clear();
         clientAbilities = new AbilitySettings();
         clientUnlockedHouses.clear();
@@ -109,7 +112,6 @@ public class StorePriceManager {
         clientSoldVolume.clear();
         clientEnchantPrices.clear();
         clientEffectPrices.clear();
-        clientAttributeBonuses.clear();
     }
 
     public static class AbilitySettings {
@@ -252,6 +254,7 @@ public class StorePriceManager {
         public BigDecimal totalKills = BigDecimal.ZERO;
         public BigDecimal damageReflected = BigDecimal.ZERO;
         public BigDecimal damageHealed = BigDecimal.ZERO;
+        public GenesisConfig genesisConfig = new GenesisConfig();
 
         public void copyFrom(SkillData other) {
             this.totalSP = other.totalSP;
@@ -279,6 +282,7 @@ public class StorePriceManager {
             this.totalKills = other.totalKills;
             this.damageReflected = other.damageReflected;
             this.damageHealed = other.damageHealed;
+            this.genesisConfig.copyFrom(other.genesisConfig);
         }
 
         public SkillData snapshot() {
@@ -301,7 +305,159 @@ public class StorePriceManager {
             snap.totalKills = this.totalKills;
             snap.damageReflected = this.damageReflected;
             snap.damageHealed = this.damageHealed;
+            snap.genesisConfig = this.genesisConfig.snapshot();
             return snap;
+        }
+    }
+
+    public static class GenesisConfig {
+        @HardChange
+        public String genType = "Normal";
+        @HardChange
+        public List<String> biomes = new ArrayList<>(List.of("minecraft:plains"));
+        @HardChange
+        public double resourceDensity = 1.0;
+        public boolean spawnHostile = true;
+        public boolean spawnPassive = true;
+        public boolean spawnNeutral = true;
+        @HardChange
+        public List<String> caveBiomes = new ArrayList<>(List.of("minecraft:lush_caves"));
+        @HardChange
+        public double structureDensity = 1.0;
+        @HardChange
+        public String seaLevelFluid = "minecraft:water";
+        @HardChange
+        public boolean spawnLavaLakes = true;
+        @HardChange
+        public double dimensionScale = 1.0;
+        
+        public double dayNightRatio = 0.5; // 0.5 means equal
+        public double temporalVelocity = 1.0;
+        public boolean tickFreeze = false;
+        public int frozenTime = 6000;
+        public String persistentWeather = "Dynamic"; // "Dynamic", "Clear", "Rain", "Thunder"
+        
+        public int skyColor = 0x78A7FF;
+        public int fogColor = 0xC0D8FF;
+        public int waterColor = 0x3F76E4;
+        public int grassColor = -1;
+        public int foliageColor = -1;
+        public double ambientLight = 0.0;
+        public double fogDensity = 1.0;
+        public boolean celestialSync = false;
+        
+        public double gravity = 1.0;
+        public String thermalRegulation = "Normal"; // "Normal", "Sub-Zero", "Super-Heated"
+        public boolean fluidViscosityHigh = false;
+        public double explosionYield = 1.0;
+        public double fallDamageMultiplier = 1.0;
+        
+        public String difficulty = "Normal"; // "Peaceful", "Easy", "Normal", "Hard"
+        public boolean respawnLogicEnabled = false;
+        public double lootXpMultiplier = 1.0;
+        public boolean realityPersistence = false;
+        @HardChange
+        public String bedrockControl = "Normal"; // "Normal", "Floor", "Ceiling", "Both", "None"
+        public boolean voidMirror = false;
+        public double mobSpawnRate = 1.0;
+        public double mobMutationRate = 0.0;
+        public boolean hazardRadiation = false;
+        public boolean hazardOxygen = false;
+        public String joinMessage = "";
+        
+        public boolean locked = true;
+        public boolean fullResetRequested = false;
+
+        public GenesisConfig snapshot() {
+            GenesisConfig snap = new GenesisConfig();
+            snap.genType = this.genType;
+            snap.biomes = new ArrayList<>(this.biomes);
+            snap.caveBiomes = new ArrayList<>(this.caveBiomes);
+            snap.resourceDensity = this.resourceDensity;
+            snap.structureDensity = this.structureDensity;
+            snap.seaLevelFluid = this.seaLevelFluid;
+            snap.spawnLavaLakes = this.spawnLavaLakes;
+            snap.dimensionScale = this.dimensionScale;
+            snap.spawnHostile = this.spawnHostile;
+            snap.spawnPassive = this.spawnPassive;
+            snap.spawnNeutral = this.spawnNeutral;
+            snap.dayNightRatio = this.dayNightRatio;
+            snap.temporalVelocity = this.temporalVelocity;
+            snap.tickFreeze = this.tickFreeze;
+            snap.frozenTime = this.frozenTime;
+            snap.persistentWeather = this.persistentWeather;
+            snap.skyColor = this.skyColor;
+            snap.fogColor = this.fogColor;
+            snap.waterColor = this.waterColor;
+            snap.grassColor = this.grassColor;
+            snap.foliageColor = this.foliageColor;
+            snap.ambientLight = this.ambientLight;
+            snap.fogDensity = this.fogDensity;
+            snap.celestialSync = this.celestialSync;
+            snap.gravity = this.gravity;
+            snap.thermalRegulation = this.thermalRegulation;
+            snap.fluidViscosityHigh = this.fluidViscosityHigh;
+            snap.explosionYield = this.explosionYield;
+            snap.fallDamageMultiplier = this.fallDamageMultiplier;
+            snap.difficulty = this.difficulty;
+            snap.respawnLogicEnabled = this.respawnLogicEnabled;
+            snap.lootXpMultiplier = this.lootXpMultiplier;
+            snap.realityPersistence = this.realityPersistence;
+            snap.bedrockControl = this.bedrockControl;
+            snap.voidMirror = this.voidMirror;
+            snap.mobSpawnRate = this.mobSpawnRate;
+            snap.mobMutationRate = this.mobMutationRate;
+            snap.hazardRadiation = this.hazardRadiation;
+            snap.hazardOxygen = this.hazardOxygen;
+            snap.joinMessage = this.joinMessage;
+            snap.locked = this.locked;
+            snap.fullResetRequested = this.fullResetRequested;
+            return snap;
+        }
+
+        public void copyFrom(GenesisConfig other) {
+            this.genType = other.genType;
+            this.biomes = new ArrayList<>(other.biomes);
+            this.caveBiomes = new ArrayList<>(other.caveBiomes);
+            this.resourceDensity = other.resourceDensity;
+            this.structureDensity = other.structureDensity;
+            this.seaLevelFluid = other.seaLevelFluid;
+            this.spawnLavaLakes = other.spawnLavaLakes;
+            this.dimensionScale = other.dimensionScale;
+            this.spawnHostile = other.spawnHostile;
+            this.spawnPassive = other.spawnPassive;
+            this.spawnNeutral = other.spawnNeutral;
+            this.dayNightRatio = other.dayNightRatio;
+            this.temporalVelocity = other.temporalVelocity;
+            this.tickFreeze = other.tickFreeze;
+            this.frozenTime = other.frozenTime;
+            this.persistentWeather = other.persistentWeather;
+            this.skyColor = other.skyColor;
+            this.fogColor = other.fogColor;
+            this.waterColor = other.waterColor;
+            this.grassColor = other.grassColor;
+            this.foliageColor = other.foliageColor;
+            this.ambientLight = other.ambientLight;
+            this.fogDensity = other.fogDensity;
+            this.celestialSync = other.celestialSync;
+            this.gravity = other.gravity;
+            this.thermalRegulation = other.thermalRegulation;
+            this.fluidViscosityHigh = other.fluidViscosityHigh;
+            this.explosionYield = other.explosionYield;
+            this.fallDamageMultiplier = other.fallDamageMultiplier;
+            this.difficulty = other.difficulty;
+            this.respawnLogicEnabled = other.respawnLogicEnabled;
+            this.lootXpMultiplier = other.lootXpMultiplier;
+            this.realityPersistence = other.realityPersistence;
+            this.bedrockControl = other.bedrockControl;
+            this.voidMirror = other.voidMirror;
+            this.mobSpawnRate = other.mobSpawnRate;
+            this.mobMutationRate = other.mobMutationRate;
+            this.hazardRadiation = other.hazardRadiation;
+            this.hazardOxygen = other.hazardOxygen;
+            this.joinMessage = other.joinMessage;
+            this.locked = other.locked;
+            this.fullResetRequested = other.fullResetRequested;
         }
     }
 
@@ -392,6 +548,21 @@ public class StorePriceManager {
         }
     }
 
+    public static class SavedLocation {
+        public double x, y, z;
+        public float yaw, pitch;
+        public String dim;
+
+        public SavedLocation(double x, double y, double z, float yaw, float pitch, String dim) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+            this.yaw = yaw;
+            this.pitch = pitch;
+            this.dim = dim;
+        }
+    }
+
     public static class FormulaConfig {
         public BigDecimal stepAssistCostPerAssist = BigDecimal.valueOf(50);
         public BigDecimal areaMiningCostBase = BigDecimal.valueOf(100);
@@ -428,14 +599,14 @@ public class StorePriceManager {
         Map<String, SkillData> skills = new HashMap<>();
         Map<String, List<String>> unlockedHouses = new HashMap<>();
         Map<String, Map<String, Double>> attributeBonuses = new HashMap<>();
-        Map<String, String> returnDimension = new HashMap<>();
-        Map<String, double[]> returnPosition = new HashMap<>();
         Map<String, Long> soldVolume = new HashMap<>();
     }
 
     private static class GlobalData {
         List<String> editors = new ArrayList<>();
         Map<String, Long> soldVolume = new HashMap<>();
+        String activeGodUuid = null;
+        GenesisConfig genesisConfig = null;
     }
 
     private static class SinglePlayerData {
@@ -445,8 +616,7 @@ public class StorePriceManager {
         SkillData skills;
         List<String> unlockedHouses;
         Map<String, Double> attributeBonuses;
-        String returnDimension;
-        double[] returnPosition;
+        SavedLocation lastLocation;
     }
 
     private static class StorePrices {
@@ -482,6 +652,8 @@ public class StorePriceManager {
         } else {
             loadData();
         }
+        
+        GenesisManager.snapshotSessionConfig();
     }
 
     public static void clearWorldData() {
@@ -493,8 +665,7 @@ public class StorePriceManager {
         playerSkills.clear();
         unlockedHousesMap.clear();
         playerAttributeBonuses.clear();
-        playerReturnDimension.clear();
-        playerReturnPosition.clear();
+        playerLastLocations.clear();
         successfulLoads.clear();
         WORLD_DATA_DIR = null;
         PLAYER_DATA_DIR = null;
@@ -675,8 +846,6 @@ public class StorePriceManager {
                 if (data.skills != null) data.skills.forEach((u, s) -> playerSkills.put(UUID.fromString(u), s));
                 if (data.unlockedHouses != null) data.unlockedHouses.forEach((u, h) -> unlockedHousesMap.put(UUID.fromString(u), new HashSet<>(h)));
                 if (data.attributeBonuses != null) data.attributeBonuses.forEach((u, b) -> playerAttributeBonuses.put(UUID.fromString(u), b));
-                if (data.returnDimension != null) data.returnDimension.forEach((u, d) -> playerReturnDimension.put(UUID.fromString(u), d));
-                if (data.returnPosition != null) data.returnPosition.forEach((u, p) -> playerReturnPosition.put(UUID.fromString(u), p));
                 if (data.soldVolume != null) totalSoldVolume.putAll(data.soldVolume);
             }
         } catch (Exception e) {
@@ -696,6 +865,8 @@ public class StorePriceManager {
                 totalSoldVolume.clear();
                 if (data.editors != null) data.editors.forEach(u -> editors.add(UUID.fromString(u)));
                 if (data.soldVolume != null) totalSoldVolume.putAll(data.soldVolume);
+                if (data.activeGodUuid != null) activeGodUuid = UUID.fromString(data.activeGodUuid);
+                if (data.genesisConfig != null) globalGenesisConfig.copyFrom(data.genesisConfig);
             }
         } catch (Exception e) {
             isDataCorrupted = true;
@@ -717,8 +888,7 @@ public class StorePriceManager {
                 if (data.skills != null) playerSkills.put(uuid, data.skills);
                 if (data.unlockedHouses != null) unlockedHousesMap.put(uuid, new HashSet<>(data.unlockedHouses));
                 if (data.attributeBonuses != null) playerAttributeBonuses.put(uuid, data.attributeBonuses);
-                if (data.returnDimension != null) playerReturnDimension.put(uuid, data.returnDimension);
-                if (data.returnPosition != null) playerReturnPosition.put(uuid, data.returnPosition);
+                if (data.lastLocation != null) playerLastLocations.put(uuid, data.lastLocation);
             }
         } catch (Exception e) {
             successfulLoads.remove(uuid); // Error during load, do NOT mark as successfully loaded
@@ -731,6 +901,8 @@ public class StorePriceManager {
         GlobalData data = new GlobalData();
         editors.forEach(u -> data.editors.add(u.toString()));
         data.soldVolume = totalSoldVolume;
+        if (activeGodUuid != null) data.activeGodUuid = activeGodUuid.toString();
+        data.genesisConfig = globalGenesisConfig;
         atomicWrite(DATA_FILE, data);
         globalDirty = false;
     }
@@ -753,8 +925,7 @@ public class StorePriceManager {
         Set<String> houses = unlockedHousesMap.get(uuid);
         data.unlockedHouses = houses != null ? new ArrayList<>(houses) : null;
         data.attributeBonuses = playerAttributeBonuses.get(uuid);
-        data.returnDimension = playerReturnDimension.get(uuid);
-        data.returnPosition = playerReturnPosition.get(uuid);
+        data.lastLocation = playerLastLocations.get(uuid);
         
         File playerFile = new File(PLAYER_DATA_DIR, uuid.toString() + ".json");
         atomicWrite(playerFile, data);
@@ -768,8 +939,7 @@ public class StorePriceManager {
         unlockedHousesMap.remove(uuid);
         playerAttributeBonuses.remove(uuid);
         playerSkills.remove(uuid);
-        playerReturnDimension.remove(uuid);
-        playerReturnPosition.remove(uuid);
+        playerLastLocations.remove(uuid);
         dirtyPlayers.remove(uuid);
     }
 
@@ -806,6 +976,19 @@ public class StorePriceManager {
 
     public static BigDecimal getMoney(UUID uuid) {
         return playerMoneyMap.getOrDefault(uuid, BigDecimal.ZERO);
+    }
+
+    public static void setActiveGod(UUID uuid) {
+        activeGodUuid = uuid;
+        markDirty(null);
+    }
+
+    public static UUID getActiveGod() {
+        return activeGodUuid;
+    }
+
+    public static GenesisConfig getGlobalGenesisConfig() {
+        return globalGenesisConfig;
     }
 
     public static void setMoney(UUID uuid, BigDecimal amount) {
@@ -1245,6 +1428,16 @@ public class StorePriceManager {
         });
     }
 
+    public static SavedLocation getLastLocation(UUID uuid) {
+        return playerLastLocations.get(uuid);
+    }
+
+    public static void setLastLocation(UUID uuid, SavedLocation loc) {
+        if (loc == null) playerLastLocations.remove(uuid);
+        else playerLastLocations.put(uuid, loc);
+        markDirty(uuid);
+    }
+
     public static Map<String, Double> getAttributeBonuses(UUID uuid) {
         return playerAttributeBonuses.computeIfAbsent(uuid, k -> new ConcurrentHashMap<>());
     }
@@ -1410,10 +1603,18 @@ public class StorePriceManager {
             ), 
             player
         );
+        
+        SkillData skills = getSkills(player.getUUID());
+        // Do NOT overwrite genesisConfig here, it should stay as is unless specifically updated
+        // skills.genesisConfig.copyFrom(globalGenesisConfig);
+        
         com.example.modmenu.network.PacketHandler.sendToPlayer(
-            new com.example.modmenu.network.SyncSkillsPacket(getSkills(player.getUUID())),
+            new com.example.modmenu.network.SyncSkillsPacket(skills),
             player
         );
+        
+        // Ensure GenesisConfig is synced separately if needed, but for now it's in SkillData
+        // We could optimize by sending it only when it changes.
     }
 
     public static void syncPrices(net.minecraft.server.level.ServerPlayer player) {
@@ -1440,20 +1641,6 @@ public class StorePriceManager {
 
     public static boolean isHouseUnlocked(UUID uuid, String houseId) {
         return getUnlockedHouses(uuid).contains(houseId);
-    }
-
-    public static void setReturnPoint(UUID uuid, String dimension, double x, double y, double z) {
-        playerReturnDimension.put(uuid, dimension);
-        playerReturnPosition.put(uuid, new double[]{x, y, z});
-        markDirty(uuid);
-    }
-
-    public static String getReturnDimension(UUID uuid) {
-        return playerReturnDimension.get(uuid);
-    }
-
-    public static double[] getReturnPosition(UUID uuid) {
-        return playerReturnPosition.get(uuid);
     }
 
     public static BigDecimal getEnchantPrice(Enchantment enchantment) {

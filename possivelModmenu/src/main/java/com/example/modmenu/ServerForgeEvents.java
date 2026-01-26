@@ -35,11 +35,122 @@ import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.event.entity.living.LivingAttackEvent;
 import net.minecraftforge.registries.ForgeRegistries;
 
+import net.minecraftforge.event.level.ExplosionEvent;
+import net.minecraftforge.event.entity.living.LivingEvent;
+
 @Mod.EventBusSubscriber(modid = "modmenu", bus = Mod.EventBusSubscriber.Bus.FORGE)
 public class ServerForgeEvents {
+
+    @SubscribeEvent
+    public static void onGenesisTick(LivingEvent.LivingTickEvent event) {
+        LivingEntity entity = event.getEntity();
+        if (entity.level().isClientSide) return;
+        
+        if (entity.level().dimension().equals(com.example.modmenu.store.GenesisManager.GENESIS_DIM)) {
+            com.example.modmenu.store.StorePriceManager.GenesisConfig config = com.example.modmenu.store.GenesisManager.getConfig(entity.level());
+            if (config != null) {
+                // Void Mirror
+                if (config.voidMirror && entity.getY() < entity.level().getMinBuildHeight() - 10) {
+                    entity.teleportTo(entity.getX(), entity.level().getMaxBuildHeight() + 10, entity.getZ());
+                    entity.setDeltaMovement(0, 0, 0);
+                    entity.resetFallDistance();
+                    if (entity instanceof ServerPlayer sp) {
+                        sp.displayClientMessage(Component.literal("\u00A7b[Genesis Hub] Void Mirror Protocol Active!"), true);
+                    }
+                }
+
+                // Gravity
+                if (config.gravity != 1.0 && !entity.isNoGravity()) {
+                    double gravityDelta = (config.gravity - 1.0) * 0.08;
+                    entity.setDeltaMovement(entity.getDeltaMovement().add(0, -gravityDelta, 0));
+                }
+                
+                // Thermal Regulation
+                if (entity.tickCount % 20 == 0) {
+                    if (config.thermalRegulation.equals("Sub-Zero")) {
+                        if (!entity.getType().is(net.minecraft.tags.EntityTypeTags.FREEZE_IMMUNE_ENTITY_TYPES)) {
+                            entity.setTicksFrozen(entity.getTicksFrozen() + 40);
+                            if (entity.getTicksFrozen() >= entity.getTicksRequiredToFreeze()) {
+                                entity.hurt(entity.damageSources().freeze(), 1.0f);
+                            }
+                        }
+                    } else if (config.thermalRegulation.equals("Super-Heated")) {
+                        if (!entity.fireImmune()) {
+                            entity.setSecondsOnFire(3);
+                            entity.hurt(entity.damageSources().onFire(), 1.0f);
+                        }
+                    }
+                }
+                
+                // Hazards
+                if (entity.tickCount % 40 == 0) {
+                    if (config.hazardRadiation) {
+                        entity.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.POISON, 100, 0));
+                    }
+                    if (config.hazardOxygen) {
+                        if (entity.getItemBySlot(net.minecraft.world.entity.EquipmentSlot.HEAD).isEmpty()) {
+                            entity.hurt(entity.damageSources().drown(), 2.0f);
+                        }
+                    }
+                }
+
+                // Fluid Viscosity (Simple version: slow down in fluids)
+                if (config.fluidViscosityHigh && entity.isInFluidType()) {
+                    entity.setDeltaMovement(entity.getDeltaMovement().scale(0.5));
+                }
+            }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onExplosionDetonate(ExplosionEvent.Detonate event) {
+        if (event.getLevel().dimension().equals(com.example.modmenu.store.GenesisManager.GENESIS_DIM)) {
+            com.example.modmenu.store.StorePriceManager.GenesisConfig config = com.example.modmenu.store.GenesisManager.getConfig(event.getLevel());
+            if (config != null && config.explosionYield != 1.0) {
+                if (config.explosionYield <= 0) {
+                    event.getAffectedBlocks().clear();
+                } else if (config.explosionYield < 1.0) {
+                    // Randomly filter blocks based on yield for a more natural look
+                    int total = event.getAffectedBlocks().size();
+                    int toKeep = (int) (total * config.explosionYield);
+                    java.util.Collections.shuffle(event.getAffectedBlocks());
+                    while (event.getAffectedBlocks().size() > toKeep) {
+                        event.getAffectedBlocks().remove(event.getAffectedBlocks().size() - 1);
+                    }
+                } else {
+                    // Increasing block damage is hard without adding NEW blocks to the list.
+                    // But we can maybe just leave it as is or expand the radius? 
+                    // Expanding radius here is too late, but scaling damage to entities was already handled in onLivingHurt.
+                }
+            }
+        }
+    }
+
     @SubscribeEvent
     public static void onLivingHurt(LivingHurtEvent event) {
         if (StorePriceManager.globalSkillsDisabled) return;
+
+        // Genesis Dimension Rules (Difficulty & Explosion)
+        if (event.getEntity().level().dimension().equals(com.example.modmenu.store.GenesisManager.GENESIS_DIM)) {
+            com.example.modmenu.store.StorePriceManager.GenesisConfig config = com.example.modmenu.store.GenesisManager.getConfig(event.getEntity().level());
+            if (config != null) {
+                if (config.difficulty.equals("Peaceful") && event.getSource().getEntity() instanceof net.minecraft.world.entity.monster.Monster) {
+                    event.setCanceled(true);
+                    return;
+                }
+                if (config.difficulty.equals("Easy")) event.setAmount(event.getAmount() * 0.5f);
+                else if (config.difficulty.equals("Hard")) event.setAmount(event.getAmount() * 1.5f);
+                
+                if (event.getSource().is(net.minecraft.world.damagesource.DamageTypes.EXPLOSION)) {
+                    event.setAmount((float) (event.getAmount() * config.explosionYield));
+                }
+
+                if (event.getSource().is(net.minecraft.world.damagesource.DamageTypes.FALL)) {
+                    event.setAmount((float) (event.getAmount() * config.fallDamageMultiplier));
+                }
+            }
+        }
+
         if (event.getEntity() instanceof ServerPlayer player) {
             StorePriceManager.AbilitySettings settings = StorePriceManager.getAbilities(player.getUUID());
             StorePriceManager.SkillData skillData = StorePriceManager.getSkills(player.getUUID());
@@ -173,6 +284,8 @@ public class ServerForgeEvents {
 
     private static boolean processingSureKill = false;
     private static Map<UUID, List<ScheduledDamage>> scheduledDamages = new HashMap<>();
+    private static double timeAccumulator = 0;
+    private static final UUID GRAVITY_MODIFIER_UUID = UUID.fromString("6f3b0641-6963-448f-9a4f-561937965b79");
     public static Map<UUID, List<BlockPos>> pendingMining = new HashMap<>();
     public static Map<UUID, List<LiquidationRegion>> pendingRegions = new HashMap<>();
     public static Map<Integer, LootBuffer> bufferedLoot = new HashMap<>();
@@ -460,6 +573,7 @@ public class ServerForgeEvents {
     public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
         if (event.phase == TickEvent.Phase.END && event.side.isServer()) {
             ServerPlayer player = (ServerPlayer) event.player;
+
             StorePriceManager.AbilitySettings settings = StorePriceManager.getAbilities(player.getUUID());
             
             if (settings.stepAssistActive) {
@@ -484,6 +598,17 @@ public class ServerForgeEvents {
                      stepHeight.setBaseValue(0);
                 }
             }
+        }
+    }
+
+    @SubscribeEvent
+    public static void onLivingTick(net.minecraftforge.event.entity.living.LivingEvent.LivingTickEvent event) {
+        LivingEntity entity = event.getEntity();
+        if (entity.level().isClientSide) return;
+        
+        net.minecraft.world.entity.ai.attributes.AttributeInstance gravity = entity.getAttribute(net.minecraftforge.common.ForgeMod.ENTITY_GRAVITY.get());
+        if (gravity != null && gravity.getModifier(GRAVITY_MODIFIER_UUID) != null) {
+            gravity.removeModifier(GRAVITY_MODIFIER_UUID);
         }
     }
 
@@ -801,6 +926,21 @@ public class ServerForgeEvents {
 
     @SubscribeEvent
     public static void onLivingDrops(LivingDropsEvent event) {
+        // Genesis Dimension Loot Multiplier
+        if (event.getEntity().level().dimension().equals(com.example.modmenu.store.GenesisManager.GENESIS_DIM)) {
+            com.example.modmenu.store.StorePriceManager.GenesisConfig config = com.example.modmenu.store.GenesisManager.getConfig(event.getEntity().level());
+            if (config != null && config.lootXpMultiplier > 1.0) {
+                event.getDrops().forEach(itemEntity -> {
+                    double exactCount = itemEntity.getItem().getCount() * config.lootXpMultiplier;
+                    int baseCount = (int) exactCount;
+                    if (event.getEntity().level().random.nextDouble() < (exactCount - baseCount)) {
+                        baseCount++;
+                    }
+                    itemEntity.getItem().setCount(baseCount);
+                });
+            }
+        }
+
         if (event.getSource().getEntity() instanceof ServerPlayer player) {
             StorePriceManager.SkillData skillData = StorePriceManager.getSkills(player.getUUID());
             int lootRank = SkillManager.getActiveRank(skillData, "COMBAT_LOOT_RECALIBRATION");
@@ -1183,6 +1323,21 @@ public class ServerForgeEvents {
         StorePriceManager.setMoney(player.getUUID(), currentMoney.subtract(totalCost).add(totalValue));
         player.displayClientMessage(Component.literal("\u00A7aMined " + minedCount + " blocks. Cost: \u00A7e$" + StorePriceManager.formatCurrency(totalCost) + (settings.autoSell ? " \u00A7aEarned: \u00A7e$" + StorePriceManager.formatCurrency(totalValue) : "")), true);
         StorePriceManager.sync(player);
+    }
+
+    @SubscribeEvent
+    public static void onLivingExperienceDrop(net.minecraftforge.event.entity.living.LivingExperienceDropEvent event) {
+        if (event.getEntity().level().dimension().equals(com.example.modmenu.store.GenesisManager.GENESIS_DIM)) {
+            com.example.modmenu.store.StorePriceManager.GenesisConfig config = com.example.modmenu.store.GenesisManager.getConfig(event.getEntity().level());
+            if (config != null && config.lootXpMultiplier > 1.0) {
+                double exactXP = event.getDroppedExperience() * config.lootXpMultiplier;
+                int baseXP = (int) exactXP;
+                if (event.getEntity().level().random.nextDouble() < (exactXP - baseXP)) {
+                    baseXP++;
+                }
+                event.setDroppedExperience(baseXP);
+            }
+        }
     }
 
 }

@@ -47,7 +47,9 @@ public class ContainmentScreen extends BaseResponsiveLodestoneScreen {
         int rowHeight = 80;
 
         List<StorePriceManager.ChamberData> chambers = StorePriceManager.clientSkills.chambers;
-        int unlocked = StorePriceManager.clientSkills.unlockedChambers;
+        int unlockedBase = StorePriceManager.clientSkills.unlockedChambers;
+        int unlockedBonus = com.example.modmenu.store.SkillManager.getActiveRank(StorePriceManager.clientSkills, "VIRT_ARCHIVE_EXPANSION") * 2;
+        int totalUnlocked = unlockedBase + unlockedBonus;
 
         for (int i = 0; i < chambers.size(); i++) {
             list.addElement(new ChamberRowComponent(0, currentY, list.getWidth() - 10, rowHeight - 5, chambers.get(i), i));
@@ -55,7 +57,7 @@ public class ContainmentScreen extends BaseResponsiveLodestoneScreen {
         }
 
         // Add Empty Slots for unlocked but unused chambers
-        for (int i = chambers.size(); i < unlocked; i++) {
+        for (int i = chambers.size(); i < totalUnlocked; i++) {
             list.addElement(new UIElement(0, currentY, list.getWidth() - 10, rowHeight - 5) {
                 @Override
                 public void render(GuiGraphics g, int mx, int my, float pt) {
@@ -68,7 +70,7 @@ public class ContainmentScreen extends BaseResponsiveLodestoneScreen {
 
         // Add Buy Button if more can be unlocked
         java.math.BigDecimal cost = new java.math.BigDecimal("5000");
-        int chambersToCalc = unlocked - 1;
+        int chambersToCalc = unlockedBase - 1;
         if (chambersToCalc > 0) {
             int damped = StorePriceManager.dampedExponent(chambersToCalc);
             cost = cost.multiply(new java.math.BigDecimal("3").pow(damped))
@@ -131,7 +133,9 @@ public class ContainmentScreen extends BaseResponsiveLodestoneScreen {
             
             String xpText = data.storedXP.setScale(2, java.math.RoundingMode.HALF_UP).toPlainString();
             g.drawString(Minecraft.getInstance().font, "XP: \u00A7a" + xpText, getX() + 60, getY() + 34, 0xFFFFFFFF);
-            g.drawString(Minecraft.getInstance().font, "Loot: \u00A7e" + data.storedLoot.size() + " types", getX() + 60, getY() + 46, 0xFFFFFFFF);
+
+            int capacity = 27 + com.example.modmenu.store.SkillManager.getActiveRank(com.example.modmenu.store.StorePriceManager.clientSkills, "VIRT_DATA_DENSITY") * 16;
+            g.drawString(Minecraft.getInstance().font, "Loot: \u00A7e" + data.storedLoot.size() + "/" + capacity + " types", getX() + 60, getY() + 46, 0xFFFFFFFF);
             
             g.drawString(Minecraft.getInstance().font, "S:" + data.speedSlider + " T:" + data.threadSlider, getX() + 60, getY() + 58, 0xFFAAAAAA);
 

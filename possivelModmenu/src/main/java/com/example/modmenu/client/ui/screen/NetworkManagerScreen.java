@@ -29,6 +29,8 @@ public class NetworkManagerScreen extends BaseResponsiveLodestoneScreen {
     private int lastVersion = -1;
     private ResponsiveButton simButton;
     private ResponsiveButton connButton;
+    private ResponsiveButton brushButton;
+    private net.minecraft.client.gui.components.EditBox historySearch;
 
     public NetworkManagerScreen(Screen parent, UUID networkId) {
         super(Component.literal("Network Manager"));
@@ -39,6 +41,7 @@ public class NetworkManagerScreen extends BaseResponsiveLodestoneScreen {
     @Override
     protected void setupLayout() {
         com.example.modmenu.client.ClientForgeEvents.viewedNetworkId = networkId;
+        PacketHandler.sendToServer(ActionNetworkPacket.setViewedNetwork(networkId));
         refreshData();
 
         this.layoutRoot.addElement(new ResponsiveButton(10, 10, 50, 20, Component.literal("Back"), btn -> {
@@ -97,6 +100,29 @@ public class NetworkManagerScreen extends BaseResponsiveLodestoneScreen {
             PacketHandler.sendToServer(new ActionNetworkPacket(16, networkId));
         });
         this.layoutRoot.addElement(connButton);
+        bx += 105;
+
+        brushButton = new ResponsiveButton(bx, 10, 80, 20, Component.literal("\u00A7eBrush: OFF"), btn -> {
+            if (canvas != null) {
+                canvas.setBrushMode(!canvas.isBrushMode());
+                updateButtonTexts();
+            }
+        });
+        this.layoutRoot.addElement(brushButton);
+        bx += 85;
+
+        this.layoutRoot.addElement(new ResponsiveButton(bx, 10, 100, 20, Component.literal("\u00A75Set Overflow"), btn -> {
+            this.minecraft.setScreen(new PickTargetScreen(this, networkData, (id, isGroup) -> {
+                PacketHandler.sendToServer(ActionNetworkPacket.setOverflowTarget(networkId, id, isGroup));
+            }));
+        }));
+        bx += 105;
+
+        historySearch = new net.minecraft.client.gui.components.EditBox(font, bx, 10, 120, 20, Component.literal("Search History..."));
+        historySearch.setResponder(s -> {
+            if (canvas != null) canvas.setHistorySearchTerm(s);
+        });
+        this.addWidget(historySearch);
 
         canvas = new GraphCanvasComponent(10, 40, this.width - 20, this.height - 50, networkData, this);
         this.layoutRoot.addElement(canvas);
@@ -116,6 +142,18 @@ public class NetworkManagerScreen extends BaseResponsiveLodestoneScreen {
                 g.drawString(font, "Energy: \u00A76" + networkData.energyMovedLastMin + " FE/min", getX() + 10, dy, 0xFFFFFFFF);
                 dy += 10;
                 g.drawString(font, "Fluids: \u00A7a" + networkData.fluidsMovedLastMin + " mB/min", getX() + 10, dy, 0xFFFFFFFF);
+                dy += 12;
+                String ov = "None";
+                if (networkData.overflowTargetId != null) {
+                    if (networkData.overflowIsGroup) {
+                        com.example.modmenu.store.logistics.NodeGroup g2 = networkData.groups.stream().filter(gr -> gr.groupId.equals(networkData.overflowTargetId)).findFirst().orElse(null);
+                        ov = "[G] " + (g2 != null ? g2.name : "???");
+                    } else {
+                        com.example.modmenu.store.logistics.NetworkNode n = networkData.nodes.stream().filter(nd -> nd.nodeId.equals(networkData.overflowTargetId)).findFirst().orElse(null);
+                        ov = n != null ? (n.customName != null ? n.customName : n.nodeType) : "???";
+                    }
+                }
+                g.drawString(font, "Overflow: \u00A7d" + ov, getX() + 10, dy, 0xFFFFFFFF);
             }
         });
     }
@@ -145,6 +183,9 @@ public class NetworkManagerScreen extends BaseResponsiveLodestoneScreen {
         }
         if (connButton != null) {
             connButton.setText(Component.literal(networkData.showConnections ? "\u00A7aConnections: ON" : "\u00A7cConnections: OFF"));
+        }
+        if (brushButton != null && canvas != null) {
+            brushButton.setText(Component.literal(canvas.isBrushMode() ? "\u00A7eBrush: ON" : "\u00A77Brush: OFF"));
         }
     }
 

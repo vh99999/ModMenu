@@ -16,6 +16,7 @@ public class NodeConfigScreen extends BaseResponsiveLodestoneScreen {
     private final Screen parent;
     private final UUID networkId;
     private final NetworkNode node;
+    private net.minecraft.client.gui.components.EditBox nameField;
     
     private static java.util.List<net.minecraft.world.item.ItemStack> lastProbedInventory = null;
     private static java.util.List<Integer> lastProbedSlotX = null;
@@ -53,7 +54,23 @@ public class NodeConfigScreen extends BaseResponsiveLodestoneScreen {
         }));
 
         int midX = this.width / 2;
-        
+
+        nameField = new net.minecraft.client.gui.components.EditBox(font, midX - 100, 15, 180, 20, Component.literal("Node Name"));
+        nameField.setValue(node.customName != null ? node.customName : "");
+        nameField.setResponder(s -> node.customName = s);
+        this.addWidget(nameField);
+
+        this.layoutRoot.addElement(new ResponsiveButton(midX + 85, 15, 50, 20, Component.literal("Icon"), btn -> {
+            this.minecraft.setScreen(new PickIconScreen(this, id -> node.iconItemId = id));
+        }));
+
+        this.layoutRoot.addElement(new ResponsiveButton(midX + 140, 15, 50, 20, Component.literal("\u00A76PING"), btn -> {
+            if (node.pos != null) {
+                com.example.modmenu.client.ClientForgeEvents.addPing(node.pos);
+                this.minecraft.setScreen(null);
+            }
+        }));
+
         // Left Side: Sides Config
         int currentY = 40;
         this.layoutRoot.addElement(new com.example.modmenu.client.ui.base.UIElement(20, currentY, 150, 20) {
@@ -147,6 +164,12 @@ public class NodeConfigScreen extends BaseResponsiveLodestoneScreen {
             PacketHandler.sendToServer(new ActionNetworkPacket(11, networkId, node));
             this.minecraft.setScreen(parent);
         }));
+    }
+
+    @Override
+    public void render(net.minecraft.client.gui.GuiGraphics g, int mx, int my, float pt) {
+        super.render(g, mx, my, pt);
+        if (nameField != null) nameField.render(g, mx, my, pt);
     }
 
     private String cycleType(String current) {

@@ -1,1 +1,527 @@
-package com.example.modmenu.client.ui.screen; import com.example.modmenu.client.ui.base.BaseResponsiveLodestoneScreen; import com.example.modmenu.client.ui.component.ResponsiveButton; import com.example.modmenu.network.ActionNetworkPacket; import com.example.modmenu.network.PacketHandler; import com.example.modmenu.store.logistics.NetworkData; import com.example.modmenu.store.logistics.NetworkNode; import com.example.modmenu.store.logistics.LogisticsRule; import net.minecraft.client.gui.GuiGraphics; import net.minecraft.client.gui.components.EditBox; import net.minecraft.client.gui.screens.Screen; import net.minecraft.core.Direction; import net.minecraft.network.chat.Component; import net.minecraft.world.item.ItemStack; import net.minecraftforge.registries.ForgeRegistries; import java.util.UUID; public class RuleConfigScreen extends BaseResponsiveLodestoneScreen { private final Screen parent; private final UUID networkId; private final NetworkData networkData; private final LogisticsRule rule; private final boolean isNew; private int sourceIdx = 0; private int destIdx = 0; private EditBox amountInput; public RuleConfigScreen(Screen parent, UUID networkId, NetworkData networkData, LogisticsRule rule, boolean isNew) { super(Component.literal("Rule Configuration")); this.parent = parent; this.networkId = networkId; this.networkData = networkData; this.rule = rule; this.isNew = isNew; if (!isNew) { for (int i = 0; i < networkData.nodes.size(); i++) { if (networkData.nodes.get(i).nodeId.equals(rule.sourceNodeId)) sourceIdx = i; if (networkData.nodes.get(i).nodeId.equals(rule.destNodeId)) destIdx = i; } } } @Override protected void setupLayout() { this.layoutRoot.addElement(new ResponsiveButton(10, 10, 50, 20, Component.literal("Back"), btn -> { this.minecraft.setScreen(parent); })); int midX = this.width / 2; int currentY = 40; this.layoutRoot.addElement(new ResponsiveButton(midX - 150, currentY, 145, 20, Component.literal("Src: " + getSourceLabel()), btn -> { if (networkData.nodes.isEmpty()) return; int size = networkData.nodes.size(); sourceIdx = (btn.lastClickedButton == 1) ? (sourceIdx + size - 1) % size : (sourceIdx + 1) % size; btn.setText(Component.literal("Src: " + getSourceLabel())); })); this.layoutRoot.addElement(new ResponsiveButton(midX + 5, currentY, 145, 20, Component.literal("Src Side: " + rule.sourceSide), btn -> { rule.sourceSide = (btn.lastClickedButton == 1) ? cycleSideBack(rule.sourceSide) : cycleSide(rule.sourceSide); btn.setText(Component.literal("Src Side: " + rule.sourceSide)); })); currentY += 25; this.layoutRoot.addElement(new ResponsiveButton(midX - 150, currentY, 300, 20, Component.literal("Source Slot: " + (rule.sourceSlot == -1 ? "ALL" : rule.sourceSlot)), btn -> { if (!networkData.nodes.isEmpty()) { NetworkNode src = networkData.nodes.get(sourceIdx); this.minecraft.setScreen(new PickSlotFromNodeScreen(this, networkId, src, slot -> { rule.sourceSlot = slot; })); } })); currentY += 25; this.layoutRoot.addElement(new ResponsiveButton(midX - 150, currentY, 145, 20, Component.literal("Dst: " + getDestLabel()), btn -> { if (networkData.nodes.isEmpty()) return; int size = networkData.nodes.size(); destIdx = (btn.lastClickedButton == 1) ? (destIdx + size - 1) % size : (destIdx + 1) % size; btn.setText(Component.literal("Dst: " + getDestLabel())); })); this.layoutRoot.addElement(new ResponsiveButton(midX + 5, currentY, 145, 20, Component.literal("Dst Side: " + rule.destSide), btn -> { rule.destSide = (btn.lastClickedButton == 1) ? cycleSideBack(rule.destSide) : cycleSide(rule.destSide); btn.setText(Component.literal("Dst Side: " + rule.destSide)); })); currentY += 25; this.layoutRoot.addElement(new ResponsiveButton(midX - 150, currentY, 300, 20, Component.literal("Destination Slot: " + (rule.destSlot == -1 ? "ALL" : rule.destSlot)), btn -> { if (!networkData.nodes.isEmpty()) { NetworkNode dst = networkData.nodes.get(destIdx); this.minecraft.setScreen(new PickSlotFromNodeScreen(this, networkId, dst, slot -> { rule.destSlot = slot; })); } })); currentY += 25; this.layoutRoot.addElement(new ResponsiveButton(midX - 150, currentY, 300, 20, Component.literal("Logistics Type: " + rule.type), btn -> { rule.type = (btn.lastClickedButton == 1) ? cycleTypeBack(rule.type) : cycleType(rule.type); if (rule.amountPerTick == 64 || rule.amountPerTick == 1000 || rule.amountPerTick == 10000) { if (rule.type.equals("ENERGY")) rule.amountPerTick = 10000; else if (rule.type.equals("FLUIDS")) rule.amountPerTick = 1000; else rule.amountPerTick = 64; } this.init(this.minecraft, this.width, this.height); })); currentY += 30; this.layoutRoot.addElement(new ResponsiveButton(midX - 150, currentY, 145, 20, Component.literal("Mode: " + rule.mode), btn -> { rule.mode = rule.mode.equals("ROUND_ROBIN") ? "PRIORITY" : "ROUND_ROBIN"; btn.setText(Component.literal("Mode: " + rule.mode)); })); String unit = switch(rule.type) { case "ENERGY" -> " FE"; case "FLUIDS" -> " mB"; default -> ""; }; if (rule.amountPerTick == -1) { this.layoutRoot.addElement(new ResponsiveButton(midX + 5, currentY, 145, 20, Component.literal("Amount: MAX" + unit), btn -> { rule.amountPerTick = rule.type.equals("ENERGY") ? 10000 : (rule.type.equals("FLUIDS") ? 1000 : 64); this.init(this.minecraft, this.width, this.height); })); } else { this.layoutRoot.addElement(new ResponsiveButton(midX + 110, currentY, 40, 20, Component.literal("MAX"), btn -> { rule.amountPerTick = -1; this.init(this.minecraft, this.width, this.height); })); amountInput = new EditBox(font, midX + 5, currentY, 100, 20, Component.literal("Amount")); amountInput.setValue(String.valueOf(rule.amountPerTick)); amountInput.setResponder(s -> { try { rule.amountPerTick = Integer.parseInt(s); } catch (Exception e) {} }); this.addWidget(amountInput); this.layoutRoot.addElement(new com.example.modmenu.client.ui.base.UIElement(midX + 106, currentY + 5, 10, 10) { @Override public void render(GuiGraphics g, int mx, int my, float pt) { g.drawString(font, unit, getX(), getY(), 0xFFAAAAAA); } }); } currentY += 25; this.layoutRoot.addElement(new ResponsiveButton(midX - 150, currentY, 145, 20, Component.literal("Speed: " + rule.speedMode), btn -> { rule.speedMode = (btn.lastClickedButton == 1) ? cycleSpeedBack(rule.speedMode) : cycleSpeed(rule.speedMode); btn.setText(Component.literal("Speed: " + rule.speedMode)); })); this.layoutRoot.addElement(new ResponsiveButton(midX + 5, currentY, 145, 20, Component.literal("Priority: " + rule.priority), btn -> { if (btn.lastClickedButton == 1) rule.priority--; else rule.priority++; btn.setText(Component.literal("Priority: " + rule.priority)); })); currentY += 25; this.layoutRoot.addElement(new ResponsiveButton(midX - 150, currentY, 300, 20, Component.literal("Status: " + (rule.active ? "§aACTIVE" : "§cPAUSED")), btn -> { rule.active = !rule.active; btn.setText(Component.literal("Status: " + (rule.active ? "§aACTIVE" : "§cPAUSED"))); })); currentY += 25; this.layoutRoot.addElement(new ResponsiveButton(midX - 150, currentY, 145, 20, Component.literal("Min Src: " + rule.minAmount), btn -> { rule.minAmount = cycleThreshold(rule.minAmount, btn.lastClickedButton); btn.setText(Component.literal("Min Src: " + rule.minAmount)); })); this.layoutRoot.addElement(new ResponsiveButton(midX + 5, currentY, 145, 20, Component.literal("Max Dst: " + (rule.maxAmount == Integer.MAX_VALUE ? "INF" : rule.maxAmount)), btn -> { rule.maxAmount = cycleThresholdMax(rule.maxAmount, btn.lastClickedButton); btn.setText(Component.literal("Max Dst: " + (rule.maxAmount == Integer.MAX_VALUE ? "INF" : rule.maxAmount))); })); currentY += 35; if (rule.type.equals("ITEMS")) { final int filterY = currentY; this.layoutRoot.addElement(new com.example.modmenu.client.ui.base.UIElement(midX - 150, filterY, 300, 12) { @Override public void render(GuiGraphics g, int mx, int my, float pt) { g.drawString(font, "Filter Configuration:", getX(), getY(), 0xFFAAAAAA); } }); currentY += 12; this.layoutRoot.addElement(new ResponsiveButton(midX - 150, currentY, 145, 20, Component.literal("Type: " + rule.filter.matchType), btn -> { rule.filter.matchType = (btn.lastClickedButton == 1) ? cycleMatchTypeBack(rule.filter.matchType) : cycleMatchType(rule.filter.matchType); this.init(this.minecraft, this.width, this.height); })); this.layoutRoot.addElement(new ResponsiveButton(midX + 5, currentY, 145, 20, Component.literal("Filter: " + (rule.filter.blacklist ? "BLACKLIST" : "WHITELIST")), btn -> { rule.filter.blacklist = !rule.filter.blacklist; btn.setText(Component.literal("Filter: " + (rule.filter.blacklist ? "BLACKLIST" : "WHITELIST"))); })); currentY += 25; if (rule.filter.matchType.equals("NBT")) { this.layoutRoot.addElement(new ResponsiveButton(midX - 150, currentY, 300, 20, Component.literal("NBT Mode: " + (rule.filter.fuzzyNbt ? "FUZZY (Keys only)" : "STRICT (Partial match)")), btn -> { rule.filter.fuzzyNbt = !rule.filter.fuzzyNbt; btn.setText(Component.literal("NBT Mode: " + (rule.filter.fuzzyNbt ? "FUZZY (Keys only)" : "STRICT (Partial match)"))); })); currentY += 25; } this.layoutRoot.addElement(new ResponsiveButton(midX - 150, currentY, 300, 20, Component.literal("Set Filter from Item in Hand"), btn -> { ItemStack held = this.minecraft.player.getMainHandItem(); if (!held.isEmpty()) { if (rule.filter.matchType.equals("TAG")) { held.getTags().findFirst().ifPresent(tag -> rule.filter.matchValue = tag.location().toString()); } else { rule.filter.matchValue = ForgeRegistries.ITEMS.getKey(held.getItem()).toString(); if (rule.filter.matchType.equals("NBT")) { rule.filter.nbtSample = held.hasTag() ? held.getTag().copy() : null; } } } })); currentY += 25; this.layoutRoot.addElement(new ResponsiveButton(midX - 150, currentY, 300, 20, Component.literal("Pick Filter from Source Inventory"), btn -> { if (!networkData.nodes.isEmpty()) { NetworkNode src = networkData.nodes.get(sourceIdx); this.minecraft.setScreen(new PickItemFromNodeScreen(this, networkId, src, (net.minecraft.world.item.ItemStack stack) -> { if (rule.filter.matchType.equals("TAG")) { stack.getTags().findFirst().ifPresent(tag -> rule.filter.matchValue = tag.location().toString()); } else { rule.filter.matchValue = ForgeRegistries.ITEMS.getKey(stack.getItem()).toString(); if (rule.filter.matchType.equals("NBT")) { rule.filter.nbtSample = stack.hasTag() ? stack.getTag().copy() : null; } } })); } })); currentY += 25; if (rule.filter.matchValue != null && !rule.filter.matchValue.isEmpty()) { this.layoutRoot.addElement(new com.example.modmenu.client.ui.base.UIElement(midX - 150, currentY, 300, 20) { @Override public void render(GuiGraphics g, int mx, int my, float pt) { g.drawString(font, "Value: §e" + rule.filter.matchValue, getX(), getY(), 0xFFFFFFFF); } }); currentY += 20; } } else { this.layoutRoot.addElement(new com.example.modmenu.client.ui.base.UIElement(midX - 150, currentY, 300, 20) { @Override public void render(GuiGraphics g, int mx, int my, float pt) { g.drawString(font, rule.type + " mode selected. No filters required.", getX(), getY(), 0xFFAAAAAA); } }); currentY += 25; } this.layoutRoot.addElement(new ResponsiveButton(midX - 105, currentY + 10, 100, 20, Component.literal("§6SAVE RULE"), btn -> { if (!networkData.nodes.isEmpty()) { rule.sourceNodeId = networkData.nodes.get(sourceIdx).nodeId; rule.destNodeId = networkData.nodes.get(destIdx).nodeId; PacketHandler.sendToServer(new ActionNetworkPacket(4, networkId, rule)); this.minecraft.setScreen(parent); } })); this.layoutRoot.addElement(new ResponsiveButton(midX + 5, currentY + 10, 100, 20, Component.literal("§bTEST RULE"), btn -> { if (!isNew) { PacketHandler.sendToServer(ActionNetworkPacket.testRule(networkId, rule.ruleId)); } })); } private String getSourceLabel() { if (networkData.nodes.isEmpty()) return "None"; NetworkNode n = networkData.nodes.get(sourceIdx); if (n.customName != null) return n.customName; return n.nodeType + (n.pos != null ? " " + n.pos.toShortString() : ""); } private String getDestLabel() { if (networkData.nodes.isEmpty()) return "None"; NetworkNode n = networkData.nodes.get(destIdx); if (n.customName != null) return n.customName; return n.nodeType + (n.pos != null ? " " + n.pos.toShortString() : ""); } private String cycleSide(String current) { String[] sides = {"AUTO", "UP", "DOWN", "NORTH", "SOUTH", "EAST", "WEST"}; for (int i = 0; i < sides.length; i++) { if (sides[i].equals(current)) return sides[(i + 1) % sides.length]; } return "AUTO"; } private String cycleSideBack(String current) { String[] sides = {"AUTO", "UP", "DOWN", "NORTH", "SOUTH", "EAST", "WEST"}; for (int i = 0; i < sides.length; i++) { if (sides[i].equals(current)) return sides[(i + sides.length - 1) % sides.length]; } return "AUTO"; } private String cycleType(String current) { String[] types = {"ITEMS", "ENERGY", "FLUIDS"}; for (int i = 0; i < types.length; i++) { if (types[i].equals(current)) return types[(i + 1) % types.length]; } return "ITEMS"; } private String cycleTypeBack(String current) { String[] types = {"ITEMS", "ENERGY", "FLUIDS"}; for (int i = 0; i < types.length; i++) { if (types[i].equals(current)) return types[(i + types.length - 1) % types.length]; } return "ITEMS"; } private int cycleThreshold(int current, int button) { if (button == 1) { if (current <= 0) return 1024; if (current <= 8) return 0; if (current <= 64) return current - 8; if (current <= 256) return current - 64; return current - 256; } else { if (current >= 1024) return 0; if (current >= 256) return current + 256; if (current >= 64) return current + 64; return current + 8; } } private int cycleThresholdMax(int current, int button) { if (button == 1) { if (current == Integer.MAX_VALUE) return 2048; if (current <= 64) return Integer.MAX_VALUE; if (current <= 512) return current - 64; return current - 512; } else { if (current == Integer.MAX_VALUE) return 64; if (current >= 2048) return Integer.MAX_VALUE; if (current >= 512) return current + 512; return current + 64; } } private String cycleMatchType(String current) { String[] types = {"ALL", "ID", "TAG", "NBT"}; for (int i = 0; i < types.length; i++) { if (types[i].equals(current)) return types[(i + 1) % types.length]; } return "ALL"; } private String cycleMatchTypeBack(String current) { String[] types = {"ALL", "ID", "TAG", "NBT"}; for (int i = 0; i < types.length; i++) { if (types[i].equals(current)) return types[(i + types.length - 1) % types.length]; } return "ALL"; } private String cycleSpeed(String current) { String[] speeds = {"SLOW", "NORMAL", "FAST", "HYPER", "INSTANT"}; for (int i = 0; i < speeds.length; i++) { if (speeds[i].equals(current)) return speeds[(i + 1) % speeds.length]; } return "NORMAL"; } private String cycleSpeedBack(String current) { String[] speeds = {"SLOW", "NORMAL", "FAST", "HYPER", "INSTANT"}; for (int i = 0; i < speeds.length; i++) { if (speeds[i].equals(current)) return speeds[(i + speeds.length - 1) % speeds.length]; } return "NORMAL"; } }
+
+.output.txt:111:-a----        24/01/2026     12:57           4615
+PickColorScreen.java
+Select-String : O arquivo C:\Users\prang\Desktop\VARZEA\possivelModmenu\.gradle
+\8.8\checksums\checksums.lock não pode ser lido: O processo não pode acessar o
+arquivo porque outro processo bloqueou parte do arquivo.
+No linha:1 caractere:26
++ Get-ChildItem -Recurse | Select-String "PickColorScreen"
++                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidArgument: (:) [Select-String], ArgumentEx
+   ception
+    + FullyQualifiedErrorId : ProcessingFile,Microsoft.PowerShell.Commands.Sel
+   ectStringCommand
+
+.gradle\8.8\executionHistory\executionHistory.bin:2896:><`��com/example/modme
+nu/client/ui/screen/NetworkManagerScreen.java�C:\Users\prang\Desktop\VARZEA\po
+ssivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\NodeConfigScre
+en.java5��g�_�
+              `���( ��com/example/modmenu/client/ui/screen/NodeConfigScree
+n.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\com\example
+\modmenu\client\ui\screen\NodeGroupConfigScreen.javaK��1-��ǔ�d$���com/exa
+mple/modmenu/client/ui/screen/NodeGroupConfigScreen.java�C:\Users\prang\Deskto
+p\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Nod
+eGroupsListScreen.javao�4�./��̳.�ކ%�com/example/modmenu/client/ui/screen/No
+deGroupsListScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main
+\java\com\example\modmenu\client\ui\screen\PickBiomeScreen.java�B~<O����ᕶ�h�
+com/example/modmenu/client/ui/screen/PickBiomeScreen.java�C:\Users\prang\Deskt
+op\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Pi
+ckColorScreen.java"-X��@w>z������com/example/modmenu/client/ui/screen/PickC
+olorScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\co
+m\example\modmenu\client\ui\screen\PickIconScreen.java��?�j��U�HQ       ��com/e
+xample/modmenu/client/ui/screen/PickIconScreen.java�C:\Users\prang\Desktop\VAR
+ZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\PickItem
+FromNodeScreen.javaI��Խ;/pgߧOa*
+.gradle\8.8\executionHistory\executionHistory.bin:2926:B�v�4#����ؓy��ȗ��3��N
+odeGroupConfigScreen.class��Y�Xځ~(k�}_-�ȗ��3�9�NodeGroupsListScreen$GroupR
+owComponent.class�Ax�lGD��3�a��ȗ��3�#�NodeGroupsListScreen.class��[�u#
+��N     So~���ȗ��3�#�PickBiomeScreen.class���ЩG>�20L���ʶ��3�?�PickColorScreen$
+1.class�
+        �F����9a�?9ra�����3��PickColorScreen$RGBSlider.class��7L��A6�
+ǰ�c������3��PickColorScreen.class�7�q`7�o�L�������3�%�PickIconScreen$1.
+classKU���2{��,R�.&�]����3��PickIconScreen.classC=������>�Cobz����3�5�
+PickItemFromNodeScreen$1.class.�{�e����D���
+                                           �ɗ��3�+�PickItemFromNodeScreen
+$2.classwf�ԉ6}�9G�ɗ��3�
+.gradle\8.8\executionHistory\executionHistory.bin:2999:><`��com/example/modme
+nu/client/ui/screen/NetworkManagerScreen.java�C:\Users\prang\Desktop\VARZEA\po
+ssivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\NodeConfigScre
+en.java5��g�_�
+              `���( ��com/example/modmenu/client/ui/screen/NodeConfigScree
+n.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\com\example
+\modmenu\client\ui\screen\NodeGroupConfigScreen.javaK��1-��ǔ�d$���com/exa
+mple/modmenu/client/ui/screen/NodeGroupConfigScreen.java�C:\Users\prang\Deskto
+p\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Nod
+eGroupsListScreen.javao�4�./��̳.�ކ%�com/example/modmenu/client/ui/screen/No
+deGroupsListScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main
+\java\com\example\modmenu\client\ui\screen\PickBiomeScreen.java�B~<O����ᕶ�h�
+com/example/modmenu/client/ui/screen/PickBiomeScreen.java�C:\Users\prang\Deskt
+op\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Pi
+ckColorScreen.java"-X��@w>z������com/example/modmenu/client/ui/screen/PickC
+olorScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\co
+m\example\modmenu\client\ui\screen\PickIconScreen.java��?�j��U�HQ       ��com/e
+xample/modmenu/client/ui/screen/PickIconScreen.java�C:\Users\prang\Desktop\VAR
+ZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\PickItem
+FromNodeScreen.javaI��Խ;/pgߧOa*
+.gradle\8.8\executionHistory\executionHistory.bin:3031:B�v�4#����ؓy��ȗ��3��N
+odeGroupConfigScreen.class��Y�Xځ~(k�}_-�ȗ��3�9�NodeGroupsListScreen$GroupR
+owComponent.class�Ax�lGD��3�a��ȗ��3�#�NodeGroupsListScreen.class��[�u#
+��N     So~���ȗ��3�#�PickBiomeScreen.class���ЩG>�20L���ʶ��3�?�PickColorScreen$
+1.class�
+        �F����9a�?9ra�����3��PickColorScreen$RGBSlider.class��7L��A6�
+ǰ�c������3��PickColorScreen.class�7�q`7�o�L�������3�%�PickIconScreen$1.
+classKU���2{��,R�.&�]����3��PickIconScreen.classC=������>�Cobz����3�5�
+PickItemFromNodeScreen$1.class.�{�e����D���
+                                           �ɗ��3�+�PickItemFromNodeScreen
+$2.classwf�ԉ6}�9G�ɗ��3�
+.gradle\8.8\executionHistory\executionHistory.bin:3110:><`��com/example/modme
+nu/client/ui/screen/NetworkManagerScreen.java�C:\Users\prang\Desktop\VARZEA\po
+ssivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\NodeConfigScre
+en.java5��g�_�
+              `���( ��com/example/modmenu/client/ui/screen/NodeConfigScree
+n.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\com\example
+\modmenu\client\ui\screen\NodeGroupConfigScreen.javaK��1-��ǔ�d$���com/exa
+mple/modmenu/client/ui/screen/NodeGroupConfigScreen.java�C:\Users\prang\Deskto
+p\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Nod
+eGroupsListScreen.javao�4�./��̳.�ކ%�com/example/modmenu/client/ui/screen/No
+deGroupsListScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main
+\java\com\example\modmenu\client\ui\screen\PickBiomeScreen.java�B~<O����ᕶ�h�
+com/example/modmenu/client/ui/screen/PickBiomeScreen.java�C:\Users\prang\Deskt
+op\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Pi
+ckColorScreen.java"-X��@w>z������com/example/modmenu/client/ui/screen/PickC
+olorScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\co
+m\example\modmenu\client\ui\screen\PickIconScreen.java��?�j��U�HQ       ��com/e
+xample/modmenu/client/ui/screen/PickIconScreen.java�C:\Users\prang\Desktop\VAR
+ZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\PickItem
+FromNodeScreen.javaI��Խ;/pgߧOa*
+.gradle\8.8\executionHistory\executionHistory.bin:3145:B�v�4#����ؓy�҇���3��N
+odeGroupConfigScreen.class��Y�Xځ~(k�}_-և���3�9�NodeGroupsListScreen$GroupR
+owComponent.class�Ax�lGD��3�a�ۇ���3�#�NodeGroupsListScreen.class��[�u#
+��N     So~��܇���3�#�PickBiomeScreen.class���ЩG>�20L��懀��3�?�PickColorScreen$1
+.class�]#::k/�E���J��3��PickColorScreen$RGBSlider.class��7L��A6�ǰ�c
+���3��PickColorScreen.class�7�q`7�o�L��񇀉�3�%�PickIconScreen$1.class
+KU���2{��,R�.&�]�����3��PickIconScreen.classC=������>�Cobz�����3�5�PickI
+temFromNodeScreen$1.class�_��7҂^~z���������3�+�PickItemFromNodeScreen$2.cl
+ass%bSI��Mm��: ����3�
+.gradle\8.8\executionHistory\executionHistory.bin:3223:><`��com/example/modme
+nu/client/ui/screen/NetworkManagerScreen.java�C:\Users\prang\Desktop\VARZEA\po
+ssivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\NodeConfigScre
+en.java5��g�_�
+              `���( ��com/example/modmenu/client/ui/screen/NodeConfigScree
+n.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\com\example
+\modmenu\client\ui\screen\NodeGroupConfigScreen.javaK��1-��ǔ�d$���com/exa
+mple/modmenu/client/ui/screen/NodeGroupConfigScreen.java�C:\Users\prang\Deskto
+p\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Nod
+eGroupsListScreen.javao�4�./��̳.�ކ%�com/example/modmenu/client/ui/screen/No
+deGroupsListScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main
+\java\com\example\modmenu\client\ui\screen\PickBiomeScreen.java�B~<O����ᕶ�h�
+com/example/modmenu/client/ui/screen/PickBiomeScreen.java�C:\Users\prang\Deskt
+op\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Pi
+ckColorScreen.java"-X��@w>z������com/example/modmenu/client/ui/screen/PickC
+olorScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\co
+m\example\modmenu\client\ui\screen\PickIconScreen.java��?�j��U�HQ       ��com/e
+xample/modmenu/client/ui/screen/PickIconScreen.java�C:\Users\prang\Desktop\VAR
+ZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\PickItem
+FromNodeScreen.javaI��Խ;/pgߧOa*
+.gradle\8.8\executionHistory\executionHistory.bin:3260:B�v�4#����ؓy���ǉ�3��N
+odeGroupConfigScreen.class��Y�Xځ~(k�}_-��ǉ�3�9�NodeGroupsListScreen$GroupR
+owComponent.class�Ax�lGD��3�a���ǉ�3�#�NodeGroupsListScreen.class��[�u#
+��N     So~����ǉ�3�#�PickBiomeScreen.class���ЩG>�20L����ǉ�3�?�PickColorScreen$
+1.class�]#::k/�E���J��ǉ�3��PickColorScreen$RGBSlider.class��7L��A6�ǰ
+�c���ǉ�3��PickColorScreen.class�7�q`7�o�L����ǉ�3�%�PickIconScreen$1.cla
+ssKU���2{��,R�.&�]��ǉ�3��PickIconScreen.classC=������>�Cobz��ǉ�3�5�Pic
+kItemFromNodeScreen$1.class�_��7҂^~z������ǉ�3�+�PickItemFromNodeScreen$2.c
+lass%bSI��Mm��:¢�ǉ�3�
+.gradle\8.8\executionHistory\executionHistory.bin:3336:><`��com/example/modme
+nu/client/ui/screen/NetworkManagerScreen.java�C:\Users\prang\Desktop\VARZEA\po
+ssivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\NodeConfigScre
+en.java5��g�_�
+              `���( ��com/example/modmenu/client/ui/screen/NodeConfigScree
+n.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\com\example
+\modmenu\client\ui\screen\NodeGroupConfigScreen.javaK��1-��ǔ�d$���com/exa
+mple/modmenu/client/ui/screen/NodeGroupConfigScreen.java�C:\Users\prang\Deskto
+p\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Nod
+eGroupsListScreen.javao�4�./��̳.�ކ%�com/example/modmenu/client/ui/screen/No
+deGroupsListScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main
+\java\com\example\modmenu\client\ui\screen\PickBiomeScreen.java�B~<O����ᕶ�h�
+com/example/modmenu/client/ui/screen/PickBiomeScreen.java�C:\Users\prang\Deskt
+op\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Pi
+ckColorScreen.java"-X��@w>z������com/example/modmenu/client/ui/screen/PickC
+olorScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\co
+m\example\modmenu\client\ui\screen\PickIconScreen.java��?�j��U�HQ       ��com/e
+xample/modmenu/client/ui/screen/PickIconScreen.java�C:\Users\prang\Desktop\VAR
+ZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\PickItem
+FromNodeScreen.javaI��Խ;/pgߧOa*
+.gradle\8.8\executionHistory\executionHistory.bin:3372:B�v�4#����ؓy�۹���3��N
+odeGroupConfigScreen.class��Y�Xځ~(k�}_-㹰��3�9�NodeGroupsListScreen$GroupRo
+wComponent.class�Ax�lGD��3�a������3�#�NodeGroupsListScreen.class��[�u#
+��N     So~�������3�#�PickBiomeScreen.class���ЩG>�20L�������3�?�PickColorScree
+n$1.class�]#::k/�E���J�����3��PickColorScreen$RGBSlider.class��7L��A6
+�ǰ�c������3��PickColorScreen.class�7�q`7�o�L�������3�%�PickIconScreen$
+1.classKU���2{��,R�.&�]Ժ���3��PickIconScreen.classC=������>�Cobzۺ���3�5
+�PickItemFromNodeScreen$1.class�_��7҂^~z����𺰊�3�+�PickItemFromNodeScreen
+$2.class%bSI��Mm��:������3�
+.gradle\8.8\executionHistory\executionHistory.bin:3452:><`��com/example/modme
+nu/client/ui/screen/NetworkManagerScreen.java�C:\Users\prang\Desktop\VARZEA\po
+ssivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\NodeConfigScre
+en.java5��g�_�
+              `���( ��com/example/modmenu/client/ui/screen/NodeConfigScree
+n.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\com\example
+\modmenu\client\ui\screen\NodeGroupConfigScreen.javaK��1-��ǔ�d$���com/exa
+mple/modmenu/client/ui/screen/NodeGroupConfigScreen.java�C:\Users\prang\Deskto
+p\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Nod
+eGroupsListScreen.javao�4�./��̳.�ކ%�com/example/modmenu/client/ui/screen/No
+deGroupsListScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main
+\java\com\example\modmenu\client\ui\screen\PickBiomeScreen.java�B~<O����ᕶ�h�
+com/example/modmenu/client/ui/screen/PickBiomeScreen.java�C:\Users\prang\Deskt
+op\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Pi
+ckColorScreen.java"-X��@w>z������com/example/modmenu/client/ui/screen/PickC
+olorScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\co
+m\example\modmenu\client\ui\screen\PickIconScreen.java��?�j��U�HQ       ��com/e
+xample/modmenu/client/ui/screen/PickIconScreen.java�C:\Users\prang\Desktop\VAR
+ZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\PickItem
+FromNodeScreen.javaI��Խ;/pgߧOa*
+.gradle\8.8\executionHistory\executionHistory.bin:3491:B�v�4#����ؓy�����3��N
+odeGroupConfigScreen.class��Y�Xځ~(k�}_-�����3�9�NodeGroupsListScreen$Group
+RowComponent.class�Ax�lGD��3�a������3�#�NodeGroupsListScreen.class��[�u
+#��N    So~�������3�#�PickBiomeScreen.class���ЩG>�20L�������3�?�PickColorScr
+een$1.class�]#::k/�E���JǑ���3��PickColorScreen$RGBSlider.class��7L��A
+6�ǰ�c�ʑ���3��PickColorScreen.class�7�q`7�o�L��Б���3�%�PickIconScreen$1
+.classKU���2{��,R�.&�]����3��PickIconScreen.classC=������>�Cobz����3�5
+�PickItemFromNodeScreen$1.class�_��7҂^~z���������3�+�PickItemFromNodeScree
+n$2.class%bSI��Mm��: ����3�
+.gradle\8.8\executionHistory\executionHistory.bin:3572:><`��com/example/modme
+nu/client/ui/screen/NetworkManagerScreen.java�C:\Users\prang\Desktop\VARZEA\po
+ssivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\NodeConfigScre
+en.java5��g�_�
+              `���( ��com/example/modmenu/client/ui/screen/NodeConfigScree
+n.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\com\example
+\modmenu\client\ui\screen\NodeGroupConfigScreen.javaK��1-��ǔ�d$���com/exa
+mple/modmenu/client/ui/screen/NodeGroupConfigScreen.java�C:\Users\prang\Deskto
+p\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Nod
+eGroupsListScreen.javao�4�./��̳.�ކ%�com/example/modmenu/client/ui/screen/No
+deGroupsListScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main
+\java\com\example\modmenu\client\ui\screen\PickBiomeScreen.java�B~<O����ᕶ�h�
+com/example/modmenu/client/ui/screen/PickBiomeScreen.java�C:\Users\prang\Deskt
+op\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Pi
+ckColorScreen.java"-X��@w>z������com/example/modmenu/client/ui/screen/PickC
+olorScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\co
+m\example\modmenu\client\ui\screen\PickIconScreen.java��?�j��U�HQ       ��com/e
+xample/modmenu/client/ui/screen/PickIconScreen.java�C:\Users\prang\Desktop\VAR
+ZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\PickItem
+FromNodeScreen.javaI��Խ;/pgߧOa*
+.gradle\8.8\executionHistory\executionHistory.bin:3615:B�v�4#����ؓy�݇䍿3��Nod
+eGroupConfigScreen.class��Y�Xځ~(k�}_-�䍿3�9�NodeGroupsListScreen$GroupRowCo
+mponent.class�Ax�lGD��3�a���䍿3�#�NodeGroupsListScreen.class��[�u#��N   S
+o~����䍿3�#�PickBiomeScreen.class���ЩG>�20L��ȉ䍿3�?�PickColorScreen$1.class
+�]#::k/�E���J�䍿3��PickColorScreen$RGBSlider.class��7L��A6�ǰ�c��䍿3��
+PickColorScreen.class�7�q`7�o�L���䍿3�%�PickIconScreen$1.classKU���2{��,
+R�.&�]�䍿3��PickIconScreen.classC=������>�Cobz�䍿3�5�PickItemFromNodeScree
+n$1.class�_��7҂^~z������䍿3�+�PickItemFromNodeScreen$2.class%bSI��Mm��
+:���䍿3�
+.gradle\8.8\executionHistory\executionHistory.bin:3696:><`��com/example/modme
+nu/client/ui/screen/NetworkManagerScreen.java�C:\Users\prang\Desktop\VARZEA\po
+ssivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\NodeConfigScre
+en.java5��g�_�
+              `���( ��com/example/modmenu/client/ui/screen/NodeConfigScree
+n.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\com\example
+\modmenu\client\ui\screen\NodeGroupConfigScreen.javaK��1-��ǔ�d$���com/exa
+mple/modmenu/client/ui/screen/NodeGroupConfigScreen.java�C:\Users\prang\Deskto
+p\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Nod
+eGroupsListScreen.javao�4�./��̳.�ކ%�com/example/modmenu/client/ui/screen/No
+deGroupsListScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main
+\java\com\example\modmenu\client\ui\screen\PickBiomeScreen.java�B~<O����ᕶ�h�
+com/example/modmenu/client/ui/screen/PickBiomeScreen.java�C:\Users\prang\Deskt
+op\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Pi
+ckColorScreen.java"-X��@w>z������com/example/modmenu/client/ui/screen/PickC
+olorScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\co
+m\example\modmenu\client\ui\screen\PickIconScreen.java��?�j��U�HQ       ��com/e
+xample/modmenu/client/ui/screen/PickIconScreen.java�C:\Users\prang\Desktop\VAR
+ZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\PickItem
+FromNodeScreen.javaI��Խ;/pgߧOa*
+.gradle\8.8\executionHistory\executionHistory.bin:3734:B�v�4#����ؓyŕ����3��N
+odeGroupConfigScreen.class��Y�Xځ~(k�}_-�����3�9�NodeGroupsListScreen$Group
+RowComponent.class�Ax�lGD��3�a������3�#�NodeGroupsListScreen.class��[�u
+#��N    So~�������3�#�PickBiomeScreen.class���ЩG>�20L�������3�?�PickColorScr
+een$1.class�]#::k/�E���J�����3��PickColorScreen$RGBSlider.class��7L��A
+6�ǰ�c������3��PickColorScreen.class�7�q`7�o�L�������3�%�PickIconScree
+n$1.classKU���2{��,R�.&�]�����3��PickIconScreen.classC=������>�Cobz����
+�3�5�PickItemFromNodeScreen$1.class�_��7҂^~z���������3�+�PickItemFromNode
+Screen$2.class%bSI��Mm��:������3�
+Select-String : O arquivo C:\Users\prang\Desktop\VARZEA\possivelModmenu\.gradle
+\8.8\executionHistory\executionHistory.lock não pode ser lido: O processo não
+pode acessar o arquivo porque outro processo bloqueou parte do arquivo.
+No linha:1 caractere:26
++ Get-ChildItem -Recurse | Select-String "PickColorScreen"
++                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidArgument: (:) [Select-String], ArgumentEx
+   ception
+    + FullyQualifiedErrorId : ProcessingFile,Microsoft.PowerShell.Commands.Sel
+   ectStringCommand
+
+Select-String : O arquivo C:\Users\prang\Desktop\VARZEA\possivelModmenu\.gradle
+\8.8\fileHashes\fileHashes.lock não pode ser lido: O processo não pode acessar
+o arquivo porque outro processo bloqueou parte do arquivo.
+No linha:1 caractere:26
++ Get-ChildItem -Recurse | Select-String "PickColorScreen"
++                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidArgument: (:) [Select-String], ArgumentEx
+   ception
+    + FullyQualifiedErrorId : ProcessingFile,Microsoft.PowerShell.Commands.Sel
+   ectStringCommand
+
+Select-String : O arquivo C:\Users\prang\Desktop\VARZEA\possivelModmenu\.gradle
+\buildOutputCleanup\buildOutputCleanup.lock não pode ser lido: O processo não
+pode acessar o arquivo porque outro processo bloqueou parte do arquivo.
+No linha:1 caractere:26
++ Get-ChildItem -Recurse | Select-String "PickColorScreen"
++                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidArgument: (:) [Select-String], ArgumentEx
+   ception
+    + FullyQualifiedErrorId : ProcessingFile,Microsoft.PowerShell.Commands.Sel
+   ectStringCommand
+
+build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen$1.
+class:1:����=b
+                6com/example/modmenu/client/ui/screen/PickColo
+rScreen$1this$06Lcom/example/modmenu/client/ui/screen/PickColorScreen;
+build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen$1.
+class:3:
+        ,com/example/modmenu/client/ui/base/UIElement<init>(IIII)V
+�
+4com/example/modmenu/client/ui/screen/PickColorScreenrI
+g
+        b
+build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen$1.
+class:12:access$000W(Lcom/example/modmenu/client/ui/screen/PickColorScreen;)L
+net/minecraft/client/gui/Font5
+build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen$1.
+class:16:(E
+           FGdrawCenteredString7(Lnet/minecraft/client/gui/Font;Ljava
+/lang/String;III)V=(Lcom/example/modmenu/client/ui/screen/PickColorScreen;III
+I)VCodeLineNumberTableLocalVariableTablethis8Lcom/example/modmenu
+/client/ui/screen/PickColorScreen$1;xywidthheightrender,(Lnet/
+minecraft/client/gui/GuiGraphics;IIF)V&Lnet/minecraft/client/gui/GuiGraphics;
+mxmyptFcolor
+build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen$1.
+class:17:SourceFilePickColorScreen.javaEnclosingMethod
+                                                      ^_
+                                                        setupLayout
+()NestHost
+          InnerClasses
+                      HIl*+�
+*��J.K>LMNO
+PQRSI�
+build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen$RG
+BSlider.class:1:����=�
+                        >com/example/modmenu/client/ui/screen/
+PickColorScreen$RGBSliderthis$06Lcom/example/modmenu/client/ui/screen/Pick
+ColorScreen;
+build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen$RG
+BSlider.class:5:345
+                   674com/example/modmenu/client/ui/screen/PickColorSc
+reen
+build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen$RG
+BSlider.class:6:access$100W(Lcom/example/modmenu/client/ui/screen/PickColorSc
+reen;)Lnet/minecraft/client/gui/Font;9
+                                      :;makeConcatWithConstants'(Lj
+ava/lang/String;I)Ljava/lang/String;
+build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen$RG
+BSlider.class:13:RST
+                    UVjava/lang/IntegervalueOf(I)Ljava/lang/Int
+eger;
+     XYZ
+        [\ava/util/function/Consumeraccept(Ljava/lang/Object;
+)V      Signature2Ljava/util/function/Consumer<Ljava/lang/Integer;>;m(Lcom/exa
+mple/modmenu/client/ui/screen/PickColorScreen;IIIILjava/lang/String;ILjava/util
+/function/Consumer;)VCodeLineNumberTableLocalVariableTablethis@Lc
+om/example/modmenu/client/ui/screen/PickColorScreen$RGBSlider;initialLoca
+lVariableTypeTableL(IIIILjava/lang/String;ILjava/util/function/Consumer<Ljava
+/lang/Integer;>;)Vrender,(Lnet/minecraft/client/gui/GuiGraphics;IIF)Vg
+&Lnet/minecraft/client/gui/GuiGraphics;mxmyptknobX
+                                                  mouseClicked
+(DDI)ZDbutton
+build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen$RG
+BSlider.class:16:SourceFilePickColorScreen.javNestHostBootstrapMethod
+s
+build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen.cl
+ass:1:����=�
+                4com/example/modmenu/client/ui/screen/PickColorS
+creenfontLnet/minecraft/client/gui/Font;
+build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen.cl
+ass:6:layoutRoot0Lcom/example/modmenu/client/ui/base/UIContainer;,8com/ex
+ample/modmenu/client/ui/component/ResponsiveButto.Cancel0
+                                                         12acce
+ptU(Lcom/example/modmenu/client/ui/screen/PickColorScreen;)Ljava/util/functio
+n/Consumer;
+build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen.cl
+ass:10:F
+        GH      addSlider6(Ljava/lang/String;IIILjava/util/function/Consum
+er;I)JGreenMBlue0P6com/example/modmenu/client/ui/screen
+/PickColorScreen$1
+build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen.cl
+ass:11:OR
+         S=(Lcom/example/modmenu/client/ui/screen/PickColorScreen;IIII)
+VU>com/example/modmenu/client/ui/screen/PickColorScreen$RGBSlider
+build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen.cl
+ass:12:TW
+         Xm(Lcom/example/modmenu/client/ui/screen/PickColorScreen;IIIIL
+java/lang/String;ILjava/util/function/Consumer;)V
+build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen.cl
+ass:15:mno
+          pqnet/minecraft/client/Minecraft
+setScreen,(Lnet/minecraft/client/gui/screens/Screen;)V  Signature2Ljava/ut
+il/function/Consumer<Ljava/lang/Integer;>;J(Lnet/minecraft/client/gui/screens
+/Screen;ILjava/util/function/Consumer;)VCodeLineNumberTableLocalVariab
+leTablethis6Lcom/example/modmenu/client/ui/screen/PickColorScreen;
+                                                                  initi
+alColorLocalVariableTypeTable_(Lnet/minecraft/client/gui/screens/Screen;IL
+java/util/function/Consumer<Ljava/lang/Integer;>;)V
+                                                   setupLayout()Vcente
+rXstartY
+        sliderWidthlabelLjava/lang/String;xywsetteri
+nitialK(Ljava/lang/String;IIILjava/util/function/Consumer<Ljava/lang/Integer;
+>;I)Vlambda$setupLayout$4(Ljava/lang/Integer;)VvalLjava/lang/Intege
+r;lambda$setupLayout$3lambda$setupLayout$2lambda$setupLayout$1=(Lcom
+/example/modmenu/client/ui/component/ResponsiveButton;)Vbtn:Lcom/example/m
+odmenu/client/ui/component/ResponsiveButton;lambda$setupLayout$0
+build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen.cl
+ass:16:access$000W(Lcom/example/modmenu/client/ui/screen/PickColorScreen;)Lne
+t/minecraft/client/gui/Font;x0
+build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen.cl
+ass:18:SourceFilePickColorScreen.java
+                                     NestMembersBootstrapMethods�
+build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen$1.class.uniq
+ueId144:1:����=b
+                        6com/example/modmenu/client/ui/screen/PickCo
+lorScreen$1this$06Lcom/example/modmenu/client/ui/screen/PickColorScreen;
+build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen$1.class.uniq
+ueId144:3:
+          ,com/example/modmenu/client/ui/base/UIElement<init>(IIII
+)V�
+4com/example/modmenu/client/ui/screen/PickColorScreenrI
+g
+        b
+build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen$1.class.uniq
+ueId144:12:access$000W(Lcom/example/modmenu/client/ui/screen/PickColorScreen;
+)Lnet/minecraft/client/gui/Font5
+build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen$1.class.uniq
+ueId144:16:(E
+             FGdrawCenteredString7(Lnet/minecraft/client/gui/Font;Lja
+va/lang/String;III)V=(Lcom/example/modmenu/client/ui/screen/PickColorScreen;I
+III)VCodeLineNumberTableLocalVariableTablethis8Lcom/example/modme
+nu/client/ui/screen/PickColorScreen$1;xywidthheightrender,(Lne
+t/minecraft/client/gui/GuiGraphics;IIF)V&Lnet/minecraft/client/gui/GuiGraphic
+s;mxmyptFcolor
+build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen$1.class.uniq
+ueId144:17:SourceFilePickColorScreen.javaEnclosingMethod
+                                                        ^_
+                                                          setupLayo
+ut()NestHost
+            InnerClasses
+                        HIl*+�
+*��J.K>LMNO
+PQRSI�
+build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen$RGBSlider.cl
+ass.uniqueId200:1:����=�
+                                >com/example/modmenu/client/ui/scree
+n/PickColorScreen$RGBSliderthis$06Lcom/example/modmenu/client/ui/screen/Pi
+ckColorScreen;
+build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen$RGBSlider.cl
+ass.uniqueId200:5:345
+                     674com/example/modmenu/client/ui/screen/PickColor
+Screen
+build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen$RGBSlider.cl
+ass.uniqueId200:6:access$100W(Lcom/example/modmenu/client/ui/screen/PickColor
+Screen;)Lnet/minecraft/client/gui/Font;9
+                                        :;makeConcatWithConstants'(
+Ljava/lang/String;I)Ljava/lang/String;
+build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen$RGBSlider.cl
+ass.uniqueId200:13:RST
+                      UVjava/lang/IntegervalueOf(I)Ljava/lang/I
+nteger;
+       XYZ
+          [\ava/util/function/Consumeraccept(Ljava/lang/Objec
+t;)V    Signature2Ljava/util/function/Consumer<Ljava/lang/Integer;>;m(Lcom/e
+xample/modmenu/client/ui/screen/PickColorScreen;IIIILjava/lang/String;ILjava/ut
+il/function/Consumer;)VCodeLineNumberTableLocalVariableTablethis@
+Lcom/example/modmenu/client/ui/screen/PickColorScreen$RGBSlider;initialLo
+calVariableTypeTableL(IIIILjava/lang/String;ILjava/util/function/Consumer<Lja
+va/lang/Integer;>;)Vrender,(Lnet/minecraft/client/gui/GuiGraphics;IIF)V
+g&Lnet/minecraft/client/gui/GuiGraphics;mxmyptknobX
+                                                   mouseClicke
+d(DDI)ZDbutton
+build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen$RGBSlider.cl
+ass.uniqueId200:16:SourceFilePickColorScreen.javNestHostBootstrapMeth
+ods
+build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen.class.unique
+Id197:1:����=�
+                4com/example/modmenu/client/ui/screen/PickColo
+rScreenfontLnet/minecraft/client/gui/Font;
+build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen.class.unique
+Id197:6:layoutRoot0Lcom/example/modmenu/client/ui/base/UIContainer;,8com/
+example/modmenu/client/ui/component/ResponsiveButto.Cancel0
+                                                           12ac
+ceptU(Lcom/example/modmenu/client/ui/screen/PickColorScreen;)Ljava/util/funct
+ion/Consumer;
+build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen.class.unique
+Id197:10:F
+          GH    addSlider6(Ljava/lang/String;IIILjava/util/function/Cons
+umer;I)JGreenMBlue0P6com/example/modmenu/client/ui/scre
+en/PickColorScreen$1
+build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen.class.unique
+Id197:11:OR
+           S=(Lcom/example/modmenu/client/ui/screen/PickColorScreen;III
+I)VU>com/example/modmenu/client/ui/screen/PickColorScreen$RGBSlider
+build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen.class.unique
+Id197:12:TW
+           Xm(Lcom/example/modmenu/client/ui/screen/PickColorScreen;III
+ILjava/lang/String;ILjava/util/function/Consumer;)V
+build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen.class.unique
+Id197:15:mno
+            pqnet/minecraft/client/Minecraft
+setScreen,(Lnet/minecraft/client/gui/screens/Screen;)V  Signature2Ljava/ut
+il/function/Consumer<Ljava/lang/Integer;>;J(Lnet/minecraft/client/gui/screens
+/Screen;ILjava/util/function/Consumer;)VCodeLineNumberTableLocalVariab
+leTablethis6Lcom/example/modmenu/client/ui/screen/PickColorScreen;
+                                                                  initi
+alColorLocalVariableTypeTable_(Lnet/minecraft/client/gui/screens/Screen;IL
+java/util/function/Consumer<Ljava/lang/Integer;>;)V
+                                                   setupLayout()Vcente
+rXstartY
+        sliderWidthlabelLjava/lang/String;xywsetteri
+nitialK(Ljava/lang/String;IIILjava/util/function/Consumer<Ljava/lang/Integer;
+>;I)Vlambda$setupLayout$4(Ljava/lang/Integer;)VvalLjava/lang/Intege
+r;lambda$setupLayout$3lambda$setupLayout$2lambda$setupLayout$1=(Lcom
+/example/modmenu/client/ui/component/ResponsiveButton;)Vbtn:Lcom/example/m
+odmenu/client/ui/component/ResponsiveButton;lambda$setupLayout$0
+build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen.class.unique
+Id197:16:access$000W(Lcom/example/modmenu/client/ui/screen/PickColorScreen;)L
+net/minecraft/client/gui/Font;x0
+build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen.class.unique
+Id197:18:SourceFilePickColorScreen.java
+                                       NestMembersBootstrapMethods�
+Select-String : O arquivo
+C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New World
+(1)\session.lock não pode ser lido: O processo não pode acessar o arquivo
+porque outro processo bloqueou parte do arquivo.
+No linha:1 caractere:26
++ Get-ChildItem -Recurse | Select-String "PickColorScreen"
++                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : InvalidArgument: (:) [Select-String], ArgumentEx
+   ception
+    + FullyQualifiedErrorId : ProcessingFile,Microsoft.PowerShell.Commands.Sel
+   ectStringCommand
+
+src\main\java\com\example\modmenu\client\ui\screen\PickColorScreen.java:11:publ
+ic class PickColorScreen extends BaseResponsiveLodestoneScreen {
+src\main\java\com\example\modmenu\client\ui\screen\PickColorScreen.java:16:
+public PickColorScreen(Screen parent, int initialColor, Consumer<Integer>
+onConfirm) {
+src\main\java\com\example\modmenu\client\ui\screen\PickColorScreen.java:49:
+            int color = 0xFF000000 | (r << 16) | (PickColorScreen.this.g << 8)
+| b;
+src\main\java\com\example\modmenu\client\ui\screen\PickColorScreen.java:52:
+            g.drawCenteredString(font, String.format("#%02X%02X%02X", r,
+PickColorScreen.this.g, b), getX() + getWidth() / 2, getY() + getHeight() + 5,
+0xFFFFFFFF);

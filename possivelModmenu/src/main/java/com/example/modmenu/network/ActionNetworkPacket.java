@@ -4,20 +4,28 @@ import com.example.modmenu.store.StorePriceManager;
 import com.example.modmenu.store.logistics.*;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.MenuProvider;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
 import net.minecraftforge.network.NetworkEvent;
 import net.minecraftforge.network.NetworkHooks;
+import net.minecraftforge.registries.ForgeRegistries;
 
-import java.util.UUID;
+import java.util.*;
 import java.util.function.Supplier;
 
 public class ActionNetworkPacket {
     private final int action;
     private UUID networkId;
     private UUID targetId;
+    private UUID secondTargetId;
     private String stringData;
     private int intData;
     private BlockPos posData;
@@ -25,6 +33,7 @@ public class ActionNetworkPacket {
     private LogisticsRule ruleData;
     private NetworkNode nodeData;
     private NodeGroup groupData;
+    private RuleTemplate templateData;
 
     public ActionNetworkPacket(int action) {
         this.action = action;
@@ -102,6 +111,13 @@ public class ActionNetworkPacket {
         return p;
     }
 
+    public static ActionNetworkPacket requestGroupInventoryProbe(UUID networkId, UUID groupId) {
+        ActionNetworkPacket p = new ActionNetworkPacket(21);
+        p.networkId = networkId;
+        p.targetId = groupId;
+        return p;
+    }
+
     public static ActionNetworkPacket testRule(UUID networkId, UUID ruleId) {
         ActionNetworkPacket p = new ActionNetworkPacket(14);
         p.networkId = networkId;
@@ -127,45 +143,56 @@ public class ActionNetworkPacket {
         return p;
     }
 
+    public static ActionNetworkPacket addTemplate(UUID networkId, RuleTemplate template) {
+        ActionNetworkPacket p = new ActionNetworkPacket(22, networkId);
+        p.templateData = template;
+        return p;
+    }
+
+    public static ActionNetworkPacket removeTemplate(UUID networkId, UUID templateId) {
+        ActionNetworkPacket p = new ActionNetworkPacket(23, networkId);
+        p.targetId = templateId;
+        return p;
+    }
+
+    public static ActionNetworkPacket applyTemplate(UUID networkId, UUID targetId, boolean isGroup, UUID templateId) {
+        ActionNetworkPacket p = new ActionNetworkPacket(24, networkId);
+        p.targetId = targetId;
+        p.intData = isGroup ? 1 : 0;
+        p.secondTargetId = templateId;
+        return p;
+    }
+
+    public static ActionNetworkPacket pasteNodeConfig(UUID networkId, UUID targetId, NetworkNode config) {
+        ActionNetworkPacket p = new ActionNetworkPacket(25, networkId);
+        p.targetId = targetId;
+        p.nodeData = config;
+        return p;
+    }
+
+    public static ActionNetworkPacket setOverflowTarget(UUID networkId, UUID targetId, boolean isGroup) {
+        ActionNetworkPacket p = new ActionNetworkPacket(26, networkId);
+        p.targetId = targetId;
+        p.intData = isGroup ? 1 : 0;
+        return p;
+    }
+
+    public static ActionNetworkPacket setViewedNetwork(UUID networkId) {
+        ActionNetworkPacket p = new ActionNetworkPacket(27, networkId);
+        return p;
+    }
+
     public ActionNetworkPacket(FriendlyByteBuf buf) {
         this.action = buf.readInt();
         if (buf.readBoolean()) this.networkId = buf.readUUID();
         if (buf.readBoolean()) this.targetId = buf.readUUID();
+        if (buf.readBoolean()) this.secondTargetId = buf.readUUID();
         if (buf.readBoolean()) this.stringData = buf.readUtf();
         if (buf.readBoolean()) this.intData = buf.readInt();
         if (buf.readBoolean()) this.posData = buf.readBlockPos();
         if (buf.readBoolean()) this.dimData = buf.readUtf();
         if (buf.readBoolean()) {
-            this.ruleData = new LogisticsRule();
-            ruleData.ruleId = buf.readUUID();
-            ruleData.sourceNodeId = buf.readUUID();
-            ruleData.sourceIsGroup = buf.readBoolean();
-            ruleData.destNodeId = buf.readUUID();
-            ruleData.destIsGroup = buf.readBoolean();
-            ruleData.sourceSide = buf.readUtf();
-            ruleData.destSide = buf.readUtf();
-            ruleData.mode = buf.readUtf();
-            ruleData.amountPerTick = buf.readInt();
-            ruleData.minAmount = buf.readInt();
-            ruleData.maxAmount = buf.readInt();
-            ruleData.priority = buf.readInt();
-            ruleData.speedMode = buf.readUtf();
-            ruleData.type = buf.readUtf();
-            int srcSlotSize = buf.readInt();
-            ruleData.sourceSlots = new java.util.ArrayList<>(srcSlotSize);
-            for (int i = 0; i < srcSlotSize; i++) ruleData.sourceSlots.add(buf.readInt());
-            int dstSlotSize = buf.readInt();
-            ruleData.destSlots = new java.util.ArrayList<>(dstSlotSize);
-            for (int i = 0; i < dstSlotSize; i++) ruleData.destSlots.add(buf.readInt());
-            ruleData.active = buf.readBoolean();
-            ruleData.filter = new LogisticsFilter();
-            ruleData.filter.matchType = buf.readUtf();
-            int valSize = buf.readInt();
-            ruleData.filter.matchValues = new java.util.ArrayList<>(valSize);
-            for (int i = 0; i < valSize; i++) ruleData.filter.matchValues.add(buf.readUtf());
-            if (buf.readBoolean()) ruleData.filter.nbtSample = buf.readNbt();
-            ruleData.filter.blacklist = buf.readBoolean();
-            ruleData.filter.fuzzyNbt = buf.readBoolean();
+            this.ruleData = readRule(buf);
         }
         if (buf.readBoolean()) {
             this.nodeData = new NetworkNode();
@@ -175,6 +202,7 @@ public class ActionNetworkPacket {
             if (buf.readBoolean()) nodeData.pos = buf.readBlockPos();
             if (buf.readBoolean()) nodeData.dimension = buf.readUtf();
             if (buf.readBoolean()) nodeData.blockId = buf.readUtf();
+            if (buf.readBoolean()) nodeData.iconItemId = buf.readUtf();
             if (buf.readBoolean()) nodeData.customName = buf.readUtf();
             nodeData.guiX = buf.readInt();
             nodeData.guiY = buf.readInt();
@@ -192,9 +220,74 @@ public class ActionNetworkPacket {
             this.groupData = new NodeGroup();
             groupData.groupId = buf.readUUID();
             groupData.name = buf.readUtf();
+            groupData.guiX = buf.readInt();
+            groupData.guiY = buf.readInt();
+            groupData.expanded = buf.readBoolean();
             int members = buf.readInt();
             for (int i = 0; i < members; i++) groupData.nodeIds.add(buf.readUUID());
         }
+        if (buf.readBoolean()) {
+            this.templateData = new RuleTemplate();
+            templateData.templateId = buf.readUUID();
+            templateData.name = buf.readUtf();
+            templateData.rule = readRule(buf);
+        }
+    }
+
+    private LogisticsRule readRule(FriendlyByteBuf buf) {
+        LogisticsRule rule = new LogisticsRule();
+        rule.ruleId = buf.readUUID();
+        rule.sourceNodeId = buf.readUUID();
+        rule.sourceIsGroup = buf.readBoolean();
+        rule.destNodeId = buf.readUUID();
+        rule.destIsGroup = buf.readBoolean();
+        rule.sourceSide = buf.readUtf();
+        rule.destSide = buf.readUtf();
+        rule.mode = buf.readUtf();
+        rule.distributionMode = buf.readUtf();
+        rule.amountPerTick = buf.readInt();
+        rule.minAmount = buf.readInt();
+        rule.maxAmount = buf.readInt();
+        rule.priority = buf.readInt();
+        rule.speedMode = buf.readUtf();
+        rule.type = buf.readUtf();
+        int srcSlotSize = buf.readInt();
+        rule.sourceSlots = new java.util.ArrayList<>(srcSlotSize);
+        for (int i = 0; i < srcSlotSize; i++) rule.sourceSlots.add(buf.readInt());
+        int dstSlotSize = buf.readInt();
+        rule.destSlots = new java.util.ArrayList<>(dstSlotSize);
+        for (int i = 0; i < dstSlotSize; i++) rule.destSlots.add(buf.readInt());
+        rule.active = buf.readBoolean();
+        rule.maintenanceMode = buf.readBoolean();
+        rule.scanItems = buf.readBoolean();
+        int condSize = buf.readInt();
+        rule.conditions = new java.util.ArrayList<>(condSize);
+        for (int i = 0; i < condSize; i++) {
+            LogicCondition cond = new LogicCondition();
+            if (buf.readBoolean()) cond.targetId = buf.readUUID();
+            cond.isGroup = buf.readBoolean();
+            cond.type = buf.readUtf();
+            cond.operator = buf.readUtf();
+            cond.value = buf.readInt();
+            cond.filter = new LogisticsFilter();
+            cond.filter.matchType = buf.readUtf();
+            int vSize = buf.readInt();
+            cond.filter.matchValues = new java.util.ArrayList<>(vSize);
+            for (int j = 0; j < vSize; j++) cond.filter.matchValues.add(buf.readUtf());
+            if (buf.readBoolean()) cond.filter.nbtSample = buf.readNbt();
+            cond.filter.blacklist = buf.readBoolean();
+            cond.filter.fuzzyNbt = buf.readBoolean();
+            rule.conditions.add(cond);
+        }
+        rule.filter = new LogisticsFilter();
+        rule.filter.matchType = buf.readUtf();
+        int valSize = buf.readInt();
+        rule.filter.matchValues = new java.util.ArrayList<>(valSize);
+        for (int i = 0; i < valSize; i++) rule.filter.matchValues.add(buf.readUtf());
+        if (buf.readBoolean()) rule.filter.nbtSample = buf.readNbt();
+        rule.filter.blacklist = buf.readBoolean();
+        rule.filter.fuzzyNbt = buf.readBoolean();
+        return rule;
     }
 
     public void encode(FriendlyByteBuf buf) {
@@ -203,6 +296,8 @@ public class ActionNetworkPacket {
         if (networkId != null) buf.writeUUID(networkId);
         buf.writeBoolean(targetId != null);
         if (targetId != null) buf.writeUUID(targetId);
+        buf.writeBoolean(secondTargetId != null);
+        if (secondTargetId != null) buf.writeUUID(secondTargetId);
         buf.writeBoolean(stringData != null);
         if (stringData != null) buf.writeUtf(stringData);
         buf.writeBoolean(true);
@@ -213,32 +308,7 @@ public class ActionNetworkPacket {
         if (dimData != null) buf.writeUtf(dimData);
         buf.writeBoolean(ruleData != null);
         if (ruleData != null) {
-            buf.writeUUID(ruleData.ruleId);
-            buf.writeUUID(ruleData.sourceNodeId);
-            buf.writeBoolean(ruleData.sourceIsGroup);
-            buf.writeUUID(ruleData.destNodeId);
-            buf.writeBoolean(ruleData.destIsGroup);
-            buf.writeUtf(ruleData.sourceSide);
-            buf.writeUtf(ruleData.destSide);
-            buf.writeUtf(ruleData.mode);
-            buf.writeInt(ruleData.amountPerTick);
-            buf.writeInt(ruleData.minAmount);
-            buf.writeInt(ruleData.maxAmount);
-            buf.writeInt(ruleData.priority);
-            buf.writeUtf(ruleData.speedMode);
-            buf.writeUtf(ruleData.type);
-            buf.writeInt(ruleData.sourceSlots.size());
-            for (int s : ruleData.sourceSlots) buf.writeInt(s);
-            buf.writeInt(ruleData.destSlots.size());
-            for (int s : ruleData.destSlots) buf.writeInt(s);
-            buf.writeBoolean(ruleData.active);
-            buf.writeUtf(ruleData.filter.matchType);
-            buf.writeInt(ruleData.filter.matchValues.size());
-            for (String s : ruleData.filter.matchValues) buf.writeUtf(s);
-            buf.writeBoolean(ruleData.filter.nbtSample != null);
-            if (ruleData.filter.nbtSample != null) buf.writeNbt(ruleData.filter.nbtSample);
-            buf.writeBoolean(ruleData.filter.blacklist);
-            buf.writeBoolean(ruleData.filter.fuzzyNbt);
+            writeRule(buf, ruleData);
         }
         buf.writeBoolean(nodeData != null);
         if (nodeData != null) {
@@ -251,6 +321,8 @@ public class ActionNetworkPacket {
             if (nodeData.dimension != null) buf.writeUtf(nodeData.dimension);
             buf.writeBoolean(nodeData.blockId != null);
             if (nodeData.blockId != null) buf.writeUtf(nodeData.blockId);
+            buf.writeBoolean(nodeData.iconItemId != null);
+            if (nodeData.iconItemId != null) buf.writeUtf(nodeData.iconItemId);
             buf.writeBoolean(nodeData.customName != null);
             if (nodeData.customName != null) buf.writeUtf(nodeData.customName);
             buf.writeInt(nodeData.guiX);
@@ -271,9 +343,66 @@ public class ActionNetworkPacket {
         if (groupData != null) {
             buf.writeUUID(groupData.groupId);
             buf.writeUtf(groupData.name != null ? groupData.name : "");
+            buf.writeInt(groupData.guiX);
+            buf.writeInt(groupData.guiY);
+            buf.writeBoolean(groupData.expanded);
             buf.writeInt(groupData.nodeIds.size());
             for (UUID id : groupData.nodeIds) buf.writeUUID(id);
         }
+        buf.writeBoolean(templateData != null);
+        if (templateData != null) {
+            buf.writeUUID(templateData.templateId);
+            buf.writeUtf(templateData.name);
+            writeRule(buf, templateData.rule);
+        }
+    }
+
+    private void writeRule(FriendlyByteBuf buf, LogisticsRule rule) {
+        buf.writeUUID(rule.ruleId);
+        buf.writeUUID(rule.sourceNodeId != null ? rule.sourceNodeId : UUID.randomUUID());
+        buf.writeBoolean(rule.sourceIsGroup);
+        buf.writeUUID(rule.destNodeId != null ? rule.destNodeId : UUID.randomUUID());
+        buf.writeBoolean(rule.destIsGroup);
+        buf.writeUtf(rule.sourceSide);
+        buf.writeUtf(rule.destSide);
+        buf.writeUtf(rule.mode);
+        buf.writeUtf(rule.distributionMode);
+        buf.writeInt(rule.amountPerTick);
+        buf.writeInt(rule.minAmount);
+        buf.writeInt(rule.maxAmount);
+        buf.writeInt(rule.priority);
+        buf.writeUtf(rule.speedMode);
+        buf.writeUtf(rule.type);
+        buf.writeInt(rule.sourceSlots.size());
+        for (int s : rule.sourceSlots) buf.writeInt(s);
+        buf.writeInt(rule.destSlots.size());
+        for (int s : rule.destSlots) buf.writeInt(s);
+        buf.writeBoolean(rule.active);
+        buf.writeBoolean(rule.maintenanceMode);
+        buf.writeBoolean(rule.scanItems);
+        buf.writeInt(rule.conditions.size());
+        for (LogicCondition cond : rule.conditions) {
+            buf.writeBoolean(cond.targetId != null);
+            if (cond.targetId != null) buf.writeUUID(cond.targetId);
+            buf.writeBoolean(cond.isGroup);
+            buf.writeUtf(cond.type);
+            buf.writeUtf(cond.operator);
+            buf.writeInt(cond.value);
+            buf.writeUtf(cond.filter.matchType);
+            buf.writeInt(cond.filter.matchValues.size());
+            for (String s : cond.filter.matchValues) buf.writeUtf(s);
+            buf.writeBoolean(cond.filter.nbtSample != null);
+            if (cond.filter.nbtSample != null) buf.writeNbt(cond.filter.nbtSample);
+            buf.writeBoolean(cond.filter.blacklist);
+            buf.writeBoolean(cond.filter.fuzzyNbt);
+        }
+        buf.writeUtf(rule.filter.matchType);
+        buf.writeInt(rule.filter.matchValues.size());
+        for (String s : rule.filter.matchValues) buf.writeUtf(s);
+        buf.writeBoolean(rule.filter.nbtSample != null);
+        if (rule.filter.nbtSample != null) buf.writeNbt(rule.filter.nbtSample);
+        buf.writeBoolean(rule.filter.blacklist);
+        buf.writeBoolean(rule.filter.fuzzyNbt);
     }
 
     public void handle(Supplier<NetworkEvent.Context> ctx) {
@@ -310,6 +439,7 @@ public class ActionNetworkPacket {
                                     node.customName = cleanName(state.getBlock().getName().getString()) + " [" + posData.getX() + "," + posData.getY() + "," + posData.getZ() + "]";
                                     
                                     network.nodes.add(node);
+                                    network.nodeMap = null; // Force rebuild
                                     player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00A7aAdded " + node.customName + " to network!"), true);
                                     player.level().playSound(null, player.getX(), player.getY(), player.getZ(), net.minecraft.sounds.SoundEvents.EXPERIENCE_ORB_PICKUP, net.minecraft.sounds.SoundSource.PLAYERS, 1.0f, 1.0f);
                                     break;
@@ -321,6 +451,8 @@ public class ActionNetworkPacket {
                                 if (network.networkId.equals(networkId)) {
                                     network.nodes.removeIf(node -> node.nodeId.equals(targetId));
                                     network.rules.removeIf(rule -> rule.sourceNodeId.equals(targetId) || rule.destNodeId.equals(targetId));
+                                    network.nodeMap = null;
+                                    network.needsSorting = true;
                                     break;
                                 }
                             }
@@ -337,6 +469,7 @@ public class ActionNetworkPacket {
                                         }
                                     }
                                     if (!updated) network.rules.add(ruleData);
+                                    network.needsSorting = true;
                                     break;
                                 }
                             }
@@ -345,6 +478,7 @@ public class ActionNetworkPacket {
                             for (NetworkData network : data.getNetworks()) {
                                 if (network.networkId.equals(networkId)) {
                                     network.rules.removeIf(rule -> rule.ruleId.equals(targetId));
+                                    network.needsSorting = true;
                                     break;
                                 }
                             }
@@ -377,6 +511,7 @@ public class ActionNetworkPacket {
                                     }
                                     
                                     network.nodes.add(node);
+                                    network.nodeMap = null;
                                     break;
                                 }
                             }
@@ -387,6 +522,7 @@ public class ActionNetworkPacket {
                                     for (int i = 0; i < network.nodes.size(); i++) {
                                         if (network.nodes.get(i).nodeId.equals(nodeData.nodeId)) {
                                             network.nodes.set(i, nodeData);
+                                            network.nodeMap = null;
                                             break;
                                         }
                                     }
@@ -477,6 +613,7 @@ public class ActionNetworkPacket {
                                         }
                                     }
                                     if (!updated) network.groups.add(groupData);
+                                    network.groupMap = null;
                                     break;
                                 }
                             }
@@ -487,17 +624,182 @@ public class ActionNetworkPacket {
                                     network.groups.removeIf(group -> group.groupId.equals(targetId));
                                     network.rules.removeIf(rule -> (rule.sourceIsGroup && rule.sourceNodeId.equals(targetId)) ||
                                                                   (rule.destIsGroup && rule.destNodeId.equals(targetId)));
+                                    network.groupMap = null;
+                                    network.needsSorting = true;
                                     break;
                                 }
                             }
                         }
+                        case 21 -> { // Request Group Inventory Probe
+                            for (NetworkData network : data.getNetworks()) {
+                                if (network.networkId.equals(networkId)) {
+                                    for (NodeGroup group : network.groups) {
+                                        if (group.groupId.equals(targetId)) {
+                                            probeAndSyncGroupInventory(player, network, group);
+                                            return;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        case 22 -> { // Add/Update Template
+                            for (NetworkData network : data.getNetworks()) {
+                                if (network.networkId.equals(networkId)) {
+                                    boolean updated = false;
+                                    for (int i = 0; i < network.ruleTemplates.size(); i++) {
+                                        if (network.ruleTemplates.get(i).templateId.equals(templateData.templateId)) {
+                                            network.ruleTemplates.set(i, templateData);
+                                            updated = true;
+                                            break;
+                                        }
+                                    }
+                                    if (!updated) network.ruleTemplates.add(templateData);
+                                    break;
+                                }
+                            }
+                        }
+                        case 23 -> { // Remove Template
+                            for (NetworkData network : data.getNetworks()) {
+                                if (network.networkId.equals(networkId)) {
+                                    network.ruleTemplates.removeIf(t -> t.templateId.equals(targetId));
+                                    break;
+                                }
+                            }
+                        }
+                        case 24 -> { // Apply Template
+                            for (NetworkData network : data.getNetworks()) {
+                                if (network.networkId.equals(networkId)) {
+                                    RuleTemplate template = network.ruleTemplates.stream()
+                                            .filter(t -> t.templateId.equals(secondTargetId))
+                                            .findFirst().orElse(null);
+                                    if (template != null) {
+                                        LogisticsRule newRule = template.rule.snapshot();
+                                        newRule.ruleId = UUID.randomUUID();
+                                        
+                                        // Intelligent placement: 
+                                        // If source is permanent (PLAYER/MARKET), target becomes destination.
+                                        // Otherwise target becomes source.
+                                        boolean sourceIsPerm = isPermanent(network, newRule.sourceNodeId, newRule.sourceIsGroup);
+                                        boolean destIsPerm = isPermanent(network, newRule.destNodeId, newRule.destIsGroup);
+                                        
+                                        if (sourceIsPerm && !destIsPerm) {
+                                            newRule.destNodeId = targetId;
+                                            newRule.destIsGroup = intData == 1;
+                                        } else {
+                                            newRule.sourceNodeId = targetId;
+                                            newRule.sourceIsGroup = intData == 1;
+                                        }
+                                        
+                                        network.rules.add(newRule);
+                                        network.needsSorting = true;
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                        case 25 -> { // Paste Node Config
+                            for (NetworkData network : data.getNetworks()) {
+                                if (network.networkId.equals(networkId)) {
+                                    for (NetworkNode node : network.nodes) {
+                                        if (node.nodeId.equals(targetId)) {
+                                            node.iconItemId = nodeData.iconItemId;
+                                            node.sideConfig = new HashMap<>(nodeData.sideConfig);
+                                            node.slotConfig = new HashMap<>(nodeData.slotConfig);
+                                            break;
+                                        }
+                                    }
+                                    break;
+                                }
+                            }
+                        }
+                        case 26 -> { // Set Overflow Target
+                            for (NetworkData network : data.getNetworks()) {
+                                if (network.networkId.equals(networkId)) {
+                                    network.overflowTargetId = targetId;
+                                    network.overflowIsGroup = intData == 1;
+                                    break;
+                                }
+                            }
+                        }
+                        case 27 -> { // Set Viewed Network
+                            data.viewedNetworkId = networkId;
+                        }
                     }
                     // Sync back
-                    PacketHandler.sendToPlayer(new SyncNetworksPacket(data.getNetworks()), player);
+                    PacketHandler.sendToPlayer(new SyncNetworksPacket(data.getNetworks(), data.viewedNetworkId), player);
                 });
             }
         });
         ctx.get().setPacketHandled(true);
+    }
+
+    private void probeAndSyncGroupInventory(ServerPlayer player, NetworkData network, NodeGroup group) {
+        Map<String, ItemStack> combined = new HashMap<>();
+        for (UUID id : group.nodeIds) {
+            NetworkNode node = network.nodes.stream().filter(n -> n.nodeId.equals(id)).findFirst().orElse(null);
+            if (node == null) continue;
+            
+            // Re-using the logic from probeAndSyncInventory but accumulating
+            List<ItemStack> items = getItemsFromNode(player, node);
+            for (ItemStack stack : items) {
+                if (stack.isEmpty()) continue;
+                String key = ForgeRegistries.ITEMS.getKey(stack.getItem()).toString();
+                if (stack.hasTag()) key += stack.getTag().toString();
+                
+                if (combined.containsKey(key)) {
+                    combined.get(key).grow(stack.getCount());
+                } else {
+                    combined.put(key, stack.copy());
+                }
+            }
+        }
+        
+        List<ItemStack> finalItems = new ArrayList<>(combined.values());
+        List<Integer> slotX = new ArrayList<>();
+        List<Integer> slotY = new ArrayList<>();
+        for (int i = 0; i < finalItems.size(); i++) {
+            slotX.add((i % 9) * 18);
+            slotY.add((i / 9) * 18);
+        }
+        
+        PacketHandler.sendToPlayer(new SyncNodeInventoryPacket(group.groupId, finalItems, slotX, slotY, null), player);
+    }
+
+    private List<ItemStack> getItemsFromNode(ServerPlayer player, NetworkNode node) {
+        List<ItemStack> items = new ArrayList<>();
+        if (node.nodeType.equals("BLOCK")) {
+            if (node.pos != null && node.dimension != null) {
+                ResourceLocation dimLoc = ResourceLocation.tryParse(node.dimension);
+                if (dimLoc != null) {
+                    ServerLevel level = player.serverLevel().getServer().getLevel(ResourceKey.create(Registries.DIMENSION, dimLoc));
+                    if (level != null && level.hasChunkAt(node.pos)) {
+                        BlockEntity be = level.getBlockEntity(node.pos);
+                        if (be != null) {
+                            be.getCapability(ForgeCapabilities.ITEM_HANDLER).ifPresent(handler -> {
+                                for (int i = 0; i < handler.getSlots(); i++) {
+                                    ItemStack s = handler.getStackInSlot(i);
+                                    if (!s.isEmpty()) items.add(s.copy());
+                                }
+                            });
+                        }
+                    }
+                }
+            }
+        } else if (node.nodeType.equals("PLAYER")) {
+            for (int i = 0; i < player.getInventory().getContainerSize(); i++) {
+                ItemStack s = player.getInventory().getItem(i);
+                if (!s.isEmpty()) items.add(s.copy());
+            }
+        } else if (node.nodeType.equals("CHAMBER")) {
+            StorePriceManager.SkillData skillData = StorePriceManager.getSkills(player.getUUID());
+            if (node.chamberIndex >= 0 && node.chamberIndex < skillData.chambers.size()) {
+                StorePriceManager.ChamberData chamber = skillData.chambers.get(node.chamberIndex);
+                for (ItemStack s : chamber.storedLoot) {
+                    if (!s.isEmpty()) items.add(s.copy());
+                }
+            }
+        }
+        return items;
     }
 
     private void probeAndSyncInventory(ServerPlayer player, NetworkNode node) {
@@ -592,6 +894,20 @@ public class ActionNetworkPacket {
         }
 
         PacketHandler.sendToPlayer(new SyncNodeInventoryPacket(node.nodeId, items, slotX, slotY, guiTexture), player);
+    }
+
+    private static NetworkNode findNode(NetworkData network, UUID nodeId) {
+        for (NetworkNode node : network.nodes) {
+            if (node.nodeId.equals(nodeId)) return node;
+        }
+        return null;
+    }
+
+    private static boolean isPermanent(NetworkData network, UUID id, boolean isGroup) {
+        if (id == null) return false;
+        if (isGroup) return false;
+        NetworkNode node = findNode(network, id);
+        return node != null && !node.nodeType.equals("BLOCK");
     }
 
     private static String cleanName(String name) {

@@ -38,24 +38,36 @@ public class NetworkTickHandler {
     private static final Map<UUID, Integer> networkRuleIndex = new ConcurrentHashMap<>();
     private static final Map<UUID, Long> ruleCooldowns = new ConcurrentHashMap<>();
     private static final Map<UUID, Integer> ruleSuccessStreak = new ConcurrentHashMap<>();
+    private static final Map<UUID, Integer> groupDistributionIndex = new ConcurrentHashMap<>();
+    private static final Object NULL_CAP = new Object();
 
     private static class TickContext {
         final Map<ResourceKey<Level>, Map<BlockPos, Map<Direction, Map<String, Object>>>> capabilityCache = new HashMap<>();
         final Set<UUID> rulesInChain = new HashSet<>();
+        double budgetUsed = 0;
+
+        boolean isCached(Level level, BlockPos pos, Direction side, String type) {
+            Map<String, Object> sideMap = capabilityCache.getOrDefault(level.dimension(), Collections.emptyMap())
+                    .getOrDefault(pos, Collections.emptyMap())
+                    .get(side);
+            return sideMap != null && sideMap.containsKey(type);
+        }
 
         @SuppressWarnings("unchecked")
         <T> T getCache(Level level, BlockPos pos, Direction side, String type) {
-            return (T) capabilityCache.getOrDefault(level.dimension(), Collections.emptyMap())
+            Map<String, Object> sideMap = capabilityCache.getOrDefault(level.dimension(), Collections.emptyMap())
                     .getOrDefault(pos, Collections.emptyMap())
-                    .getOrDefault(side, Collections.emptyMap())
-                    .get(type);
+                    .get(side);
+            if (sideMap == null) return null;
+            Object cached = sideMap.get(type);
+            return cached == NULL_CAP ? null : (T) cached;
         }
 
         void putCache(Level level, BlockPos pos, Direction side, String type, Object cap) {
             capabilityCache.computeIfAbsent(level.dimension(), k -> new HashMap<>())
                     .computeIfAbsent(pos, k -> new HashMap<>())
                     .computeIfAbsent(side, k -> new HashMap<>())
-                    .put(type, cap);
+                    .put(type, cap == null ? NULL_CAP : cap);
         }
     }
 
@@ -98,10 +110,31 @@ public class NetworkTickHandler {
         }
     }
 
+    private static void recordMovement(NetworkData network, String itemId, String itemName, int count, UUID src, UUID dst, String type) {
+        network.movementHistory.add(0, new MovementRecord(System.currentTimeMillis(), itemId, itemName, count, src, dst, type));
+        if (network.movementHistory.size() > 50) {
+            network.movementHistory.remove(network.movementHistory.size() - 1);
+        }
+    }
+
     private static int tickNetwork(ServerPlayer player, NetworkData network, int remainingBudget, TickContext ctx) {
         int ruleParallelism = 1000;
         int networkBudget = Math.min(network.tickBudget + ruleParallelism, remainingBudget);
         if (networkBudget <= 0) return 0;
+
+        if (network.nodeMap == null) {
+            network.nodeMap = new HashMap<>();
+            for (NetworkNode node : network.nodes) network.nodeMap.put(node.nodeId, node);
+        }
+        if (network.groupMap == null) {
+            network.groupMap = new HashMap<>();
+            for (NodeGroup group : network.groups) network.groupMap.put(group.groupId, group);
+        }
+        if (network.sortedRules == null || network.needsSorting) {
+            network.sortedRules = new ArrayList<>(network.rules);
+            network.sortedRules.sort((a, b) -> Integer.compare(b.priority, a.priority));
+            network.needsSorting = false;
+        }
 
         if (player.level().getGameTime() % 20 == 0) {
             for (NetworkNode node : network.nodes) validateNode(player, node);
@@ -109,24 +142,20 @@ public class NetworkTickHandler {
 
         int startIndex = networkRuleIndex.getOrDefault(network.networkId, 0);
         double budgetUsed = 0;
-        int totalRules = network.rules.size();
-
-        List<LogisticsRule> sortedRules = new ArrayList<>(network.rules);
-        sortedRules.sort((a, b) -> Integer.compare(b.priority, a.priority));
+        int totalRules = network.sortedRules.size();
 
         int i = 0;
         for (; i < totalRules && budgetUsed < networkBudget; i++) {
             int currentIndex = (startIndex + i) % totalRules;
-            LogisticsRule rule = sortedRules.get(currentIndex);
+            LogisticsRule rule = network.sortedRules.get(currentIndex);
 
             if (rule.active) {
                 long now = player.level().getGameTime();
                 if (ruleCooldowns.getOrDefault(rule.ruleId, 0L) > now) continue;
 
+                ctx.budgetUsed = 0;
                 boolean moved = processRule(player, network, rule, false, ctx, 0);
-                
-                double cost = 0.01;
-                budgetUsed += cost;
+                budgetUsed += ctx.budgetUsed;
 
                 if (moved) {
                     long cooldown = switch(rule.speedMode) {
@@ -154,6 +183,7 @@ public class NetworkTickHandler {
 
     public static boolean processRule(ServerPlayer player, NetworkData network, LogisticsRule rule, boolean skipCooldownCheck, TickContext ctx, int depth) {
         if (depth > 20) return false;
+        ctx.budgetUsed += 1.0;
         long now = player.level().getGameTime();
         if (!skipCooldownCheck && ruleCooldowns.getOrDefault(rule.ruleId, 0L) > now) return false;
 
@@ -186,9 +216,65 @@ public class NetworkTickHandler {
         }
 
         if (sources.isEmpty() || destinations.isEmpty()) {
-            rule.lastReport = "Nodes missing";
+            rule.lastReport = "[ERROR] Nodes missing";
             ruleCooldowns.put(rule.ruleId, now + 2);
             return false;
+        }
+
+        // Phase 3: Condition Evaluation
+        if (!rule.conditions.isEmpty()) {
+            if (!checkConditions(player, network, rule, ctx)) {
+                rule.lastReport = "[BLOCKED] Conditions not met";
+                ruleCooldowns.put(rule.ruleId, now + 5);
+                return false;
+            }
+        }
+
+        // Virtual Aggregated Inventory: Group-wide checks
+        if (rule.sourceIsGroup && rule.minAmount > 0) {
+            long total = 0;
+            for (NetworkNode sn : sources) {
+                if (rule.type.equals("ENERGY")) {
+                    List<IEnergyStorage> energy = resolveAllEnergyHandlers(player, sn, rule.sourceSide, rule.sourceSlots, ctx, rule.scanItems);
+                    for (IEnergyStorage es : energy) total += es.getEnergyStored();
+                } else if (rule.type.equals("FLUIDS")) {
+                    List<IFluidHandler> fluids = resolveAllFluidHandlers(player, sn, rule.sourceSide, rule.sourceSlots, ctx, rule.scanItems);
+                    for (IFluidHandler fh : fluids) {
+                        for (int i = 0; i < fh.getTanks(); i++) total += fh.getFluidInTank(i).getAmount();
+                    }
+                } else {
+                    IItemHandler items = resolveItemHandler(player, sn, rule.sourceSide, true, ctx);
+                    if (items != null) total += countItems(items, rule.filter, sn, rule.sourceSlots);
+                }
+            }
+            if (total < rule.minAmount) {
+                rule.lastReport = "[SEARCH] Group < Min (" + total + ")";
+                ruleCooldowns.put(rule.ruleId, now + 5);
+                return false;
+            }
+        }
+
+        if (rule.destIsGroup && rule.maxAmount != Integer.MAX_VALUE) {
+            long total = 0;
+            for (NetworkNode dn : destinations) {
+                if (rule.type.equals("ENERGY")) {
+                    List<IEnergyStorage> energy = resolveAllEnergyHandlers(player, dn, rule.destSide, rule.destSlots, ctx, rule.scanItems);
+                    for (IEnergyStorage es : energy) total += es.getEnergyStored();
+                } else if (rule.type.equals("FLUIDS")) {
+                    List<IFluidHandler> fluids = resolveAllFluidHandlers(player, dn, rule.destSide, rule.destSlots, ctx, rule.scanItems);
+                    for (IFluidHandler fh : fluids) {
+                        for (int i = 0; i < fh.getTanks(); i++) total += fh.getFluidInTank(i).getAmount();
+                    }
+                } else {
+                    IItemHandler items = resolveItemHandler(player, dn, rule.destSide, false, ctx);
+                    if (items != null) total += countItems(items, rule.filter, dn, rule.destSlots);
+                }
+            }
+            if (total >= rule.maxAmount) {
+                rule.lastReport = "[FULL] Group @ Max (" + total + ")";
+                ruleCooldowns.put(rule.ruleId, now + 5);
+                return false;
+            }
         }
 
         int maxToMove = rule.amountPerTick == -1 || rule.speedMode.equals("INSTANT") ? Integer.MAX_VALUE : rule.amountPerTick;
@@ -203,8 +289,34 @@ public class NetworkTickHandler {
         int totalMovedCount = 0;
         boolean movedAnything = false;
 
+        // Phase 3: Maintenance Mode - Strict limit
+        if (rule.maintenanceMode && rule.maxAmount != Integer.MAX_VALUE) {
+            long currentTotal = 0;
+            for (NetworkNode dn : destinations) currentTotal += getResourceCount(player, dn, rule.type, rule.filter, ctx);
+            if (currentTotal >= rule.maxAmount) {
+                rule.lastReport = "[FULL] Stock OK (" + currentTotal + ")";
+                ruleCooldowns.put(rule.ruleId, now + 20);
+                return false;
+            }
+            maxToMove = (int) Math.min(maxToMove, rule.maxAmount - currentTotal);
+        }
+
+        List<NetworkNode> sortedDestinations = new ArrayList<>(destinations);
+        if (rule.destIsGroup) {
+            if (rule.distributionMode.equals("BALANCED")) {
+                sortedDestinations.sort(Comparator.comparingDouble(n -> getFullness(player, n, rule.type, ctx)));
+            } else if (rule.distributionMode.equals("ROUND_ROBIN")) {
+                int startIdx = groupDistributionIndex.getOrDefault(rule.ruleId, 0) % destinations.size();
+                sortedDestinations = new ArrayList<>();
+                for (int i = 0; i < destinations.size(); i++) {
+                    sortedDestinations.add(destinations.get((startIdx + i) % destinations.size()));
+                }
+            }
+        }
+
         outer: for (NetworkNode sourceNode : sources) {
-            for (NetworkNode destNode : destinations) {
+            for (int d = 0; d < sortedDestinations.size(); d++) {
+                NetworkNode destNode = sortedDestinations.get(d);
                 if (sourceNode == destNode) continue;
 
                 int currentLimit = maxToMove - totalMovedCount;
@@ -222,6 +334,10 @@ public class NetworkTickHandler {
                 if (moved > 0) {
                     totalMovedCount += moved;
                     movedAnything = true;
+                    if (rule.destIsGroup && rule.distributionMode.equals("ROUND_ROBIN")) {
+                        int originalIdx = destinations.indexOf(destNode);
+                        groupDistributionIndex.put(rule.ruleId, (originalIdx + 1) % destinations.size());
+                    }
                 }
             }
         }
@@ -243,11 +359,57 @@ public class NetworkTickHandler {
                 }
             }
         } else {
-            ruleSuccessStreak.put(rule.ruleId, -1);
-            long wait = depth > 0 ? 0 : 1;
-            ruleCooldowns.put(rule.ruleId, now + wait);
-            if (rule.lastReport.isEmpty() || rule.lastReport.startsWith("Moved")) {
-                rule.lastReport = "No Transfer";
+            // Auto-Healing: Try overflow redirection
+            if (network.overflowTargetId != null) {
+                List<NetworkNode> overflowDestinations = new ArrayList<>();
+                if (network.overflowIsGroup) {
+                    NodeGroup group = findGroup(network, network.overflowTargetId);
+                    if (group != null) {
+                        for (UUID id : group.nodeIds) {
+                            NetworkNode n = findNode(network, id);
+                            if (n != null) overflowDestinations.add(n);
+                        }
+                    }
+                } else {
+                    NetworkNode n = findNode(network, network.overflowTargetId);
+                    if (n != null) overflowDestinations.add(n);
+                }
+
+                if (!overflowDestinations.isEmpty()) {
+                    for (NetworkNode sourceNode : sources) {
+                        for (NetworkNode destNode : overflowDestinations) {
+                            if (sourceNode == destNode) continue;
+                            int moved = 0;
+                            if (rule.type.equals("ENERGY")) {
+                                moved = processEnergyRule(player, network, rule, sourceNode, destNode, ctx, maxToMove);
+                            } else if (rule.type.equals("FLUIDS")) {
+                                moved = processFluidRule(player, network, rule, sourceNode, destNode, ctx, maxToMove);
+                            } else {
+                                moved = processItemRule(player, network, rule, sourceNode, destNode, ctx, maxToMove);
+                            }
+
+                            if (moved > 0) {
+                                totalMovedCount += moved;
+                                movedAnything = true;
+                                rule.lastReport = "[OVERFLOW] " + rule.lastReport.replace("[ACTIVE] ", "");
+                                break;
+                            }
+                        }
+                        if (movedAnything) break;
+                    }
+                }
+            }
+
+            if (!movedAnything) {
+                ruleSuccessStreak.put(rule.ruleId, -1);
+                long wait = depth > 0 ? 0 : 1;
+                ruleCooldowns.put(rule.ruleId, now + wait);
+                if (rule.lastReport.isEmpty() || rule.lastReport.contains("Moved")) {
+                    rule.lastReport = "[SEARCH] No Transfer";
+                }
+            } else {
+                // If moved to overflow, we treat it as success for chaining but maybe not streak
+                ruleSuccessStreak.put(rule.ruleId, 0);
             }
         }
 
@@ -259,24 +421,24 @@ public class NetworkTickHandler {
         IItemHandler destHandler = resolveItemHandler(player, destNode, rule.destSide, false, ctx);
 
         if (sourceHandler == null || destHandler == null) {
-            rule.lastReport = "No Item Cap";
+            rule.lastReport = "[ERROR] No Item Cap";
             return 0;
         }
 
         int amountToMove = amountLimit;
 
-        if (rule.minAmount > 0) {
+        if (!rule.sourceIsGroup && rule.minAmount > 0) {
             int currentInSource = countItems(sourceHandler, rule.filter, sourceNode, rule.sourceSlots);
             if (currentInSource < rule.minAmount) {
-                rule.lastReport = "Source < Min";
+                rule.lastReport = "[SEARCH] Source < Min";
                 return 0;
             }
         }
 
-        if (rule.maxAmount != Integer.MAX_VALUE) {
+        if (!rule.destIsGroup && rule.maxAmount != Integer.MAX_VALUE) {
             int currentInDest = countItems(destHandler, rule.filter, destNode, rule.destSlots);
             if (currentInDest >= rule.maxAmount) {
-                rule.lastReport = "Dest @ Max";
+                rule.lastReport = "[FULL] Dest @ Max";
                 return 0;
             }
             amountToMove = Math.min(amountToMove, rule.maxAmount - currentInDest);
@@ -313,8 +475,13 @@ public class NetworkTickHandler {
                 amountToMove -= accepted;
                 totalAccepted += accepted;
                 network.itemsMovedThisMin += accepted;
-                rule.lastReport = "Moved " + accepted + "x " + stack.getHoverName().getString();
+                String speedNote = "";
+                if (totalAccepted < amountLimit && totalAccepted > 0 && amountLimit != Integer.MAX_VALUE) {
+                    speedNote = " (Limited by nodes)";
+                }
+                rule.lastReport = "[ACTIVE] Moved " + totalAccepted + "x " + stack.getHoverName().getString() + speedNote;
                 network.lastReport = rule.lastReport;
+                recordMovement(network, ForgeRegistries.ITEMS.getKey(stack.getItem()).toString(), stack.getHoverName().getString(), accepted, sourceNode.nodeId, destNode.nodeId, "ITEMS");
             }
         }
         return totalAccepted;
@@ -326,6 +493,7 @@ public class NetworkTickHandler {
     }
 
     private static NetworkNode findNode(NetworkData network, UUID nodeId) {
+        if (network.nodeMap != null) return network.nodeMap.get(nodeId);
         for (NetworkNode node : network.nodes) {
             if (node.nodeId.equals(nodeId)) return node;
         }
@@ -333,6 +501,7 @@ public class NetworkTickHandler {
     }
 
     private static NodeGroup findGroup(NetworkData network, UUID groupId) {
+        if (network.groupMap != null) return network.groupMap.get(groupId);
         for (NodeGroup group : network.groups) {
             if (group.groupId.equals(groupId)) return group;
         }
@@ -353,10 +522,30 @@ public class NetworkTickHandler {
     private static int processEnergyRule(ServerPlayer player, NetworkData network, LogisticsRule rule, NetworkNode srcNode, NetworkNode dstNode, TickContext ctx, int amountLimit) {
         int amountToMove = amountLimit;
 
-        int totalExtracted = 0;
+        List<IEnergyStorage> sources = resolveAllEnergyHandlers(player, srcNode, rule.sourceSide, rule.sourceSlots, ctx, rule.scanItems);
+        List<IEnergyStorage> destinations = resolveAllEnergyHandlers(player, dstNode, rule.destSide, rule.destSlots, ctx, rule.scanItems);
 
-        List<IEnergyStorage> sources = resolveAllEnergyHandlers(player, srcNode, rule.sourceSide, rule.sourceSlots, ctx);
-        List<IEnergyStorage> destinations = resolveAllEnergyHandlers(player, dstNode, rule.destSide, rule.destSlots, ctx);
+        if (!rule.sourceIsGroup && rule.minAmount > 0) {
+            int total = 0;
+            for (IEnergyStorage s : sources) total += s.getEnergyStored();
+            if (total < rule.minAmount) {
+                rule.lastReport = "[SEARCH] Source < Min";
+                return 0;
+            }
+        }
+
+        if (!rule.destIsGroup && rule.maxAmount != Integer.MAX_VALUE) {
+            int total = 0;
+            for (IEnergyStorage d : destinations) total += d.getEnergyStored();
+            if (total >= rule.maxAmount) {
+                rule.lastReport = "[FULL] Dest @ Max";
+                return 0;
+            }
+            amountToMove = Math.min(amountToMove, rule.maxAmount - total);
+        }
+
+        if (amountToMove <= 0) return 0;
+        int totalExtracted = 0;
 
         for (IEnergyStorage src : sources) {
             int toExtract = src.extractEnergy(amountToMove, true);
@@ -370,6 +559,7 @@ public class NetworkTickHandler {
                     totalExtracted += accepted;
                     amountToMove -= accepted;
                     toExtract -= accepted;
+                    recordMovement(network, "energy", "Forge Energy", accepted, srcNode.nodeId, dstNode.nodeId, "ENERGY");
                     if (amountToMove <= 0 || toExtract <= 0) break;
                 }
             }
@@ -377,22 +567,28 @@ public class NetworkTickHandler {
         }
 
         if (totalExtracted > 0) {
-            rule.lastReport = "Moved " + totalExtracted + " FE";
+            String speedNote = "";
+            if (totalExtracted < amountLimit && amountLimit != Integer.MAX_VALUE) {
+                speedNote = " (Limited by nodes)";
+            }
+            rule.lastReport = "[ACTIVE] Moved " + totalExtracted + " FE" + speedNote;
             network.lastReport = rule.lastReport;
             network.energyMovedThisMin += totalExtracted;
         }
         return totalExtracted;
     }
 
-    private static List<IEnergyStorage> resolveAllEnergyHandlers(ServerPlayer player, NetworkNode node, String side, List<Integer> slots, TickContext ctx) {
+    private static List<IEnergyStorage> resolveAllEnergyHandlers(ServerPlayer player, NetworkNode node, String side, List<Integer> slots, TickContext ctx, boolean scanItems) {
         List<IEnergyStorage> list = new ArrayList<>();
         if (slots.contains(-1)) {
             IEnergyStorage blockCap = resolveEnergyHandler(player, node, side, -1, ctx);
             if (blockCap != null) list.add(blockCap);
-            IItemHandler inv = resolveItemHandler(player, node, "AUTO", false, ctx);
-            if (inv != null) {
-                for (int i = 0; i < inv.getSlots(); i++) {
-                    inv.getStackInSlot(i).getCapability(ForgeCapabilities.ENERGY).ifPresent(list::add);
+            if (scanItems) {
+                IItemHandler inv = resolveItemHandler(player, node, "AUTO", false, ctx);
+                if (inv != null) {
+                    for (int i = 0; i < inv.getSlots(); i++) {
+                        inv.getStackInSlot(i).getCapability(ForgeCapabilities.ENERGY).ifPresent(list::add);
+                    }
                 }
             }
         } else {
@@ -407,11 +603,35 @@ public class NetworkTickHandler {
     private static int processFluidRule(ServerPlayer player, NetworkData network, LogisticsRule rule, NetworkNode srcNode, NetworkNode dstNode, TickContext ctx, int amountLimit) {
         int amountToMove = amountLimit;
 
+        List<IFluidHandler> sources = resolveAllFluidHandlers(player, srcNode, rule.sourceSide, rule.sourceSlots, ctx, rule.scanItems);
+        List<IFluidHandler> destinations = resolveAllFluidHandlers(player, dstNode, rule.destSide, rule.destSlots, ctx, rule.scanItems);
+
+        if (!rule.sourceIsGroup && rule.minAmount > 0) {
+            int total = 0;
+            for (IFluidHandler s : sources) {
+                for (int i = 0; i < s.getTanks(); i++) total += s.getFluidInTank(i).getAmount();
+            }
+            if (total < rule.minAmount) {
+                rule.lastReport = "[SEARCH] Source < Min";
+                return 0;
+            }
+        }
+
+        if (!rule.destIsGroup && rule.maxAmount != Integer.MAX_VALUE) {
+            int total = 0;
+            for (IFluidHandler d : destinations) {
+                for (int i = 0; i < d.getTanks(); i++) total += d.getFluidInTank(i).getAmount();
+            }
+            if (total >= rule.maxAmount) {
+                rule.lastReport = "[FULL] Dest @ Max";
+                return 0;
+            }
+            amountToMove = Math.min(amountToMove, rule.maxAmount - total);
+        }
+
+        if (amountToMove <= 0) return 0;
         int totalMoved = 0;
         String fluidName = "Unknown";
-
-        List<IFluidHandler> sources = resolveAllFluidHandlers(player, srcNode, rule.sourceSide, rule.sourceSlots, ctx);
-        List<IFluidHandler> destinations = resolveAllFluidHandlers(player, dstNode, rule.destSide, rule.destSlots, ctx);
 
         for (IFluidHandler src : sources) {
             FluidStack drained = src.drain(amountToMove, IFluidHandler.FluidAction.SIMULATE);
@@ -432,6 +652,7 @@ public class NetworkTickHandler {
                     amountToMove -= accepted;
                     toMoveFromThisSrc -= accepted;
                     fluidName = realDrained.getDisplayName().getString();
+                    recordMovement(network, ForgeRegistries.FLUIDS.getKey(realDrained.getFluid()).toString(), fluidName, accepted, srcNode.nodeId, dstNode.nodeId, "FLUIDS");
                     
                     if (amountToMove <= 0 || toMoveFromThisSrc <= 0) break;
                 }
@@ -440,22 +661,28 @@ public class NetworkTickHandler {
         }
 
         if (totalMoved > 0) {
-            rule.lastReport = "Moved " + totalMoved + "mB " + fluidName;
+            String speedNote = "";
+            if (totalMoved < amountLimit && amountLimit != Integer.MAX_VALUE) {
+                speedNote = " (Limited by nodes)";
+            }
+            rule.lastReport = "[ACTIVE] Moved " + totalMoved + "mB " + fluidName + speedNote;
             network.lastReport = rule.lastReport;
             network.fluidsMovedThisMin += totalMoved;
         }
         return totalMoved;
     }
 
-    private static List<IFluidHandler> resolveAllFluidHandlers(ServerPlayer player, NetworkNode node, String side, List<Integer> slots, TickContext ctx) {
+    private static List<IFluidHandler> resolveAllFluidHandlers(ServerPlayer player, NetworkNode node, String side, List<Integer> slots, TickContext ctx, boolean scanItems) {
         List<IFluidHandler> list = new ArrayList<>();
         if (slots.contains(-1)) {
             IFluidHandler blockCap = resolveFluidHandler(player, node, side, -1, ctx);
             if (blockCap != null) list.add(blockCap);
-            IItemHandler inv = resolveItemHandler(player, node, "AUTO", false, ctx);
-            if (inv != null) {
-                for (int i = 0; i < inv.getSlots(); i++) {
-                    inv.getStackInSlot(i).getCapability(ForgeCapabilities.FLUID_HANDLER_ITEM).ifPresent(list::add);
+            if (scanItems) {
+                IItemHandler inv = resolveItemHandler(player, node, "AUTO", false, ctx);
+                if (inv != null) {
+                    for (int i = 0; i < inv.getSlots(); i++) {
+                        inv.getStackInSlot(i).getCapability(ForgeCapabilities.FLUID_HANDLER_ITEM).ifPresent(list::add);
+                    }
                 }
             }
         } else {
@@ -634,6 +861,15 @@ public class NetworkTickHandler {
                     }
                     currentMatch = idMatch && nbtMatch;
                 }
+                case "SEMANTIC" -> {
+                    currentMatch = switch (finalVal) {
+                        case "IS_FOOD" -> stack.getItem().isEdible();
+                        case "IS_FUEL" -> net.minecraftforge.common.ForgeHooks.getBurnTime(stack, null) > 0;
+                        case "IS_ORE" -> stack.getTags().anyMatch(t -> t.location().toString().contains("ores"));
+                        case "IS_DAMAGED" -> stack.isDamaged();
+                        default -> false;
+                    };
+                }
             }
             if (currentMatch) {
                 match = true;
@@ -686,6 +922,80 @@ public class NetworkTickHandler {
         }
 
         node.isMissing = false;
+    }
+
+    private static double getFullness(ServerPlayer player, NetworkNode node, String type, TickContext ctx) {
+        if (type.equals("ENERGY")) {
+            IEnergyStorage energy = resolveEnergyHandler(player, node, "AUTO", -1, ctx);
+            if (energy == null || energy.getMaxEnergyStored() == 0) return 1.0;
+            return (double) energy.getEnergyStored() / energy.getMaxEnergyStored();
+        } else if (type.equals("FLUIDS")) {
+            IFluidHandler fluids = resolveFluidHandler(player, node, "AUTO", -1, ctx);
+            if (fluids == null) return 1.0;
+            long totalCap = 0;
+            long totalUsed = 0;
+            for (int i = 0; i < fluids.getTanks(); i++) {
+                totalCap += fluids.getTankCapacity(i);
+                totalUsed += fluids.getFluidInTank(i).getAmount();
+            }
+            if (totalCap == 0) return 1.0;
+            return (double) totalUsed / totalCap;
+        } else {
+            IItemHandler items = resolveItemHandler(player, node, "AUTO", false, ctx);
+            if (items == null || items.getSlots() == 0) return 1.0;
+            long totalCount = 0;
+            long totalMax = 0;
+            for (int i = 0; i < items.getSlots(); i++) {
+                totalCount += items.getStackInSlot(i).getCount();
+                totalMax += items.getSlotLimit(i);
+            }
+            if (totalMax == 0) return 1.0;
+            return (double) totalCount / totalMax;
+        }
+    }
+
+    private static boolean checkConditions(ServerPlayer player, NetworkData network, LogisticsRule rule, TickContext ctx) {
+        for (LogicCondition cond : rule.conditions) {
+            long current = 0;
+            if (cond.isGroup) {
+                NodeGroup g = findGroup(network, cond.targetId);
+                if (g != null) {
+                    for (UUID id : g.nodeIds) {
+                        NetworkNode n = findNode(network, id);
+                        if (n != null) current += getResourceCount(player, n, cond.type, cond.filter, ctx);
+                    }
+                }
+            } else {
+                NetworkNode n = findNode(network, cond.targetId);
+                if (n != null) current = getResourceCount(player, n, cond.type, cond.filter, ctx);
+            }
+
+            boolean met = switch (cond.operator) {
+                case "LESS" -> current < cond.value;
+                case "GREATER" -> current > cond.value;
+                case "EQUAL" -> current == cond.value;
+                default -> false;
+            };
+            if (!met) return false;
+        }
+        return true;
+    }
+
+    private static long getResourceCount(ServerPlayer player, NetworkNode node, String type, LogisticsFilter filter, TickContext ctx) {
+        if (type.equals("ENERGY")) {
+            IEnergyStorage energy = resolveEnergyHandler(player, node, "AUTO", -1, ctx);
+            return energy != null ? energy.getEnergyStored() : 0;
+        } else if (type.equals("FLUIDS")) {
+            List<IFluidHandler> fluids = resolveAllFluidHandlers(player, node, "AUTO", List.of(-1), ctx, true);
+            long total = 0;
+            for (IFluidHandler fh : fluids) {
+                for (int i = 0; i < fh.getTanks(); i++) total += fh.getFluidInTank(i).getAmount();
+            }
+            return total;
+        } else {
+            IItemHandler items = resolveItemHandler(player, node, "AUTO", true, ctx);
+            return items != null ? countItems(items, filter, node, List.of(-1)) : 0;
+        }
     }
 
     private static class ChamberItemHandler implements IItemHandler {

@@ -91,8 +91,25 @@ public class ScrollableUIContainer extends UIContainer {
         return false;
     }
 
+    @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         isDraggingScrollbar = false;
+        double relMouseX = mouseX - getX();
+        double relMouseY = mouseY - getY() + scrollAmount;
+        for (int i = children.size() - 1; i >= 0; i--) {
+            if (children.get(i).mouseReleased(relMouseX, relMouseY, button)) return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dx, double dy) {
+        if (isDraggingScrollbar) return true;
+        double relMouseX = mouseX - getX();
+        double relMouseY = mouseY - getY() + scrollAmount;
+        for (int i = children.size() - 1; i >= 0; i--) {
+            if (children.get(i).mouseDragged(relMouseX, relMouseY, button, dx, dy)) return true;
+        }
         return false;
     }
 

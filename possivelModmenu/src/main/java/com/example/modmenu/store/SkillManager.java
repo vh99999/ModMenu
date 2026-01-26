@@ -824,7 +824,18 @@ public class SkillManager {
                     int newCount = countBD.compareTo(BigDecimal.valueOf(Integer.MAX_VALUE)) >= 0 ? Integer.MAX_VALUE : Math.max(1, countBD.intValue());
                     newStack.setCount(newCount);
                     if (!newStack.isEmpty()) {
-                        chamber.storedLoot.add(newStack);
+                        int capacity = 27 + getActiveRank(data, "VIRT_DATA_DENSITY") * 16;
+                        synchronized (chamber.storedLoot) {
+                            if (chamber.storedLoot.size() < capacity) {
+                                chamber.storedLoot.add(newStack);
+                            } else {
+                                // Liquidate overflow
+                                BigDecimal sellPrice = StorePriceManager.getSellPrice(newStack.getItem(), player.getUUID());
+                                BigDecimal gain = sellPrice.multiply(BigDecimal.valueOf(newStack.getCount()));
+                                if (acc != null) acc.moneyGain = acc.moneyGain.add(gain);
+                                else StorePriceManager.addMoney(player.getUUID(), gain);
+                            }
+                        }
                     }
                 }
             }

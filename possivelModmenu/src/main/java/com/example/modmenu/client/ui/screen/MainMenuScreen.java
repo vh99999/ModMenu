@@ -7,8 +7,8 @@ import com.example.modmenu.store.StorePriceManager;
 import net.minecraft.network.chat.Component;
 
 public class MainMenuScreen extends BaseResponsiveLodestoneScreen {
-    private boolean lastHouseState = false;
     private boolean lastSystemState = false;
+    private boolean lastGenesisState = false;
     
     public MainMenuScreen() {
         super(Component.literal("Main Menu"));
@@ -17,8 +17,8 @@ public class MainMenuScreen extends BaseResponsiveLodestoneScreen {
     @Override
     protected void setupLayout() {
         // Initialize states on first setup to avoid immediate re-init loop
-        this.lastHouseState = StorePriceManager.clientUnlockedHouses.contains("mining_dimension");
         this.lastSystemState = StorePriceManager.clientUnlockedHouses.contains("system_screen");
+        this.lastGenesisState = StorePriceManager.clientUnlockedHouses.contains("dimension_configurator");
 
         // Uniform button sizing calculated based on screen width
         int buttonWidth = Math.max(160, (int)(this.width * 0.35f));
@@ -73,19 +73,18 @@ public class MainMenuScreen extends BaseResponsiveLodestoneScreen {
             this.minecraft.setScreen(new DiagnosticsScreen(this));
         }));
 
-        
-        // 5. House (Locked/Travel)
-        boolean houseUnlocked = StorePriceManager.clientUnlockedHouses.contains("mining_dimension");
-        String houseLabel = houseUnlocked ? "House (Enter)" : "House (Unlock: $100.000.000)";
-        ResponsiveButton houseButton = new ResponsiveButton(0, 0, buttonWidth, buttonHeight, Component.literal(houseLabel), btn -> {
-            if (houseUnlocked) {
-                com.example.modmenu.network.PacketHandler.sendToServer(new com.example.modmenu.network.TeleportToMiningDimensionPacket());
+        // 5. Genesis Hub (Locked/Enter)
+        boolean dimUnlocked = StorePriceManager.clientUnlockedHouses.contains("dimension_configurator");
+        String dimLabel = dimUnlocked ? "Genesis Hub" : "Genesis Hub (Unlock: $100.000.000)";
+        ResponsiveButton dimButton = new ResponsiveButton(0, 0, buttonWidth, buttonHeight, Component.literal(dimLabel), btn -> {
+            if (dimUnlocked) {
+                this.minecraft.setScreen(new com.example.modmenu.client.ui.screen.GenesisHubScreen(this));
             } else {
-                com.example.modmenu.network.PacketHandler.sendToServer(new com.example.modmenu.network.UnlockFeaturePacket("mining_dimension", java.math.BigDecimal.valueOf(100000000)));
+                com.example.modmenu.network.PacketHandler.sendToServer(new com.example.modmenu.network.UnlockFeaturePacket("dimension_configurator", java.math.BigDecimal.valueOf(100000000)));
             }
         });
-        menuLayout.addElement(houseButton);
-        
+        menuLayout.addElement(dimButton);
+
         // 6. System (Locked/Enter)
         boolean systemUnlocked = StorePriceManager.clientUnlockedHouses.contains("system_screen");
         String systemLabel = systemUnlocked ? "System" : "System (Unlock: $100.000.000)";
@@ -109,14 +108,14 @@ public class MainMenuScreen extends BaseResponsiveLodestoneScreen {
     @Override
     public void render(net.minecraft.client.gui.GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick) {
         // Dynamic Update Check: if unlocked status changed, rebuild layout
-        boolean houseUnlocked = StorePriceManager.clientUnlockedHouses.contains("mining_dimension");
         boolean systemUnlocked = StorePriceManager.clientUnlockedHouses.contains("system_screen");
+        boolean dimUnlocked = StorePriceManager.clientUnlockedHouses.contains("dimension_configurator");
         
         // Use hash or simple state check
-        if (lastHouseState != houseUnlocked || lastSystemState != systemUnlocked) {
+        if (lastSystemState != systemUnlocked || lastGenesisState != dimUnlocked) {
             this.init(); // Re-initialize layout
-            lastHouseState = houseUnlocked;
             lastSystemState = systemUnlocked;
+            lastGenesisState = dimUnlocked;
         }
 
         super.render(guiGraphics, mouseX, mouseY, partialTick);

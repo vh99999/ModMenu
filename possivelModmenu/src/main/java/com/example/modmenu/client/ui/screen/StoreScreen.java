@@ -172,14 +172,6 @@ public class StoreScreen extends BaseResponsiveLodestoneScreen {
     }
 
     private void updateFilter() {
-        if (!isSellMode) {
-            boolean hasDimension = allItems.stream().anyMatch(i -> "mining_dimension".equals(i.specialId));
-            boolean unlocked = StorePriceManager.clientUnlockedHouses.contains("mining_dimension");
-            if (hasDimension && unlocked) {
-                loadItems();
-                return; // loadItems calls updateFilter again
-            }
-        }
         String search = searchBox != null ? searchBox.getValue().toLowerCase() : "";
         visibleItems = allItems.stream()
                 .filter(i -> {

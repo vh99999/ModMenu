@@ -17,11 +17,16 @@ public class ResponsiveButton extends UIElement {
     private float hoverTimer = 0;
     private boolean isHovered = false;
     private boolean active = true;
+    private float alpha_mult = 1.0f;
 
     public ResponsiveButton(int x, int y, int width, int height, Component text, Consumer<ResponsiveButton> onPress) {
         super(x, y, width, height);
         this.text = text;
         this.onPress = onPress;
+    }
+
+    public void setAlpha(float alpha) {
+        this.alpha_mult = alpha;
     }
 
     public void setText(Component text) {
@@ -49,7 +54,7 @@ public class ResponsiveButton extends UIElement {
         float easedHover = active ? Easing.EXPO_OUT.ease(hoverTimer, 0, 1, 1) : 0;
         
         // Background - Lodestone dark theme
-        int alpha = 0xCC; 
+        int alpha = (int) (0xCC * alpha_mult); 
         
         int r, g, b;
         if (active) {
@@ -59,7 +64,7 @@ public class ResponsiveButton extends UIElement {
         } else {
             // Desaturated gray for disabled
             r = g = b = 0x12;
-            alpha = 0x88;
+            alpha = (int) (0x88 * alpha_mult);
         }
         
         int bgColor = (alpha << 24) | (r << 16) | (g << 8) | b;
@@ -74,16 +79,17 @@ public class ResponsiveButton extends UIElement {
             int br = (int) (0x44 + 0x22 * easedHover);
             int bg = (int) (0x44 + 0xBB * easedHover);
             int bb = (int) (0x55 + 0xFF * easedHover);
-            borderColor = (0xFF << 24) | (br << 16) | (bg << 8) | bb;
+            borderColor = ((int)(0xFF * alpha_mult) << 24) | (br << 16) | (bg << 8) | bb;
         } else {
-            borderColor = 0xFF222222; // Darker, desaturated border
+            borderColor = ((int)(0xFF * alpha_mult) << 24) | 0x222222; // Darker, desaturated border
         }
         
         renderBorder(guiGraphics, getX(), getY(), getWidth(), getHeight(), borderColor);
 
         // Hover highlight overlay
         if (active && easedHover > 0) {
-            int highlightColor = ((int)(easedHover * 0x22) << 24) | 0xFFFFFF;
+            int highlightAlpha = (int)(easedHover * 0x22 * alpha_mult);
+            int highlightColor = (highlightAlpha << 24) | 0xFFFFFF;
             guiGraphics.fill(getX() + 1, getY() + 1, getX() + getWidth() - 1, getY() + 2, highlightColor);
         }
 
@@ -96,6 +102,13 @@ public class ResponsiveButton extends UIElement {
             textColor = 0xFF444444; // Faded text
         }
         
+        // Apply alpha to text color
+        int textAlpha = (int)(((textColor >> 24) & 0xFF) * alpha_mult);
+        if (textAlpha < 5) textAlpha = 5; // Ensure it's not completely invisible if it was 0xFF
+        // Actually the colors above don't have alpha set properly for drawCenteredString sometimes? 
+        // 0xFFFFFFFF has alpha FF.
+        textColor = (textAlpha << 24) | (textColor & 0x00FFFFFF);
+
         guiGraphics.drawCenteredString(font, text, getX() + getWidth() / 2, getY() + (getHeight() - 8) / 2, textColor);
     }
 

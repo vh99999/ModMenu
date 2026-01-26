@@ -49,8 +49,9 @@ public class CaptureMobPacket {
             ServerPlayer player = ctx.get().getSender();
             if (player != null) {
                 StorePriceManager.SkillData data = StorePriceManager.getSkills(player.getUUID());
-                if (data.chambers.size() >= data.unlockedChambers) {
-                    player.displayClientMessage(Component.literal("\u00A7cVirtual Containment is full! Unlock more chambers in the menu."), true);
+                int totalAllowed = data.unlockedChambers + com.example.modmenu.store.SkillManager.getActiveRank(data, "VIRT_ARCHIVE_EXPANSION") * 2;
+                if (data.chambers.size() >= totalAllowed) {
+                    player.displayClientMessage(Component.literal("\u00A7cVirtual Containment is full! Unlock more archives in the menu or upgrade Archive Expansion."), true);
                     return;
                 }
 

@@ -38,6 +38,18 @@ public class UIContainer extends UIElement {
     }
 
     @Override
+    public void renderTooltip(GuiGraphics guiGraphics, int mouseX, int mouseY) {
+        if (!isMouseOver(mouseX, mouseY)) return;
+        
+        int relMouseX = mouseX - getX();
+        int relMouseY = mouseY - getY();
+        
+        for (UIElement child : children) {
+            child.renderTooltip(guiGraphics, relMouseX, relMouseY);
+        }
+    }
+
+    @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (!isMouseOver(mouseX, mouseY)) return false;
         
@@ -87,6 +99,26 @@ public class UIContainer extends UIElement {
         
         for (int i = children.size() - 1; i >= 0; i--) {
             if (children.get(i).mouseDragged(relMouseX, relMouseY, button, dragX, dragY)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean keyPressed(int key, int scan, int mod) {
+        for (int i = children.size() - 1; i >= 0; i--) {
+            if (children.get(i).keyPressed(key, scan, mod)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    public boolean charTyped(char chr, int code) {
+        for (int i = children.size() - 1; i >= 0; i--) {
+            if (children.get(i).charTyped(chr, code)) {
                 return true;
             }
         }

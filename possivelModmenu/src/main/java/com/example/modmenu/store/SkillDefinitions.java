@@ -149,8 +149,11 @@ public class SkillDefinitions {
         add("VIRT_NEURAL_CONDENSATION", "Neural Condensation", "Automatically transmutes virtual XP into Skill Points (SP).", 20, Branch.CONTAINMENT, "VIRT_MARKET_LINK", 1, 700, 700);
         add("VIRT_LOOT_CONDENSATION", "Intelligent Condensation", "Internal auto-crafting for chamber buffers. Can be set to reversible-only mode to preserve material utility.", 1, Branch.CONTAINMENT, "VIRT_NEURAL_CONDENSATION", 1, 800, 700);
 
+        add("VIRT_ARCHIVE_EXPANSION", "Archive Expansion", "Increases the max number of available containment slots. Each rank grants +2 slots.", 10, Branch.CONTAINMENT, "VIRT_LOOT_CONDENSATION", 1, 900, 700);
+        add("VIRT_DATA_DENSITY", "Data Density", "Increases the storage capacity of each virtual archive. Each rank adds +16 slots (types) per chamber.", 20, Branch.CONTAINMENT, "VIRT_ARCHIVE_EXPANSION", 1, 1000, 700);
+
         // Virtualization Keystones
-        add("VIRT_KEYSTONE_PERSISTENCE", "Persistent Simulation", "ULTIMATE KEYSTONE: Processes time elapsed while offline upon login.", 1, Branch.CONTAINMENT, "VIRT_NEURAL_CONDENSATION", 1, 900, 900);
+        add("VIRT_KEYSTONE_PERSISTENCE", "Persistent Simulation", "ULTIMATE KEYSTONE: Processes time elapsed while offline upon login.", 1, Branch.CONTAINMENT, "VIRT_DATA_DENSITY", 1, 1100, 700);
     }
 
     private static void add(String id, String name, String desc, int maxRank, Branch branch, int x, int y) {

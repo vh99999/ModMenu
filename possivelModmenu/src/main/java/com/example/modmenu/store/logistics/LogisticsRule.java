@@ -14,10 +14,14 @@ public class LogisticsRule {
     public String destSide = "AUTO";
     public LogisticsFilter filter = new LogisticsFilter();
     public String mode = "ROUND_ROBIN"; // "ROUND_ROBIN", "PRIORITY"
+    public String distributionMode = "BALANCED"; // "BALANCED", "ROUND_ROBIN", "OVERFLOW"
     public int amountPerTick = 64;
     public int minAmount = 0; // Only pull if source has more than this
     public int maxAmount = Integer.MAX_VALUE; // Only push if dest has less than this
     public boolean active = true;
+    public boolean maintenanceMode = false;
+    public boolean scanItems = true; // For Energy/Fluids: whether to scan inventory items for caps
+    public List<LogicCondition> conditions = new ArrayList<>();
     public int priority = 0;
     public String speedMode = "NORMAL"; // "SLOW", "NORMAL", "FAST", "HYPER", "INSTANT"
     public String type = "ITEMS";
@@ -40,10 +44,14 @@ public class LogisticsRule {
         snap.destSide = this.destSide;
         snap.filter = this.filter.snapshot();
         snap.mode = this.mode;
+        snap.distributionMode = this.distributionMode;
         snap.amountPerTick = this.amountPerTick;
         snap.minAmount = this.minAmount;
         snap.maxAmount = this.maxAmount;
         snap.active = this.active;
+        snap.maintenanceMode = this.maintenanceMode;
+        snap.scanItems = this.scanItems;
+        for (LogicCondition cond : this.conditions) snap.conditions.add(cond.snapshot());
         snap.priority = this.priority;
         snap.speedMode = this.speedMode;
         snap.type = this.type;

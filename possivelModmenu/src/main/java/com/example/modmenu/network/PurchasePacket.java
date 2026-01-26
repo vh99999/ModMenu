@@ -55,18 +55,6 @@ public class PurchasePacket {
             ServerPlayer player = ctx.get().getSender();
             if (player != null) {
                 if (specialId != null) {
-                    if ("mining_dimension".equals(specialId)) {
-                        BigDecimal cost = BigDecimal.valueOf(100000000);
-                        BigDecimal currentMoney = StorePriceManager.getMoney(player.getUUID());
-                        if (currentMoney.compareTo(cost) >= 0) {
-                            StorePriceManager.setMoney(player.getUUID(), currentMoney.subtract(cost));
-                            StorePriceManager.unlockHouse(player.getUUID(), "mining_dimension");
-                            player.displayClientMessage(Component.literal("\u00A7aHouse Unlocked!"), true);
-                            StorePriceManager.sync(player);
-                        } else {
-                            player.displayClientMessage(Component.literal("\u00A7cNot enough money! Cost: $100,000,000"), true);
-                        }
-                    }
                     return;
                 }
 

@@ -16,25 +16,31 @@ import java.util.function.Consumer;
 public class PickItemFromNodeScreen extends BaseResponsiveLodestoneScreen {
     private final Screen parent;
     private final UUID networkId;
-    private final NetworkNode node;
+    private final UUID targetId;
+    private final boolean isGroup;
     private final Consumer<ItemStack> onPick;
 
     private List<ItemStack> inventory = null;
     private List<Integer> slotX = null;
     private List<Integer> slotY = null;
-    private UUID probedNodeId = null;
-    public PickItemFromNodeScreen(Screen parent, UUID networkId, NetworkNode node, Consumer<ItemStack> onPick) {
-        super(Component.literal("Pick Item from Source"));
+    private UUID probedTargetId = null;
+    public PickItemFromNodeScreen(Screen parent, UUID networkId, UUID targetId, boolean isGroup, Consumer<ItemStack> onPick) {
+        super(Component.literal(isGroup ? "Pick Item from Group" : "Pick Item from Source"));
         this.parent = parent;
         this.networkId = networkId;
-        this.node = node;
+        this.targetId = targetId;
+        this.isGroup = isGroup;
         this.onPick = onPick;
 
-        PacketHandler.sendToServer(ActionNetworkPacket.requestInventoryProbe(networkId, node.nodeId));
+        if (isGroup) {
+            PacketHandler.sendToServer(ActionNetworkPacket.requestGroupInventoryProbe(networkId, targetId));
+        } else {
+            PacketHandler.sendToServer(ActionNetworkPacket.requestInventoryProbe(networkId, targetId));
+        }
     }
-    public void handleSyncInventory(UUID nodeId, List<ItemStack> inventory, List<Integer> slotX, List<Integer> slotY) {
-        if (this.node.nodeId.equals(nodeId)) {
-            this.probedNodeId = nodeId;
+    public void handleSyncInventory(UUID id, List<ItemStack> inventory, List<Integer> slotX, List<Integer> slotY) {
+        if (this.targetId.equals(id)) {
+            this.probedTargetId = id;
             this.inventory = inventory;
             this.slotX = slotX;
             this.slotY = slotY;
@@ -46,7 +52,7 @@ public class PickItemFromNodeScreen extends BaseResponsiveLodestoneScreen {
         this.layoutRoot.addElement(new ResponsiveButton(10, 10, 50, 20, Component.literal("Cancel"), btn -> {
             this.minecraft.setScreen(parent);
         }));
-        if (inventory != null && probedNodeId.equals(node.nodeId)) {
+        if (inventory != null && targetId.equals(probedTargetId)) {
             ScrollableUIContainer slotList = new ScrollableUIContainer(50, 40, this.width - 100, this.height - 80);
             this.layoutRoot.addElement(slotList);
 

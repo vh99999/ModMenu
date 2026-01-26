@@ -1,0 +1,11 @@
+{
+  "type": "modmenu:genesis",
+  "generator": {
+    "type": "modmenu:genesis",
+    "settings": "minecraft:overworld",
+    "biome_source": {
+      "type": "modmenu:genesis",
+      "seed": 42
+    }
+  }
+}

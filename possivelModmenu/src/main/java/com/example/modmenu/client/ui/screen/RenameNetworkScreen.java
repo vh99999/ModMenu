@@ -14,13 +14,21 @@ public class RenameNetworkScreen extends BaseResponsiveLodestoneScreen {
     private final Screen parent;
     private final UUID networkId;
     private final String currentName;
+    private final java.util.function.Consumer<String> callback;
     private EditBox input;
 
     public RenameNetworkScreen(Screen parent, UUID networkId, String currentName) {
-        super(Component.literal("Rename Network"));
+        this(parent, networkId, currentName, name -> {
+            PacketHandler.sendToServer(ActionNetworkPacket.renameNetwork(networkId, name));
+        });
+    }
+
+    public RenameNetworkScreen(Screen parent, UUID networkId, String currentName, java.util.function.Consumer<String> callback) {
+        super(Component.literal("Rename"));
         this.parent = parent;
         this.networkId = networkId;
         this.currentName = currentName;
+        this.callback = callback;
     }
 
     @Override
@@ -41,7 +49,7 @@ public class RenameNetworkScreen extends BaseResponsiveLodestoneScreen {
         this.layoutRoot.addElement(new ResponsiveButton(cx - 105, cy + 30, 100, 20, Component.literal("Confirm"), btn -> {
             String newName = input.getValue().trim();
             if (!newName.isEmpty()) {
-                PacketHandler.sendToServer(ActionNetworkPacket.renameNetwork(networkId, newName));
+                callback.accept(newName);
                 this.minecraft.setScreen(parent);
             }
         }));
@@ -64,7 +72,7 @@ public class RenameNetworkScreen extends BaseResponsiveLodestoneScreen {
         if (keyCode == 257 || keyCode == 335) { // Enter
             String newName = input.getValue().trim();
             if (!newName.isEmpty()) {
-                PacketHandler.sendToServer(ActionNetworkPacket.renameNetwork(networkId, newName));
+                callback.accept(newName);
                 this.minecraft.setScreen(parent);
                 return true;
             }

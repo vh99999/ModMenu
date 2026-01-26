@@ -45,7 +45,7 @@ public class modmenu
         
         com.example.modmenu.network.PacketHandler.register();
         com.example.modmenu.store.StorePriceManager.load();
-        com.example.modmenu.worldgen.WorldGenRegistry.register(modEventBus);
+        com.example.modmenu.registry.WorldGenRegistry.register(modEventBus);
         com.example.modmenu.registry.BlockRegistry.register(modEventBus);
         com.example.modmenu.registry.BlockEntityRegistry.register(modEventBus);
         com.example.modmenu.registry.ItemRegistry.register(modEventBus);

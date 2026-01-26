@@ -115,6 +115,57 @@ public class SyncSkillsPacket {
 
             this.data.chambers.add(chamber);
         }
+
+        this.data.genesisConfig = new StorePriceManager.GenesisConfig();
+        this.data.genesisConfig.genType = buf.readUtf();
+        int biomesSize = buf.readInt();
+        this.data.genesisConfig.biomes = new ArrayList<>();
+        for (int i = 0; i < biomesSize; i++) {
+            this.data.genesisConfig.biomes.add(buf.readUtf());
+        }
+        int caveBiomesSize = buf.readInt();
+        this.data.genesisConfig.caveBiomes = new ArrayList<>();
+        for (int i = 0; i < caveBiomesSize; i++) {
+            this.data.genesisConfig.caveBiomes.add(buf.readUtf());
+        }
+        this.data.genesisConfig.resourceDensity = buf.readDouble();
+        this.data.genesisConfig.structureDensity = buf.readDouble();
+        this.data.genesisConfig.seaLevelFluid = buf.readUtf();
+        this.data.genesisConfig.dimensionScale = buf.readDouble();
+        this.data.genesisConfig.spawnHostile = buf.readBoolean();
+        this.data.genesisConfig.spawnPassive = buf.readBoolean();
+        this.data.genesisConfig.spawnNeutral = buf.readBoolean();
+        this.data.genesisConfig.dayNightRatio = buf.readDouble();
+        this.data.genesisConfig.temporalVelocity = buf.readDouble();
+        this.data.genesisConfig.tickFreeze = buf.readBoolean();
+        this.data.genesisConfig.frozenTime = buf.readInt();
+        this.data.genesisConfig.persistentWeather = buf.readUtf();
+        this.data.genesisConfig.skyColor = buf.readInt();
+        this.data.genesisConfig.fogColor = buf.readInt();
+        this.data.genesisConfig.waterColor = buf.readInt();
+        this.data.genesisConfig.grassColor = buf.readInt();
+        this.data.genesisConfig.foliageColor = buf.readInt();
+        this.data.genesisConfig.ambientLight = buf.readDouble();
+        this.data.genesisConfig.fogDensity = buf.readDouble();
+        this.data.genesisConfig.celestialSync = buf.readBoolean();
+        this.data.genesisConfig.gravity = buf.readDouble();
+        this.data.genesisConfig.thermalRegulation = buf.readUtf();
+        this.data.genesisConfig.fluidViscosityHigh = buf.readBoolean();
+        this.data.genesisConfig.explosionYield = buf.readDouble();
+        this.data.genesisConfig.fallDamageMultiplier = buf.readDouble();
+        this.data.genesisConfig.difficulty = buf.readUtf();
+        this.data.genesisConfig.respawnLogicEnabled = buf.readBoolean();
+        this.data.genesisConfig.lootXpMultiplier = buf.readDouble();
+        this.data.genesisConfig.realityPersistence = buf.readBoolean();
+        this.data.genesisConfig.bedrockControl = buf.readUtf();
+        this.data.genesisConfig.voidMirror = buf.readBoolean();
+        this.data.genesisConfig.mobSpawnRate = buf.readDouble();
+        this.data.genesisConfig.mobMutationRate = buf.readDouble();
+        this.data.genesisConfig.hazardRadiation = buf.readBoolean();
+        this.data.genesisConfig.hazardOxygen = buf.readBoolean();
+        this.data.genesisConfig.joinMessage = buf.readUtf();
+        this.data.genesisConfig.locked = buf.readBoolean();
+        this.data.genesisConfig.fullResetRequested = buf.readBoolean();
     }
 
     public void encode(FriendlyByteBuf buf) {
@@ -217,6 +268,54 @@ public class SyncSkillsPacket {
             buf.writeBoolean(chamber.inputLinkDimension != null);
             if (chamber.inputLinkDimension != null) buf.writeUtf(chamber.inputLinkDimension);
         }
+
+        buf.writeUtf(data.genesisConfig.genType);
+        buf.writeInt(data.genesisConfig.biomes.size());
+        for (String biome : data.genesisConfig.biomes) {
+            buf.writeUtf(biome);
+        }
+        buf.writeInt(data.genesisConfig.caveBiomes.size());
+        for (String biome : data.genesisConfig.caveBiomes) {
+            buf.writeUtf(biome);
+        }
+        buf.writeDouble(data.genesisConfig.resourceDensity);
+        buf.writeDouble(data.genesisConfig.structureDensity);
+        buf.writeUtf(data.genesisConfig.seaLevelFluid);
+        buf.writeDouble(data.genesisConfig.dimensionScale);
+        buf.writeBoolean(data.genesisConfig.spawnHostile);
+        buf.writeBoolean(data.genesisConfig.spawnPassive);
+        buf.writeBoolean(data.genesisConfig.spawnNeutral);
+        buf.writeDouble(data.genesisConfig.dayNightRatio);
+        buf.writeDouble(data.genesisConfig.temporalVelocity);
+        buf.writeBoolean(data.genesisConfig.tickFreeze);
+        buf.writeInt(data.genesisConfig.frozenTime);
+        buf.writeUtf(data.genesisConfig.persistentWeather);
+        buf.writeInt(data.genesisConfig.skyColor);
+        buf.writeInt(data.genesisConfig.fogColor);
+        buf.writeInt(data.genesisConfig.waterColor);
+        buf.writeInt(data.genesisConfig.grassColor);
+        buf.writeInt(data.genesisConfig.foliageColor);
+        buf.writeDouble(data.genesisConfig.ambientLight);
+        buf.writeDouble(data.genesisConfig.fogDensity);
+        buf.writeBoolean(data.genesisConfig.celestialSync);
+        buf.writeDouble(data.genesisConfig.gravity);
+        buf.writeUtf(data.genesisConfig.thermalRegulation);
+        buf.writeBoolean(data.genesisConfig.fluidViscosityHigh);
+        buf.writeDouble(data.genesisConfig.explosionYield);
+        buf.writeDouble(data.genesisConfig.fallDamageMultiplier);
+        buf.writeUtf(data.genesisConfig.difficulty);
+        buf.writeBoolean(data.genesisConfig.respawnLogicEnabled);
+        buf.writeDouble(data.genesisConfig.lootXpMultiplier);
+        buf.writeBoolean(data.genesisConfig.realityPersistence);
+        buf.writeUtf(data.genesisConfig.bedrockControl);
+        buf.writeBoolean(data.genesisConfig.voidMirror);
+        buf.writeDouble(data.genesisConfig.mobSpawnRate);
+        buf.writeDouble(data.genesisConfig.mobMutationRate);
+        buf.writeBoolean(data.genesisConfig.hazardRadiation);
+        buf.writeBoolean(data.genesisConfig.hazardOxygen);
+        buf.writeUtf(data.genesisConfig.joinMessage);
+        buf.writeBoolean(data.genesisConfig.locked);
+        buf.writeBoolean(data.genesisConfig.fullResetRequested);
     }
 
     public void handle(Supplier<NetworkEvent.Context> ctx) {
@@ -276,6 +375,9 @@ public class SyncSkillsPacket {
                 while (client.chambers.size() > this.data.chambers.size()) {
                     client.chambers.remove(client.chambers.size() - 1);
                 }
+
+                client.genesisConfig.copyFrom(this.data.genesisConfig);
+                StorePriceManager.clientGenesisConfig.copyFrom(this.data.genesisConfig);
             }
         });
         ctx.get().setPacketHandled(true);

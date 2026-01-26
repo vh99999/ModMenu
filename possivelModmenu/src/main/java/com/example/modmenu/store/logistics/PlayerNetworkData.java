@@ -17,6 +17,7 @@ public class PlayerNetworkData {
     private List<NetworkData> networks = new CopyOnWriteArrayList<>();
     public int updateVersion = 0;
     public transient java.util.UUID linkingNetworkId = null;
+    public transient java.util.UUID viewedNetworkId = null;
 
     public List<NetworkData> getNetworks() {
         return networks;

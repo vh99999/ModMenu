@@ -98,12 +98,6 @@ public class PacketHandler {
                 .consumerMainThread(SaveLayoutPacket::handle)
                 .add();
 
-        INSTANCE.messageBuilder(TeleportToMiningDimensionPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
-                .decoder(TeleportToMiningDimensionPacket::new)
-                .encoder(TeleportToMiningDimensionPacket::encode)
-                .consumerMainThread(TeleportToMiningDimensionPacket::handle)
-                .add();
-
         INSTANCE.messageBuilder(AdminActionPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
                 .decoder(AdminActionPacket::new)
                 .encoder(AdminActionPacket::encode)
@@ -276,6 +270,24 @@ public class PacketHandler {
                 .decoder(SyncNodeInventoryPacket::new)
                 .encoder(SyncNodeInventoryPacket::encode)
                 .consumerMainThread(SyncNodeInventoryPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(UpdateGenesisConfigPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(UpdateGenesisConfigPacket::new)
+                .encoder(UpdateGenesisConfigPacket::encode)
+                .consumerMainThread(UpdateGenesisConfigPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(RegenerateDimensionPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(RegenerateDimensionPacket::new)
+                .encoder(RegenerateDimensionPacket::encode)
+                .consumerMainThread(RegenerateDimensionPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(EnterDimensionPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(EnterDimensionPacket::new)
+                .encoder(EnterDimensionPacket::encode)
+                .consumerMainThread(EnterDimensionPacket::handle)
                 .add();
     }
 

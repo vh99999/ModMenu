@@ -7,6 +7,7 @@ import com.example.modmenu.network.ActionNetworkPacket;
 import com.example.modmenu.network.PacketHandler;
 import com.example.modmenu.store.logistics.NetworkData;
 import com.example.modmenu.store.logistics.NetworkNode;
+import com.example.modmenu.store.logistics.NodeGroup;
 import com.example.modmenu.store.logistics.LogisticsRule;
 import com.mojang.blaze3d.systems.RenderSystem;
 import net.minecraft.client.gui.GuiGraphics;
@@ -30,10 +31,16 @@ public class GraphCanvasComponent extends UIContainer {
     private double zoom = 1.0;
     private boolean isPanning = false;
     private UUID draggingNodeId = null;
+    private UUID draggingGroupId = null;
     private UUID linkingFromNodeId = null;
+    private UUID linkingFromGroupId = null;
     private double lastMouseX, lastMouseY;
     private NetworkNode hoveredNode = null;
+    private NodeGroup hoveredGroup = null;
     private final java.util.List<UIParticle> particles = new java.util.ArrayList<>();
+    private String historySearchTerm = "";
+    private NetworkNode copiedConfig = null;
+    private boolean brushMode = false;
 
     public GraphCanvasComponent(int x, int y, int width, int height, NetworkData network, com.example.modmenu.client.ui.base.BaseResponsiveLodestoneScreen parentScreen) {
         super(x, y, width, height);
@@ -45,6 +52,18 @@ public class GraphCanvasComponent extends UIContainer {
 
     public void setNetworkData(NetworkData network) {
         this.network = network;
+    }
+
+    public void setHistorySearchTerm(String term) {
+        this.historySearchTerm = term.toLowerCase();
+    }
+
+    public void setBrushMode(boolean active) {
+        this.brushMode = active;
+    }
+
+    public boolean isBrushMode() {
+        return brushMode;
     }
 
     @Override
@@ -72,39 +91,92 @@ public class GraphCanvasComponent extends UIContainer {
                 drawLine(g, src.guiX, src.guiY, (int)worldMX, (int)worldMY, 0xFFFFAA00, true, false);
             }
         }
+        if (linkingFromGroupId != null) {
+            com.example.modmenu.store.logistics.NodeGroup src = findGroup(linkingFromGroupId);
+            if (src != null) {
+                drawLine(g, src.guiX, src.guiY, (int)worldMX, (int)worldMY, 0xFFFFAA00, true, false);
+            }
+        }
 
         // Simulation / Active Flow Particles
         updateAndRenderParticles(g, pt);
+        
+        // Draw Groups
+        hoveredGroup = null;
+        for (NodeGroup group : network.groups) {
+            boolean isHovered = Math.abs(worldMX - group.guiX) < 35 && Math.abs(worldMY - group.guiY) < 35;
+            if (isHovered) hoveredGroup = group;
+            renderGroup(g, group, isHovered);
+        }
 
         // Draw Nodes
         hoveredNode = null;
         for (NetworkNode node : network.nodes) {
+            if (!isNodeVisible(node)) continue;
             // Expanded padding zone to ensure sub-buttons (P and X) don't flicker
             boolean isHovered = Math.abs(worldMX - node.guiX) < 30 && worldMY > node.guiY - 32 && worldMY < node.guiY + 25;
-            if (isHovered) hoveredNode = node;
+            if (isHovered && hoveredGroup == null) hoveredNode = node;
             renderNode(g, node, isHovered);
         }
 
         g.pose().popPose();
         g.disableScissor();
+
+        if (brushMode) {
+            String txt = copiedConfig == null ? "\u00A7e[BRUSH] Select source node" : "\u00A7a[BRUSH] Ready to paint (Right-click to clear)";
+            g.drawString(Minecraft.getInstance().font, txt, getX() + 10, getY() + getHeight() - 20, 0xFFFFFFFF);
+            if (copiedConfig != null) {
+                String iconId = copiedConfig.iconItemId != null ? copiedConfig.iconItemId : (copiedConfig.nodeType.equals("BLOCK") ? copiedConfig.blockId : null);
+                if (iconId != null) {
+                    Item item = ForgeRegistries.ITEMS.getValue(ResourceLocation.tryParse(iconId));
+                    if (item != null) {
+                        g.renderItem(new ItemStack(item), getX() + 10, getY() + getHeight() - 40);
+                    }
+                }
+            }
+        }
         
         if (hoveredNode != null) {
             // Diagnostic Tooltip
+            final NetworkNode node = hoveredNode;
             parentScreen.addPostRenderTask(graphics -> {
                 java.util.List<net.minecraft.network.chat.Component> lines = new java.util.ArrayList<>();
-                lines.add(net.minecraft.network.chat.Component.literal("\u00A7e\u00A7l" + (hoveredNode.customName != null ? hoveredNode.customName : hoveredNode.nodeType)));
-                if (hoveredNode.nodeType.equals("BLOCK") && hoveredNode.pos != null) {
-                    lines.add(net.minecraft.network.chat.Component.literal("\u00A77Pos: \u00A7f" + hoveredNode.pos.toShortString()));
-                    lines.add(net.minecraft.network.chat.Component.literal("\u00A77Dim: \u00A7f" + hoveredNode.dimension));
+                lines.add(net.minecraft.network.chat.Component.literal("\u00A7e\u00A7l" + (node.customName != null ? node.customName : node.nodeType)));
+                if (node.nodeType.equals("BLOCK") && node.pos != null) {
+                    lines.add(net.minecraft.network.chat.Component.literal("\u00A77Pos: \u00A7f" + node.pos.toShortString()));
+                    lines.add(net.minecraft.network.chat.Component.literal("\u00A77Dim: \u00A7f" + node.dimension));
                 }
                 
-                if (hoveredNode.isMissing) {
+                if (node.isMissing) {
                     lines.add(net.minecraft.network.chat.Component.literal(""));
                     lines.add(net.minecraft.network.chat.Component.literal("\u00A7c\u00A7l\u26A0 ERROR: BLOCK OFFLINE"));
-                    lines.add(net.minecraft.network.chat.Component.literal("\u00A77Expected: \u00A7f" + hoveredNode.blockId));
+                    lines.add(net.minecraft.network.chat.Component.literal("\u00A77Expected: \u00A7f" + node.blockId));
                     lines.add(net.minecraft.network.chat.Component.literal("\u00A77Status: Block missing or moved."));
                 }
                 
+                graphics.renderComponentTooltip(Minecraft.getInstance().font, lines, mx, my);
+
+                // Render Large Icon if present
+                String tooltipIcon = node.iconItemId != null ? node.iconItemId : (node.nodeType.equals("BLOCK") ? node.blockId : null);
+                if (tooltipIcon != null) {
+                    Item item = ForgeRegistries.ITEMS.getValue(ResourceLocation.tryParse(tooltipIcon));
+                    if (item != null) {
+                        graphics.pose().pushPose();
+                        graphics.pose().translate(mx, my - 22, 500);
+                        graphics.renderItem(new ItemStack(item), 0, 0);
+                        graphics.pose().popPose();
+                    }
+                }
+            });
+        } else if (hoveredGroup != null) {
+            final com.example.modmenu.store.logistics.NodeGroup group = hoveredGroup;
+            parentScreen.addPostRenderTask(graphics -> {
+                java.util.List<net.minecraft.network.chat.Component> lines = new java.util.ArrayList<>();
+                lines.add(net.minecraft.network.chat.Component.literal("\u00A76\u00A7l[GROUP] " + (group.name != null ? group.name : "Unnamed")));
+                lines.add(net.minecraft.network.chat.Component.literal("\u00A77Nodes: \u00A7f" + group.nodeIds.size()));
+                lines.add(net.minecraft.network.chat.Component.literal(""));
+                lines.add(net.minecraft.network.chat.Component.literal("\u00A77Ctrl+Click to " + (group.expanded ? "Collapse" : "Expand")));
+                lines.add(net.minecraft.network.chat.Component.literal("\u00A77Right-click to Configure"));
                 graphics.renderComponentTooltip(Minecraft.getInstance().font, lines, mx, my);
             });
         }
@@ -117,11 +189,30 @@ public class GraphCanvasComponent extends UIContainer {
         if (System.currentTimeMillis() % 10 < 50) { // Throttle spawning
             for (LogisticsRule rule : network.rules) {
                 if (rule.active && (network.simulationActive || (rule.lastReport != null && rule.lastReport.contains("Moved")))) {
-                    NetworkNode src = findNode(rule.sourceNodeId);
-                    NetworkNode dst = findNode(rule.destNodeId);
-                    if (src != null && dst != null && Math.random() < 0.1) {
+                    int[] srcPos = getTargetPos(rule.sourceNodeId, rule.sourceIsGroup);
+                    int[] dstPos = getTargetPos(rule.destNodeId, rule.destIsGroup);
+                    
+                    if (srcPos != null && dstPos != null && Math.random() < 0.1) {
                         int color = network.simulationActive ? 0xFF00FFFF : 0xFF55FF55;
-                        particles.add(new UIParticle(src.guiX, src.guiY, dst.guiX, dst.guiY, color));
+                        if (rule.lastReport != null && rule.lastReport.startsWith("[OVERFLOW]")) {
+                            color = 0xFFDD00FF;
+                            // For overflow, the destination pos should be the overflow target!
+                            dstPos = getTargetPos(network.overflowTargetId, network.overflowIsGroup);
+                        }
+                        if (dstPos != null) particles.add(new UIParticle(srcPos[0], srcPos[1], dstPos[0], dstPos[1], color));
+                    }
+                }
+            }
+
+            // Flight Recorder: Spawn particles for history matches
+            if (!historySearchTerm.isEmpty() && !network.movementHistory.isEmpty()) {
+                for (com.example.modmenu.store.logistics.MovementRecord rec : network.movementHistory) {
+                    if (rec.itemName.toLowerCase().contains(historySearchTerm) || rec.itemId.toLowerCase().contains(historySearchTerm)) {
+                        int[] srcPos = getTargetPos(rec.sourceNodeId, false);
+                        int[] dstPos = getTargetPos(rec.destNodeId, false);
+                        if (srcPos != null && dstPos != null && Math.random() < 0.05) {
+                            particles.add(new UIParticle(srcPos[0], srcPos[1], dstPos[0], dstPos[1], 0xFFFFCC00, 2)); // Gold for history, size 2
+                        }
                     }
                 }
             }
@@ -155,9 +246,10 @@ public class GraphCanvasComponent extends UIContainer {
 
     private void drawRuleConnections(GuiGraphics g, double worldMX, double worldMY) {
         for (LogisticsRule rule : network.rules) {
-            NetworkNode src = findNode(rule.sourceNodeId);
-            NetworkNode dst = findNode(rule.destNodeId);
-            if (src != null && dst != null) {
+            int[] srcPos = getTargetPos(rule.sourceNodeId, rule.sourceIsGroup);
+            int[] dstPos = getTargetPos(rule.destNodeId, rule.destIsGroup);
+            
+            if (srcPos != null && dstPos != null) {
                 int color = switch(rule.type) {
                     case "ENERGY" -> 0xFFFFAA00;
                     case "FLUIDS" -> 0xFF00FF00;
@@ -166,24 +258,105 @@ public class GraphCanvasComponent extends UIContainer {
                 
                 if (!rule.active) color = 0xFF555555;
                 if (rule.lastReport != null && rule.lastReport.contains("Moved")) {
-                    // Success highlight (Greenish tint mixed with base color)
+                    // Success highlight
                     int r = (color >> 16) & 0xFF;
                     int gr = (color >> 8) & 0xFF;
                     int b = color & 0xFF;
                     color = 0xFF000000 | (Math.min(255, r + 50) << 16) | (Math.min(255, gr + 100) << 8) | Math.min(255, b + 50);
                 }
+                if (rule.lastReport != null && rule.lastReport.startsWith("[OVERFLOW]")) {
+                    color = 0xFFDD00FF; // Distinct Purple for overflow
+                }
                 
-                boolean isBroken = src.isMissing || dst.isMissing;
+                boolean isBroken = false;
+                if (rule.sourceIsGroup) {
+                    com.example.modmenu.store.logistics.NodeGroup sg = findGroup(rule.sourceNodeId);
+                    if (sg == null || sg.nodeIds.isEmpty()) isBroken = true;
+                } else {
+                    NetworkNode sn = findNode(rule.sourceNodeId);
+                    if (sn == null || sn.isMissing) isBroken = true;
+                }
+                if (rule.destIsGroup) {
+                    com.example.modmenu.store.logistics.NodeGroup dg = findGroup(rule.destNodeId);
+                    if (dg == null || dg.nodeIds.isEmpty()) isBroken = true;
+                } else {
+                    NetworkNode dn = findNode(rule.destNodeId);
+                    if (dn == null || dn.isMissing) isBroken = true;
+                }
+                
                 if (isBroken) color = 0xFFFF0000;
                 
-                drawLine(g, src.guiX, src.guiY, dst.guiX, dst.guiY, color, rule.active, isBroken);
+                drawLine(g, srcPos[0], srcPos[1], dstPos[0], dstPos[1], color, rule.active, isBroken);
+
+                if (rule.lastReport != null && rule.lastReport.startsWith("[OVERFLOW]")) {
+                    int[] ovPos = getTargetPos(network.overflowTargetId, network.overflowIsGroup);
+                    if (ovPos != null) {
+                        drawLine(g, srcPos[0], srcPos[1], ovPos[0], ovPos[1], 0xFFDD00FF, true, true);
+                    }
+                }
                 
+                // Draw Status Icon
+                String statusIcon = "";
+                if (rule.lastReport != null) {
+                    if (rule.lastReport.startsWith("[SEARCH]")) statusIcon = "\uD83D\uDD0D"; // 🔍
+                    else if (rule.lastReport.startsWith("[FULL]")) statusIcon = "\uD83D\uDCE6"; // 📦
+                    else if (rule.lastReport.startsWith("[ACTIVE]")) statusIcon = "\u26A1"; // ⚡
+                    else if (rule.lastReport.startsWith("[BLOCKED]")) statusIcon = "\uD83D\uDEAB"; // 🚫
+                    else if (rule.lastReport.startsWith("[ERROR]")) statusIcon = "\u26A0"; // ⚠
+                }
+                
+                int midX = (srcPos[0] + dstPos[0]) / 2;
+                int midY = (srcPos[1] + dstPos[1]) / 2;
+
+                if (!statusIcon.isEmpty()) {
+                    g.pose().pushPose();
+                    g.pose().translate(midX, midY - 15, 0);
+                    g.drawCenteredString(Minecraft.getInstance().font, statusIcon, 0, 0, 0xFFFFFFFF);
+                    g.pose().popPose();
+                }
+
+                // Safety Alert: Valuable to Market/Trash
+                boolean isDestPotentiallyDangerous = false;
+                if (rule.destIsGroup) {
+                    // Groups are harder to judge but let's assume if name has trash
+                    NodeGroup dg = findGroup(rule.destNodeId);
+                    if (dg != null && dg.name != null && dg.name.toLowerCase().contains("trash")) isDestPotentiallyDangerous = true;
+                } else {
+                    NetworkNode dn = findNode(rule.destNodeId);
+                    if (dn != null) {
+                        if (dn.nodeType.equals("MARKET")) isDestPotentiallyDangerous = true;
+                        if (dn.customName != null && dn.customName.toLowerCase().contains("trash")) isDestPotentiallyDangerous = true;
+                    }
+                }
+
+                if (isDestPotentiallyDangerous) {
+                    boolean isValuable = false;
+                    if (rule.filter.matchType.equals("SEMANTIC") && rule.filter.matchValues.contains("IS_ORE")) {
+                        isValuable = true;
+                    } else {
+                        for (String val : rule.filter.matchValues) {
+                            String low = val.toLowerCase();
+                            if (low.contains("diamond") || low.contains("netherite") || low.contains("emerald") || low.contains("gold") || low.contains("totem") || low.contains("elytra") || low.contains("shulker") || low.contains("ancient_debris")) {
+                                isValuable = true;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if (isValuable && !rule.filter.blacklist) {
+                        // Draw warning triangle
+                        g.pose().pushPose();
+                        g.pose().translate(midX, midY + 10, 0);
+                        g.pose().scale(0.8f, 0.8f, 1.0f);
+                        g.drawCenteredString(Minecraft.getInstance().font, "\u00A7c\u26A0 VALUABLE AT RISK", 0, 0, 0xFFFF0000);
+                        g.pose().popPose();
+                    }
+                }
+
                 // Draw Flow Arrow in middle
-                drawArrow(g, src.guiX, src.guiY, dst.guiX, dst.guiY, color);
+                drawArrow(g, srcPos[0], srcPos[1], dstPos[0], dstPos[1], color);
 
                 // Draw Edit handle in middle
-                int midX = (src.guiX + dst.guiX) / 2;
-                int midY = (src.guiY + dst.guiY) / 2;
                 boolean hov = Math.sqrt(Math.pow(worldMX - midX, 2) + Math.pow(worldMY - midY, 2)) < 8;
                 
                 g.fill(midX - 10, midY - 4, midX - 2, midY + 4, hov ? 0xFFFFFFFF : 0xAAFFFFFF); // Edit
@@ -252,6 +425,42 @@ public class GraphCanvasComponent extends UIContainer {
         }
     }
 
+    private void renderGroup(GuiGraphics g, com.example.modmenu.store.logistics.NodeGroup group, boolean hovered) {
+        int color = hovered ? 0xAA66AAFF : 0xAA4488DD;
+        if (!group.expanded) color = hovered ? 0xAAFFAA00 : 0xAAFF8800; // Orange for collapsed
+        
+        g.pose().pushPose();
+        g.pose().translate(group.guiX, group.guiY, 0);
+        
+        // Draw bubble
+        int radius = group.expanded ? 40 : 25;
+        g.fill(-radius, -radius, radius, radius, color);
+        g.renderOutline(-radius, -radius, radius * 2, radius * 2, 0xFFFFFFFF);
+        
+        g.pose().pushPose();
+        g.pose().scale(0.8f, 0.8f, 1.0f);
+        g.drawCenteredString(Minecraft.getInstance().font, "[GROUP]", 0, -radius + 10, 0xFFEEEEEE);
+        g.drawCenteredString(Minecraft.getInstance().font, group.name != null ? group.name : "Unnamed", 0, -radius + 20, 0xFFFFFFFF);
+        
+        if (!group.expanded) {
+            g.drawCenteredString(Minecraft.getInstance().font, group.nodeIds.size() + " Nodes", 0, 5, 0xFFAAAAAA);
+        } else {
+            g.drawCenteredString(Minecraft.getInstance().font, "(Expanded)", 0, radius - 15, 0xFFAAAAAA);
+        }
+        g.pose().popPose();
+
+        if (hovered) {
+             // Expand/Collapse sub-button
+             int bx = radius - 12;
+             int by = -radius - 15;
+             g.fill(bx, by, bx + 18, by + 12, group.expanded ? 0xFF555555 : 0xFF00AAFF);
+             g.renderOutline(bx, by, 18, 12, 0xFFFFFFFF);
+             g.drawCenteredString(Minecraft.getInstance().font, group.expanded ? "COL" : "EXP", bx + 9, by + 2, 0xFFFFFFFF);
+        }
+        
+        g.pose().popPose();
+    }
+
     private void renderNode(GuiGraphics g, NetworkNode node, boolean hovered) {
         int baseColor = 0xFF1A1A1A;
         if (hovered) baseColor = 0xFF2D2D3A;
@@ -276,8 +485,9 @@ public class GraphCanvasComponent extends UIContainer {
         }
 
         // Render Icon
-        if (node.nodeType.equals("BLOCK") && node.blockId != null) {
-            Item item = ForgeRegistries.ITEMS.getValue(ResourceLocation.tryParse(node.blockId));
+        String displayItemId = node.iconItemId != null ? node.iconItemId : (node.nodeType.equals("BLOCK") ? node.blockId : null);
+        if (displayItemId != null) {
+            Item item = ForgeRegistries.ITEMS.getValue(ResourceLocation.tryParse(displayItemId));
             if (item != null) {
                 g.pose().pushPose();
                 g.pose().translate(node.guiX - 8, node.guiY - 8, 0);
@@ -331,14 +541,83 @@ public class GraphCanvasComponent extends UIContainer {
         return null;
     }
 
+    private com.example.modmenu.store.logistics.NodeGroup findGroup(UUID id) {
+        for (com.example.modmenu.store.logistics.NodeGroup g : network.groups) if (g.groupId.equals(id)) return g;
+        return null;
+    }
+
+    private com.example.modmenu.store.logistics.NodeGroup getNodeGroup(UUID nodeId) {
+        for (com.example.modmenu.store.logistics.NodeGroup g : network.groups) {
+            if (g.nodeIds.contains(nodeId)) return g;
+        }
+        return null;
+    }
+
+    private boolean isNodeVisible(NetworkNode node) {
+        com.example.modmenu.store.logistics.NodeGroup g = getNodeGroup(node.nodeId);
+        return g == null || g.expanded;
+    }
+
+    private int[] getTargetPos(UUID id, boolean isGroup) {
+        if (isGroup) {
+            com.example.modmenu.store.logistics.NodeGroup g = findGroup(id);
+            if (g != null) return new int[]{g.guiX, g.guiY};
+        } else {
+            NetworkNode n = findNode(id);
+            if (n != null) {
+                com.example.modmenu.store.logistics.NodeGroup g = getNodeGroup(id);
+                if (g != null && !g.expanded) return new int[]{g.guiX, g.guiY};
+                return new int[]{n.guiX, n.guiY};
+            }
+        }
+        return new int[]{0, 0};
+    }
+
     @Override
     public boolean mouseClicked(double mx, double my, int button) {
         if (!isMouseOver(mx, my)) return false;
+
+        if (brushMode && button == 1) {
+            copiedConfig = null;
+            return true;
+        }
         
         double worldMX = (mx - getX() - cameraX) / zoom;
         double worldMY = (my - getY() - cameraY) / zoom;
 
+        // Check Groups
+        for (com.example.modmenu.store.logistics.NodeGroup group : network.groups) {
+            int radius = group.expanded ? 40 : 25;
+            if (Math.abs(worldMX - group.guiX) < radius && Math.abs(worldMY - group.guiY) < radius) {
+                // Check EXP/COL sub-button
+                if (worldMX > group.guiX + radius - 12 && worldMX < group.guiX + radius + 6 && worldMY > group.guiY - radius - 15 && worldMY < group.guiY - radius - 3) {
+                    group.expanded = !group.expanded;
+                    PacketHandler.sendToServer(ActionNetworkPacket.addGroup(network.networkId, group));
+                    return true;
+                }
+
+                if (button == 0) {
+                    if (Screen.hasShiftDown()) {
+                        linkingFromGroupId = group.groupId;
+                    } else if (Screen.hasControlDown()) {
+                        group.expanded = !group.expanded;
+                        PacketHandler.sendToServer(ActionNetworkPacket.addGroup(network.networkId, group));
+                    } else {
+                        draggingGroupId = group.groupId;
+                    }
+                    lastMouseX = mx;
+                    lastMouseY = my;
+                    return true;
+                } else if (button == 1) {
+                    Minecraft.getInstance().setScreen(new com.example.modmenu.client.ui.screen.NodeGroupConfigScreen(parentScreen, network.networkId, network, group, false));
+                    return true;
+                }
+            }
+        }
+
+        // Check Nodes
         for (NetworkNode node : network.nodes) {
+            if (!isNodeVisible(node)) continue;
             if (Math.abs(worldMX - node.guiX) < 30 && worldMY > node.guiY - 32 && worldMY < node.guiY + 25) {
                 // Check sub-buttons hitboxes
                 if (worldMX > node.guiX + 11 && worldMX < node.guiX + 25 && worldMY > node.guiY - 28 && worldMY < node.guiY - 16) {
@@ -356,6 +635,16 @@ public class GraphCanvasComponent extends UIContainer {
                 }
 
                 if (button == 0) {
+                    if (brushMode) {
+                        if (copiedConfig == null) {
+                            copiedConfig = node.snapshot();
+                            Minecraft.getInstance().getSoundManager().play(net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(net.minecraft.sounds.SoundEvents.EXPERIENCE_ORB_PICKUP, 1.5f));
+                        } else {
+                            PacketHandler.sendToServer(ActionNetworkPacket.pasteNodeConfig(network.networkId, node.nodeId, copiedConfig));
+                            Minecraft.getInstance().getSoundManager().play(net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(net.minecraft.sounds.SoundEvents.ITEM_PICKUP, 1.0f));
+                        }
+                        return true;
+                    }
                     if (Screen.hasShiftDown()) {
                         linkingFromNodeId = node.nodeId;
                     } else {
@@ -405,29 +694,61 @@ public class GraphCanvasComponent extends UIContainer {
         if (button == 0) {
             if (draggingNodeId != null) {
                 NetworkNode node = findNode(draggingNodeId);
-                if (node != null) {
-                    PacketHandler.sendToServer(new ActionNetworkPacket(11, network.networkId, node));
-                }
+                if (node != null) PacketHandler.sendToServer(new ActionNetworkPacket(11, network.networkId, node));
             }
-            if (linkingFromNodeId != null) {
+            if (draggingGroupId != null) {
+                com.example.modmenu.store.logistics.NodeGroup group = findGroup(draggingGroupId);
+                if (group != null) PacketHandler.sendToServer(ActionNetworkPacket.addGroup(network.networkId, group));
+            }
+
+            if (linkingFromNodeId != null || linkingFromGroupId != null) {
                 double worldMX = (mx - getX() - cameraX) / zoom;
                 double worldMY = (my - getY() - cameraY) / zoom;
-                for (NetworkNode node : network.nodes) {
-                    if (Math.abs(worldMX - node.guiX) < 30 && worldMY > node.guiY - 32 && worldMY < node.guiY + 25) {
-                        if (!node.nodeId.equals(linkingFromNodeId)) {
-                            // Create Rule
-                            LogisticsRule newRule = new LogisticsRule();
-                            newRule.sourceNodeId = linkingFromNodeId;
-                            newRule.destNodeId = node.nodeId;
-                            Minecraft.getInstance().setScreen(new com.example.modmenu.client.ui.screen.RuleConfigScreen(parentScreen, network.networkId, network, newRule, true));
-                        }
+                
+                UUID targetId = null;
+                boolean targetIsGroup = false;
+
+                // Check Group targets
+                for (com.example.modmenu.store.logistics.NodeGroup g : network.groups) {
+                    int radius = g.expanded ? 40 : 25;
+                    if (Math.abs(worldMX - g.guiX) < radius && Math.abs(worldMY - g.guiY) < radius) {
+                        targetId = g.groupId;
+                        targetIsGroup = true;
                         break;
+                    }
+                }
+                
+                // Check Node targets if no group found
+                if (targetId == null) {
+                    for (NetworkNode n : network.nodes) {
+                        if (!isNodeVisible(n)) continue;
+                        if (Math.abs(worldMX - n.guiX) < 30 && Math.abs(worldMY - n.guiY) < 30) {
+                            targetId = n.nodeId;
+                            targetIsGroup = false;
+                            break;
+                        }
+                    }
+                }
+
+                if (targetId != null) {
+                    UUID fromId = linkingFromNodeId != null ? linkingFromNodeId : linkingFromGroupId;
+                    boolean fromIsGroup = linkingFromGroupId != null;
+                    
+                    if (!targetId.equals(fromId)) {
+                        LogisticsRule newRule = new LogisticsRule();
+                        newRule.sourceNodeId = fromId;
+                        newRule.sourceIsGroup = fromIsGroup;
+                        newRule.destNodeId = targetId;
+                        newRule.destIsGroup = targetIsGroup;
+                        Minecraft.getInstance().setScreen(new com.example.modmenu.client.ui.screen.RuleConfigScreen(parentScreen, network.networkId, network, newRule, true));
                     }
                 }
             }
             isPanning = false;
             draggingNodeId = null;
+            draggingGroupId = null;
             linkingFromNodeId = null;
+            linkingFromGroupId = null;
         }
         return super.mouseReleased(mx, my, button);
     }
@@ -444,6 +765,21 @@ public class GraphCanvasComponent extends UIContainer {
             if (node != null) {
                 node.guiX += dx / zoom;
                 node.guiY += dy / zoom;
+            }
+            return true;
+        }
+        if (draggingGroupId != null) {
+            com.example.modmenu.store.logistics.NodeGroup group = findGroup(draggingGroupId);
+            if (group != null) {
+                group.guiX += dx / zoom;
+                group.guiY += dy / zoom;
+                for (UUID id : group.nodeIds) {
+                    NetworkNode n = findNode(id);
+                    if (n != null) {
+                        n.guiX += dx / zoom;
+                        n.guiY += dy / zoom;
+                    }
+                }
             }
             return true;
         }
@@ -474,9 +810,15 @@ public class GraphCanvasComponent extends UIContainer {
         float targetX, y2;
         int color;
         float progress = 0;
+        int size = 1;
         
         public UIParticle(float x, float y, float tx, float ty, int color) {
+            this(x, y, tx, ty, color, 1);
+        }
+
+        public UIParticle(float x, float y, float tx, float ty, int color, int size) {
             this.x = x; this.y = y; this.targetX = tx; this.y2 = ty; this.color = color;
+            this.size = size;
         }
         
         public boolean update(float delta) {
@@ -487,7 +829,7 @@ public class GraphCanvasComponent extends UIContainer {
         public void render(GuiGraphics g) {
             float px = x + (targetX - x) * progress;
             float py = y + (y2 - y) * progress;
-            g.fill((int)px - 1, (int)py - 1, (int)px + 1, (int)py + 1, color);
+            g.fill((int)px - size, (int)py - size, (int)px + size, (int)py + size, color);
         }
     }
 }
