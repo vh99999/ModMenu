@@ -4,8 +4,7 @@ import com.example.modmenu.client.ui.base.BaseResponsiveLodestoneScreen;
 import com.example.modmenu.client.ui.base.ScrollableUIContainer;
 import com.example.modmenu.client.ui.base.UIElement;
 import com.example.modmenu.client.ui.component.ResponsiveButton;
-import com.example.modmenu.network.ActionNetworkPacket;
-import com.example.modmenu.network.PacketHandler;
+import com.example.modmenu.network.*;
 import com.example.modmenu.store.logistics.NetworkData;
 import com.example.modmenu.store.logistics.NetworkNode;
 import com.example.modmenu.store.logistics.LogisticsRule;
@@ -108,13 +107,13 @@ public class RulesListScreen extends BaseResponsiveLodestoneScreen {
             if (mx >= bx && mx < bx + 70) {
                 // Apply Template: needs a target. Let's open target picker.
                 minecraft.setScreen(new PickTargetScreen(RulesListScreen.this, networkData, (targetId, isGroup) -> {
-                    PacketHandler.sendToServer(ActionNetworkPacket.applyTemplate(networkId, targetId, isGroup, template.templateId));
+                    PacketHandler.sendToServer(RuleManagementPacket.applyTemplate(networkId, targetId, isGroup, template.templateId));
                 }));
                 return true;
             }
             bx += 75;
             if (mx >= bx && mx < bx + 70) {
-                PacketHandler.sendToServer(ActionNetworkPacket.removeTemplate(networkId, template.templateId));
+                PacketHandler.sendToServer(RuleManagementPacket.removeTemplate(networkId, template.templateId));
                 networkData.ruleTemplates.remove(template);
                 refreshList();
                 return true;
@@ -173,17 +172,17 @@ public class RulesListScreen extends BaseResponsiveLodestoneScreen {
             int bx = getX() + getWidth() - 225;
             if (mx >= bx && mx < bx + 70) {
                 // Test
-                PacketHandler.sendToServer(ActionNetworkPacket.testRule(networkId, rule.ruleId));
+                PacketHandler.sendToServer(RuleManagementPacket.test(networkId, rule.ruleId));
                 return true;
             }
             bx += 75;
             if (mx >= bx && mx < bx + 70) {
-                Minecraft.getInstance().setScreen(new RuleConfigScreen(RulesListScreen.this, networkId, networkData, rule, false));
+                PacketHandler.sendToServer(RuleManagementPacket.test(networkId, rule.ruleId));
                 return true;
             }
             bx += 75;
             if (mx >= bx && mx < bx + 70) {
-                PacketHandler.sendToServer(ActionNetworkPacket.removeRule(networkId, rule.ruleId));
+                PacketHandler.sendToServer(RuleManagementPacket.remove(networkId, rule.ruleId));
                 networkData.rules.remove(rule);
                 refreshList();
                 return true;
@@ -193,7 +192,9 @@ public class RulesListScreen extends BaseResponsiveLodestoneScreen {
     }
 
     private NetworkNode findNode(UUID id) {
-        for (NetworkNode n : networkData.nodes) if (n.nodeId.equals(id)) return n;
+        for (NetworkNode n : networkData.nodes) {
+            if (n != null && n.nodeId.equals(id)) return n;
+        }
         return null;
     }
 }

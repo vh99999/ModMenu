@@ -115,6 +115,10 @@ public class ChamberLootScreen extends BaseResponsiveLodestoneScreen {
                         lines.add(Component.literal("\u00A7eMiddle Click Item: \u00A77Set Yield Target"));
                         lines.add(Component.literal("\u00A7eTransfer Button: \u00A77Click, then Shift+Right-Click a container."));
                         lines.add(Component.literal(""));
+                        lines.add(Component.literal("\u00A76Neural Logistics Integration:"));
+                        lines.add(Component.literal("\u00A77Chambers can be added as 'CHAMBER' nodes in your networks."));
+                        lines.add(Component.literal("\u00A77This allows for fully automated, wireless loot distribution."));
+                        lines.add(Component.literal(""));
                         lines.add(Component.literal("\u00A76Advanced Filtering:"));
                         lines.add(Component.literal("\u00A77Hold an item in main hand to add rules."));
                         lines.add(Component.literal("\u00A7bID: \u00A77Matches exactly that item."));

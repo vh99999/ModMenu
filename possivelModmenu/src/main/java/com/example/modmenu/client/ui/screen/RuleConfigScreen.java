@@ -4,8 +4,7 @@ import com.example.modmenu.client.ui.screen.PickTagScreen;
 import com.example.modmenu.client.ui.base.BaseResponsiveLodestoneScreen;
 import com.example.modmenu.client.ui.base.UIElement;
 import com.example.modmenu.client.ui.component.ResponsiveButton;
-import com.example.modmenu.network.ActionNetworkPacket;
-import com.example.modmenu.network.PacketHandler;
+import com.example.modmenu.network.*;
 import com.example.modmenu.store.logistics.LogisticsRule;
 import com.example.modmenu.store.logistics.NetworkData;
 import com.example.modmenu.store.logistics.NetworkNode;
@@ -57,7 +56,8 @@ public class RuleConfigScreen extends BaseResponsiveLodestoneScreen {
             }
         } else {
             for (int i = 0; i < networkData.nodes.size(); i++) {
-                if (networkData.nodes.get(i).nodeId.equals(id)) return i;
+                NetworkNode n = networkData.nodes.get(i);
+                if (n != null && n.nodeId.equals(id)) return i;
             }
         }
         return 0;
@@ -66,11 +66,12 @@ public class RuleConfigScreen extends BaseResponsiveLodestoneScreen {
     private void requestProbe() {
         int nodeSize = networkData.nodes.size();
         if (sourceIdx < nodeSize && !networkData.nodes.isEmpty()) {
-            PacketHandler.sendToServer(ActionNetworkPacket.requestInventoryProbe(networkId, networkData.nodes.get(sourceIdx).nodeId));
+            NetworkNode n = networkData.nodes.get(sourceIdx);
+            if (n != null) PacketHandler.sendToServer(NodeManagementPacket.probeInventory(networkId, n.nodeId));
         } else if (!networkData.groups.isEmpty()) {
             int groupIdx = sourceIdx - nodeSize;
             if (groupIdx >= 0 && groupIdx < networkData.groups.size()) {
-                PacketHandler.sendToServer(ActionNetworkPacket.requestGroupInventoryProbe(networkId, networkData.groups.get(groupIdx).groupId));
+                PacketHandler.sendToServer(GroupManagementPacket.probeInventory(networkId, networkData.groups.get(groupIdx).groupId));
             }
         }
     }
@@ -79,7 +80,8 @@ public class RuleConfigScreen extends BaseResponsiveLodestoneScreen {
         int nodeSize = networkData.nodes.size();
         boolean matched = false;
         if (sourceIdx < nodeSize && !networkData.nodes.isEmpty()) {
-            if (networkData.nodes.get(sourceIdx).nodeId.equals(id)) matched = true;
+            NetworkNode n = networkData.nodes.get(sourceIdx);
+            if (n != null && n.nodeId.equals(id)) matched = true;
         } else {
             int groupIdx = sourceIdx - nodeSize;
             if (groupIdx >= 0 && groupIdx < networkData.groups.size()) {
@@ -114,10 +116,12 @@ public class RuleConfigScreen extends BaseResponsiveLodestoneScreen {
             this.layoutRoot.addElement(new ResponsiveButton(midX + 5, currentY, 145, 20, Component.literal("Src Side: " + rule.sourceSide), btn -> {
                 if (!networkData.nodes.isEmpty()) {
                     NetworkNode srcNode = networkData.nodes.get(sourceIdx);
-                    this.minecraft.setScreen(new PickSideScreen(this, srcNode, side -> {
-                        rule.sourceSide = side;
-                        btn.setText(Component.literal("Src Side: " + rule.sourceSide));
-                    }));
+                    if (srcNode != null) {
+                        this.minecraft.setScreen(new PickSideScreen(this, srcNode, side -> {
+                            rule.sourceSide = side;
+                            btn.setText(Component.literal("Src Side: " + rule.sourceSide));
+                        }));
+                    }
                 }
             }));
         } else {
@@ -132,10 +136,12 @@ public class RuleConfigScreen extends BaseResponsiveLodestoneScreen {
             this.layoutRoot.addElement(new ResponsiveButton(midX - 150, currentY, 240, 20, Component.literal("Source Slots: " + srcSlotsTxt), btn -> {
                 if (!networkData.nodes.isEmpty()) {
                     NetworkNode src = networkData.nodes.get(sourceIdx);
-                    this.minecraft.setScreen(new PickSlotFromNodeScreen(this, networkId, src, rule.type, rule.sourceSlots, slots -> {
-                        rule.sourceSlots = new ArrayList<>(slots);
-                        this.init(this.minecraft, this.width, this.height);
-                    }));
+                    if (src != null) {
+                        this.minecraft.setScreen(new PickSlotFromNodeScreen(this, networkId, src, rule.type, rule.sourceSlots, slots -> {
+                            rule.sourceSlots = new ArrayList<>(slots);
+                            this.init(this.minecraft, this.width, this.height);
+                        }));
+                    }
                 }
             }));
             this.layoutRoot.addElement(new ResponsiveButton(midX + 95, currentY, 55, 20, Component.literal("Clear"), btn -> {
@@ -161,10 +167,12 @@ public class RuleConfigScreen extends BaseResponsiveLodestoneScreen {
             this.layoutRoot.addElement(new ResponsiveButton(midX + 5, currentY, 145, 20, Component.literal("Dst Side: " + rule.destSide), btn -> {
                 if (!networkData.nodes.isEmpty()) {
                     NetworkNode dstNode = networkData.nodes.get(destIdx);
-                    this.minecraft.setScreen(new PickSideScreen(this, dstNode, side -> {
-                        rule.destSide = side;
-                        btn.setText(Component.literal("Dst Side: " + rule.destSide));
-                    }));
+                    if (dstNode != null) {
+                        this.minecraft.setScreen(new PickSideScreen(this, dstNode, side -> {
+                            rule.destSide = side;
+                            btn.setText(Component.literal("Dst Side: " + rule.destSide));
+                        }));
+                    }
                 }
             }));
         } else {
@@ -179,10 +187,12 @@ public class RuleConfigScreen extends BaseResponsiveLodestoneScreen {
             this.layoutRoot.addElement(new ResponsiveButton(midX - 150, currentY, 240, 20, Component.literal("Dest Slots: " + dstSlotsTxt), btn -> {
                 if (!networkData.nodes.isEmpty()) {
                     NetworkNode dst = networkData.nodes.get(destIdx);
-                    this.minecraft.setScreen(new PickSlotFromNodeScreen(this, networkId, dst, rule.type, rule.destSlots, slots -> {
-                        rule.destSlots = new ArrayList<>(slots);
-                        this.init(this.minecraft, this.width, this.height);
-                    }));
+                    if (dst != null) {
+                        this.minecraft.setScreen(new PickSlotFromNodeScreen(this, networkId, dst, rule.type, rule.destSlots, slots -> {
+                            rule.destSlots = new ArrayList<>(slots);
+                            this.init(this.minecraft, this.width, this.height);
+                        }));
+                    }
                 }
             }));
             this.layoutRoot.addElement(new ResponsiveButton(midX + 95, currentY, 55, 20, Component.literal("Clear"), btn -> {
@@ -368,7 +378,9 @@ public class RuleConfigScreen extends BaseResponsiveLodestoneScreen {
         this.layoutRoot.addElement(new ResponsiveButton(midX - 105, currentY, 100, 20, Component.literal("\u00A76SAVE RULE"), btn -> {
             int nodeSize = networkData.nodes.size();
             if (sourceIdx < nodeSize) {
-                rule.sourceNodeId = networkData.nodes.get(sourceIdx).nodeId;
+                NetworkNode n = networkData.nodes.get(sourceIdx);
+                if (n == null) return;
+                rule.sourceNodeId = n.nodeId;
                 rule.sourceIsGroup = false;
             } else {
                 rule.sourceNodeId = networkData.groups.get(sourceIdx - nodeSize).groupId;
@@ -376,25 +388,27 @@ public class RuleConfigScreen extends BaseResponsiveLodestoneScreen {
             }
             
             if (destIdx < nodeSize) {
-                rule.destNodeId = networkData.nodes.get(destIdx).nodeId;
+                NetworkNode n = networkData.nodes.get(destIdx);
+                if (n == null) return;
+                rule.destNodeId = n.nodeId;
                 rule.destIsGroup = false;
             } else {
                 rule.destNodeId = networkData.groups.get(destIdx - nodeSize).groupId;
                 rule.destIsGroup = true;
             }
 
-            PacketHandler.sendToServer(new ActionNetworkPacket(4, networkId, rule));
+            PacketHandler.sendToServer(RuleManagementPacket.addUpdate(networkId, rule));
             this.minecraft.setScreen(parent);
         }));
         this.layoutRoot.addElement(new ResponsiveButton(midX + 5, currentY, 100, 20, Component.literal("\u00A7bTEST RULE"), btn -> {
-            if (!isNew) PacketHandler.sendToServer(ActionNetworkPacket.testRule(networkId, rule.ruleId));
+            if (!isNew) PacketHandler.sendToServer(RuleManagementPacket.test(networkId, rule.ruleId));
         }));
         currentY += 25;
 
         this.layoutRoot.addElement(new ResponsiveButton(midX - 105, currentY, 100, 20, Component.literal("\u00A7eSave Blueprint"), btn -> {
             this.minecraft.setScreen(new RenameNetworkScreen(this, networkId, "New Blueprint", name -> {
                 RuleTemplate template = new RuleTemplate(name, rule);
-                PacketHandler.sendToServer(ActionNetworkPacket.addTemplate(networkId, template));
+                PacketHandler.sendToServer(RuleManagementPacket.addUpdateTemplate(networkId, template));
                 this.minecraft.setScreen(this);
             }));
         }));
@@ -445,6 +459,7 @@ public class RuleConfigScreen extends BaseResponsiveLodestoneScreen {
         int nodeSize = networkData.nodes.size();
         if (sourceIdx < nodeSize && !networkData.nodes.isEmpty()) {
             NetworkNode n = networkData.nodes.get(sourceIdx);
+            if (n == null) return "Unknown Node";
             return n.customName != null ? n.customName : n.nodeType;
         } else {
             int gIdx = sourceIdx - nodeSize;
@@ -460,6 +475,7 @@ public class RuleConfigScreen extends BaseResponsiveLodestoneScreen {
         int nodeSize = networkData.nodes.size();
         if (destIdx < nodeSize && !networkData.nodes.isEmpty()) {
             NetworkNode n = networkData.nodes.get(destIdx);
+            if (n == null) return "Unknown Node";
             return n.customName != null ? n.customName : n.nodeType;
         } else {
             int gIdx = destIdx - nodeSize;

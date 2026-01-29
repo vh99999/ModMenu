@@ -3,8 +3,7 @@ package com.example.modmenu.client.ui.screen;
 import com.example.modmenu.client.ui.base.BaseResponsiveLodestoneScreen;
 import com.example.modmenu.client.ui.base.ScrollableUIContainer;
 import com.example.modmenu.client.ui.component.ResponsiveButton;
-import com.example.modmenu.network.ActionNetworkPacket;
-import com.example.modmenu.network.PacketHandler;
+import com.example.modmenu.network.*;
 import com.example.modmenu.store.StorePriceManager;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -34,14 +33,14 @@ public class PickVirtualNodeScreen extends BaseResponsiveLodestoneScreen {
 
         // 1. Player Node
         list.addElement(new ResponsiveButton(0, currentY, list.getWidth() - 10, 20, Component.literal("Player Inventory"), btn -> {
-            PacketHandler.sendToServer(ActionNetworkPacket.addVirtualNode(networkId, "PLAYER", -1));
+            PacketHandler.sendToServer(NodeManagementPacket.addVirtual(networkId, "PLAYER", -1));
             this.minecraft.setScreen(parent);
         }));
         currentY += 25;
 
         // 2. Market Node
         list.addElement(new ResponsiveButton(0, currentY, list.getWidth() - 10, 20, Component.literal("Market (Sell Node)"), btn -> {
-            PacketHandler.sendToServer(ActionNetworkPacket.addVirtualNode(networkId, "MARKET", -1));
+            PacketHandler.sendToServer(NodeManagementPacket.addVirtual(networkId, "MARKET", -1));
             this.minecraft.setScreen(parent);
         }));
         currentY += 25;
@@ -52,7 +51,7 @@ public class PickVirtualNodeScreen extends BaseResponsiveLodestoneScreen {
             String name = chamber.customName != null ? chamber.customName : chamber.mobId;
             int idx = i;
             list.addElement(new ResponsiveButton(0, currentY, list.getWidth() - 10, 20, Component.literal("Chamber #" + i + ": " + name), btn -> {
-                PacketHandler.sendToServer(ActionNetworkPacket.addVirtualNode(networkId, "CHAMBER", idx));
+                PacketHandler.sendToServer(NodeManagementPacket.addVirtual(networkId, "CHAMBER", idx));
                 this.minecraft.setScreen(parent);
             }));
             currentY += 25;

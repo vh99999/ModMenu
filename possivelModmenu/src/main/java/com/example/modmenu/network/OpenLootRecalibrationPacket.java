@@ -56,8 +56,7 @@ public class OpenLootRecalibrationPacket {
 
     public void handle(Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
-            com.example.modmenu.client.ui.screen.LootRecalibrationScreen screen = new com.example.modmenu.client.ui.screen.LootRecalibrationScreen(entityId, drops, rerollCount);
-            net.minecraft.client.Minecraft.getInstance().setScreen(screen);
+            ClientPacketHandler.handleOpenLootRecalibration(entityId, drops, rerollCount);
         });
         ctx.get().setPacketHandled(true);
     }

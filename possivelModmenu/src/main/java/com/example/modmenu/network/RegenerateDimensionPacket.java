@@ -1,6 +1,7 @@
 package com.example.modmenu.network;
 
 import com.example.modmenu.store.StorePriceManager;
+import com.example.modmenu.store.StoreSecurity;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
@@ -17,16 +18,13 @@ public class RegenerateDimensionPacket {
     public void handle(Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             ServerPlayer player = ctx.get().getSender();
-            if (player != null) {
-                StorePriceManager.SkillData data = StorePriceManager.getSkills(player.getUUID());
-                if (!data.genesisConfig.locked) {
-                    com.example.modmenu.store.GenesisManager.regenerateGenesis(player);
-                    
-                    // Sync everyone so they see the "Wipe Pending" status
-                    if (player.server != null) {
-                        for (net.minecraft.server.level.ServerPlayer p : player.server.getPlayerList().getPlayers()) {
-                            StorePriceManager.sync(p);
-                        }
+            if (player != null && StoreSecurity.canRegenerateDimension(player)) {
+                com.example.modmenu.store.GenesisManager.regenerateGenesis(player);
+                
+                // Sync everyone so they see the "Wipe Pending" status
+                if (player.server != null) {
+                    for (net.minecraft.server.level.ServerPlayer p : player.server.getPlayerList().getPlayers()) {
+                        StorePriceManager.sync(p);
                     }
                 }
             }

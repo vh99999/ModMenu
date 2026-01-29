@@ -103,8 +103,30 @@ public class AbilitiesScreen extends BaseResponsiveLodestoneScreen {
         addHeader(list, "AUTOMATION");
         addToggle(list, "Item Repair Active", s.repairActive, () -> { s.repairActive = !s.repairActive; sync(); });
         addToggle(list, "Item Magnet", s.itemMagnetActive, () -> { s.itemMagnetActive = !s.itemMagnetActive; sync(); });
+        
+        // Link Magnet
+        ResponsiveButton linkMagBtn = new ResponsiveButton(0, 0, list.getWidth(), 20, 
+            Component.literal("Link Magnet: " + (s.linkMagnetActive ? "\u00A7aON" : "\u00A7cOFF")), b -> {
+                s.linkMagnetActive = !s.linkMagnetActive;
+                sync();
+                refreshContent();
+            });
+        String storageInfo = s.linkedStoragePos != null ? 
+            s.linkedStoragePos.getX() + ", " + s.linkedStoragePos.getY() + ", " + s.linkedStoragePos.getZ() + " (" + s.linkedStorageDim + ")" : 
+            "Not Linked (Shift+Right Click a container)";
+        linkMagBtn.setTooltip(java.util.List.of(
+            Component.literal("\u00A7bLink Magnet"),
+            Component.literal("\u00A77Teleports items to linked storage."),
+            Component.literal("\u00A7eLinked to: \u00A7f" + storageInfo)
+        ));
+        list.addElement(linkMagBtn);
+
         addSetting(list, "Item Magnet Speed", String.valueOf(s.itemMagnetOpsPerTick), () -> { s.itemMagnetOpsPerTick = Math.max(1, s.itemMagnetOpsPerTick - 1); sync(); }, () -> { s.itemMagnetOpsPerTick = Math.min(1000000, s.itemMagnetOpsPerTick + 1); sync(); });
         addSetting(list, "Item Magnet Range", String.valueOf(s.itemMagnetRange), () -> { s.itemMagnetRange = Math.max(1, s.itemMagnetRange - 1); sync(); }, () -> { s.itemMagnetRange = Math.min(10000, s.itemMagnetRange + 1); sync(); });
+        
+        if (StorePriceManager.getSkills(this.minecraft.player.getUUID()).skillRanks.getOrDefault("UTILITY_QUANTUM_VACUUM", 0) > 0) {
+            addSetting(list, "Quantum Vacuum Boost", String.valueOf(s.quantumVacuumRange), () -> { s.quantumVacuumRange = Math.max(0, s.quantumVacuumRange - 16); sync(); }, () -> { s.quantumVacuumRange = Math.min(10000, s.quantumVacuumRange + 16); sync(); });
+        }
         
         addToggle(list, "XP Magnet", s.xpMagnetActive, () -> { s.xpMagnetActive = !s.xpMagnetActive; sync(); });
         addSetting(list, "XP Magnet Speed", String.valueOf(s.xpMagnetOpsPerTick), () -> { s.xpMagnetOpsPerTick = Math.max(1, s.xpMagnetOpsPerTick - 1); sync(); }, () -> { s.xpMagnetOpsPerTick = Math.min(1000000, s.xpMagnetOpsPerTick + 1); sync(); });

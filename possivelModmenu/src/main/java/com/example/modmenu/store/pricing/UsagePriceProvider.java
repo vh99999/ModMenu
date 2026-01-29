@@ -9,22 +9,25 @@ import net.minecraftforge.registries.ForgeRegistries;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class UsagePriceProvider implements PriceProvider {
     private final PricingEngine engine;
-    private final Map<String, List<Recipe<?>>> itemUsages = new HashMap<>();
-    private boolean builtUsages = false;
+    private final Map<String, List<Recipe<?>>> itemUsages = new ConcurrentHashMap<>();
+    private volatile boolean builtUsages = false;
 
     public UsagePriceProvider(PricingEngine engine) {
         this.engine = engine;
     }
 
-    private void buildUsages(PricingContext context) {
+    private synchronized void buildUsages(PricingContext context) {
+        if (builtUsages) return;
         for (Recipe<?> recipe : context.getRecipeManager().getRecipes()) {
             for (Ingredient ingredient : recipe.getIngredients()) {
                 for (ItemStack stack : ingredient.getItems()) {
                     String id = ForgeRegistries.ITEMS.getKey(stack.getItem()).toString();
-                    itemUsages.computeIfAbsent(id, k -> new ArrayList<>()).add(recipe);
+                    itemUsages.computeIfAbsent(id, k -> new CopyOnWriteArrayList<>()).add(recipe);
                 }
             }
         }

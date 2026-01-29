@@ -1,6 +1,7 @@
 package com.example.modmenu.network;
 
 import com.example.modmenu.store.StorePriceManager;
+import com.example.modmenu.store.StoreSecurity;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkEvent;
@@ -31,7 +32,7 @@ public class AdminActionPacket {
     public void handle(Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             ServerPlayer player = ctx.get().getSender();
-            if (player != null && StorePriceManager.isEditor(player.getUUID())) {
+            if (player != null && StoreSecurity.canModifyPrices(player)) {
                 switch (action) {
                     case ADD_ALL_EFFECTS -> StorePriceManager.addAllEffects();
                     case ADD_ALL_ENCHANTS -> StorePriceManager.addAllEnchantments();

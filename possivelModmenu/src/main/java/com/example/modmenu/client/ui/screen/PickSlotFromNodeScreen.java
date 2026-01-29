@@ -4,8 +4,7 @@ import com.example.modmenu.client.ui.base.BaseResponsiveLodestoneScreen;
 import com.example.modmenu.client.ui.base.ScrollableUIContainer;
 import com.example.modmenu.client.ui.base.UIElement;
 import com.example.modmenu.client.ui.component.ResponsiveButton;
-import com.example.modmenu.network.ActionNetworkPacket;
-import com.example.modmenu.network.PacketHandler;
+import com.example.modmenu.network.*;
 import com.example.modmenu.store.logistics.NetworkNode;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -41,7 +40,7 @@ public class PickSlotFromNodeScreen extends BaseResponsiveLodestoneScreen {
         this.ruleType = ruleType;
         this.selectedSlots = new java.util.ArrayList<>(currentSlots);
         this.onPick = onPick;
-        PacketHandler.sendToServer(ActionNetworkPacket.requestInventoryProbe(networkId, node.nodeId));
+        PacketHandler.sendToServer(NodeManagementPacket.probeInventory(networkId, node.nodeId));
     }
 
     public void handleSyncInventory(UUID nodeId, List<ItemStack> inventory, List<Integer> slotX, List<Integer> slotY, ResourceLocation guiTexture) {

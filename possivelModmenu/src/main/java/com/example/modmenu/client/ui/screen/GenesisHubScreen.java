@@ -38,12 +38,16 @@ public class GenesisHubScreen extends BaseResponsiveLodestoneScreen {
         }));
 
         // Tabs
-        int tabWidth = 80;
-        int tabX = (this.width - (tabWidth * 4 + 15)) / 2;
+        int tabCount = StorePriceManager.isEditor ? 5 : 4;
+        int tabWidth = tabCount == 5 ? 70 : 80;
+        int tabX = (this.width - (tabWidth * tabCount + 5 * (tabCount - 1))) / 2;
         addTabButton(tabX, 40, tabWidth, "Generation", 0);
         addTabButton(tabX + tabWidth + 5, 40, tabWidth, "Atmosphere", 1);
         addTabButton(tabX + (tabWidth + 5) * 2, 40, tabWidth, "Physics", 2);
         addTabButton(tabX + (tabWidth + 5) * 3, 40, tabWidth, "Laws", 3);
+        if (StorePriceManager.isEditor) {
+            addTabButton(tabX + (tabWidth + 5) * 4, 40, tabWidth, "Formulas", 4);
+        }
 
         contentArea = new ScrollableUIContainer(50, 65, this.width - 100, this.height - 110);
         this.layoutRoot.addElement(contentArea);
@@ -140,6 +144,10 @@ public class GenesisHubScreen extends BaseResponsiveLodestoneScreen {
             case 1 -> setupAtmosphereTab();
             case 2 -> setupPhysicsTab();
             case 3 -> setupLawsTab();
+            case 4 -> {
+                if (StorePriceManager.isEditor) setupFormulasTab();
+                else setupGenerationTab();
+            }
         }
     }
 
@@ -222,7 +230,7 @@ public class GenesisHubScreen extends BaseResponsiveLodestoneScreen {
         contentArea.setContentHeight(y + 20);
     }
 
-    private void addTooltip(com.example.modmenu.client.ui.base.UIElement element, String... lines) {
+    private void addTooltip(UIElement element, String... lines) {
         java.util.List<Component> tooltip = new java.util.ArrayList<>();
         for (String line : lines) {
             tooltip.add(Component.literal(line));
@@ -230,13 +238,18 @@ public class GenesisHubScreen extends BaseResponsiveLodestoneScreen {
         element.setTooltip(tooltip);
     }
 
-    private void addLabel(int x, int y, String text) {
-        contentArea.addElement(new UIElement(x, y, 130, 10) {
+    private UIElement addLabel(int x, int y, String text) {
+        UIElement el = new UIElement(x, y, 130, 10) {
             @Override
             public void render(GuiGraphics g, int mx, int my, float pt) {
                 g.drawString(font, text, getX(), getY(), 0xFFFFFFFF);
             }
-        });
+        };
+        contentArea.addElement(el);
+        if (text.startsWith("\u00A7c*")) {
+            addTooltip(el, "\u00A7c* \u00A77This setting is an Architectural Change.", "\u00A77Requires \u00A7cRegenerate \u00A77to take full effect.");
+        }
+        return el;
     }
 
     private ResponsiveButton addCycleButton(int x, int y, int w, int h, String current, String[] options, java.util.function.Consumer<String> setter) {
@@ -483,7 +496,7 @@ public class GenesisHubScreen extends BaseResponsiveLodestoneScreen {
         addTooltip(addToggleButton(btnX, y, btnW, 20, localConfig.realityPersistence, val -> localConfig.realityPersistence = val), "\u00A77Keep the core chunks loaded even when no players are present.");
         y += spacing;
 
-        addLabel(labelX, y + 5, "Bedrock Control:");
+        addLabel(labelX, y + 5, "\u00A7c* \u00A7fBedrock Control:");
         addCycleButton(btnX, y, btnW, 20, localConfig.bedrockControl, new String[]{"Normal", "Floor", "Ceiling", "Both", "None"}, val -> {
             localConfig.bedrockControl = val;
         });
@@ -523,6 +536,65 @@ public class GenesisHubScreen extends BaseResponsiveLodestoneScreen {
         });
         addTooltip(msgBtn, "\u00A77The message shown to anyone entering your realm.");
         contentArea.addElement(msgBtn);
+        y += spacing;
+
+        contentArea.setContentHeight(y + 20);
+    }
+
+    private void setupFormulasTab() {
+        int y = 0;
+        int spacing = 25;
+        int labelX = 10;
+        int btnX = 150;
+        int btnW = 150;
+
+        StorePriceManager.FormulaConfig f = StorePriceManager.formulas;
+
+        addLabel(labelX, y + 5, "Step Assist Cost:");
+        addValueSlider(btnX, y, btnW, 20, f.stepAssistCostPerAssist.toString(), () -> f.stepAssistCostPerAssist = f.stepAssistCostPerAssist.subtract(java.math.BigDecimal.valueOf(5)).max(java.math.BigDecimal.ZERO), () -> f.stepAssistCostPerAssist = f.stepAssistCostPerAssist.add(java.math.BigDecimal.valueOf(5)));
+        y += spacing;
+
+        addLabel(labelX, y + 5, "Area Mining Base:");
+        addValueSlider(btnX, y, btnW, 20, f.areaMiningCostBase.toString(), () -> f.areaMiningCostBase = f.areaMiningCostBase.subtract(java.math.BigDecimal.valueOf(10)).max(java.math.BigDecimal.ZERO), () -> f.areaMiningCostBase = f.areaMiningCostBase.add(java.math.BigDecimal.valueOf(10)));
+        y += spacing;
+
+        addLabel(labelX, y + 5, "Flight Cost/sec:");
+        addValueSlider(btnX, y, btnW, 20, f.flightCostPerSecond.toString(), () -> f.flightCostPerSecond = f.flightCostPerSecond.subtract(java.math.BigDecimal.valueOf(50)).max(java.math.BigDecimal.ZERO), () -> f.flightCostPerSecond = f.flightCostPerSecond.add(java.math.BigDecimal.valueOf(50)));
+        y += spacing;
+
+        addLabel(labelX, y + 5, "Sure Kill Base:");
+        addValueSlider(btnX, y, btnW, 20, f.sureKillBaseCost.toString(), () -> f.sureKillBaseCost = f.sureKillBaseCost.subtract(java.math.BigDecimal.valueOf(500)).max(java.math.BigDecimal.ZERO), () -> f.sureKillBaseCost = f.sureKillBaseCost.add(java.math.BigDecimal.valueOf(500)));
+        y += spacing;
+
+        addLabel(labelX, y + 5, "No Aggro Cancel:");
+        addValueSlider(btnX, y, btnW, 20, f.noAggroCostPerCancel.toString(), () -> f.noAggroCostPerCancel = f.noAggroCostPerCancel.subtract(java.math.BigDecimal.valueOf(20)).max(java.math.BigDecimal.ZERO), () -> f.noAggroCostPerCancel = f.noAggroCostPerCancel.add(java.math.BigDecimal.valueOf(20)));
+        y += spacing;
+
+        addLabel(labelX, y + 5, "Repair Cost/pt:");
+        addValueSlider(btnX, y, btnW, 20, String.valueOf(f.repairCostPerPoint), () -> f.repairCostPerPoint = Math.max(0, f.repairCostPerPoint - 1), () -> f.repairCostPerPoint++);
+        y += spacing;
+
+        addLabel(labelX, y + 5, "SP Multiplier:");
+        addValueSlider(btnX, y, btnW, 20, String.format("%.1fx", f.spMultiplier), () -> f.spMultiplier = Math.max(0.1, f.spMultiplier - 0.1), () -> f.spMultiplier = Math.min(10.0, f.spMultiplier + 0.1));
+        y += spacing;
+
+        addLabel(labelX, y + 5, "Link Magnet Base:");
+        addValueSlider(btnX, y, btnW, 20, f.linkMagnetMaintenance.toString(), () -> f.linkMagnetMaintenance = f.linkMagnetMaintenance.subtract(java.math.BigDecimal.valueOf(10)).max(java.math.BigDecimal.ZERO), () -> f.linkMagnetMaintenance = f.linkMagnetMaintenance.add(java.math.BigDecimal.valueOf(10)));
+        y += spacing;
+
+        addLabel(labelX, y + 5, "Link Mag Dist Mult:");
+        addValueSlider(btnX, y, btnW, 20, f.linkMagnetDistanceMultiplier.toString(), () -> f.linkMagnetDistanceMultiplier = f.linkMagnetDistanceMultiplier.subtract(java.math.BigDecimal.valueOf(0.1)).max(java.math.BigDecimal.ZERO), () -> f.linkMagnetDistanceMultiplier = f.linkMagnetDistanceMultiplier.add(java.math.BigDecimal.valueOf(0.1)));
+        y += spacing;
+
+        addLabel(labelX, y + 5, "Link Mag Dim Tax:");
+        addValueSlider(btnX, y, btnW, 20, f.linkMagnetDimensionTax.toString(), () -> f.linkMagnetDimensionTax = f.linkMagnetDimensionTax.subtract(java.math.BigDecimal.valueOf(100)).max(java.math.BigDecimal.ZERO), () -> f.linkMagnetDimensionTax = f.linkMagnetDimensionTax.add(java.math.BigDecimal.valueOf(100)));
+        y += spacing;
+
+        ResponsiveButton saveFormulasBtn = new ResponsiveButton(btnX, y, btnW, 20, Component.literal("\u00A76Update Formulas"), btn -> {
+            PacketHandler.sendToServer(new com.example.modmenu.network.UpdateFormulasPacket(f));
+            Minecraft.getInstance().player.displayClientMessage(Component.literal("\u00A76[Genesis Hub] Formulas updated on server."), true);
+        });
+        contentArea.addElement(saveFormulasBtn);
         y += spacing;
 
         contentArea.setContentHeight(y + 20);

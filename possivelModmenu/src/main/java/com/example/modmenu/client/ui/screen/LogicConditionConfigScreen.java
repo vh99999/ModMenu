@@ -75,7 +75,10 @@ public class LogicConditionConfigScreen extends BaseResponsiveLodestoneScreen {
                     NodeGroup group = networkData.groups.stream().filter(gr -> gr.groupId.equals(cond.targetId)).findFirst().orElse(null);
                     targetLabel = "[G] " + (group != null ? group.name : "Unknown");
                 } else {
-                    NetworkNode node = networkData.nodes.stream().filter(n -> n.nodeId.equals(cond.targetId)).findFirst().orElse(null);
+                    NetworkNode node = networkData.nodes.stream()
+                            .filter(java.util.Objects::nonNull)
+                            .filter(n -> n.nodeId.equals(cond.targetId))
+                            .findFirst().orElse(null);
                     targetLabel = node != null ? (node.customName != null ? node.customName : node.nodeType) : "Unknown";
                 }
             }

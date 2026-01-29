@@ -3,8 +3,7 @@ import com.example.modmenu.client.ui.base.BaseResponsiveLodestoneScreen;
 import com.example.modmenu.client.ui.base.ScrollableUIContainer;
 import com.example.modmenu.client.ui.base.UIElement;
 import com.example.modmenu.client.ui.component.ResponsiveButton;
-import com.example.modmenu.network.ActionNetworkPacket;
-import com.example.modmenu.network.PacketHandler;
+import com.example.modmenu.network.*;
 import com.example.modmenu.store.logistics.LogisticsCapability;
 import com.example.modmenu.store.logistics.NetworkData;
 import net.minecraft.client.Minecraft;
@@ -26,7 +25,7 @@ this.layoutRoot.addElement(new ResponsiveButton(10, 10, 50, 20, Component.litera
 this.minecraft.setScreen(parent);
 }));
 this.layoutRoot.addElement(new ResponsiveButton(70, 10, 120, 20, Component.literal("Create New Network"), btn -> {
-PacketHandler.sendToServer(ActionNetworkPacket.createNetwork("Network #" + (cachedNetworks.size() + 1)));
+PacketHandler.sendToServer(NetworkManagementPacket.create("Network #" + (cachedNetworks.size() + 1)));
 }));
 list = new ScrollableUIContainer(50, 40, this.width - 100, this.height - 50);
 this.layoutRoot.addElement(list);
@@ -77,7 +76,7 @@ g.drawCenteredString(font, txt, bx + bw / 2, by + bh / 2 - 4, 0xFFFFFFFF);
 if (!isMouseOver(mx, my)) return false;
 int bx = getX() + getWidth() - 255;
 if (mx >= bx && mx < bx + 80 && my >= getY() + 15 && my < getY() + 33) {
-PacketHandler.sendToServer(new ActionNetworkPacket(7, data.networkId));
+PacketHandler.sendToServer(NetworkManagementPacket.toggleActive(data.networkId));
 return true;
 } bx += 85;
 if (mx >= bx && mx < bx + 80) {
@@ -90,7 +89,7 @@ return true;
 }
 } bx += 85;
 if (mx >= bx && mx < bx + 80 && my >= getY() + 15 && my < getY() + 33) {
-PacketHandler.sendToServer(ActionNetworkPacket.deleteNetwork(data.networkId));
+PacketHandler.sendToServer(NetworkManagementPacket.delete(data.networkId));
 return true;
 } return false;
 }

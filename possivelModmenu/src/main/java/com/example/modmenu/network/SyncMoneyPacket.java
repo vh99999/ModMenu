@@ -92,6 +92,13 @@ public class SyncMoneyPacket {
         this.abilities.selectedEnchantments = buf.readCollection(java.util.ArrayList::new, FriendlyByteBuf::readUtf);
         this.abilities.growCropsActive = buf.readBoolean();
         this.abilities.growCropsRange = buf.readInt();
+        
+        this.abilities.linkMagnetActive = buf.readBoolean();
+        if (buf.readBoolean()) {
+            this.abilities.linkedStoragePos = buf.readBlockPos();
+        }
+        this.abilities.linkedStorageDim = buf.readUtf();
+        
         this.unlockedHouses = buf.readCollection(java.util.HashSet::new, FriendlyByteBuf::readUtf);
         this.attributeBonuses = buf.readMap(FriendlyByteBuf::readUtf, FriendlyByteBuf::readDouble);
     }
@@ -160,6 +167,14 @@ public class SyncMoneyPacket {
         buf.writeCollection(abilities.selectedEnchantments, FriendlyByteBuf::writeUtf);
         buf.writeBoolean(abilities.growCropsActive);
         buf.writeInt(abilities.growCropsRange);
+        
+        buf.writeBoolean(abilities.linkMagnetActive);
+        buf.writeBoolean(abilities.linkedStoragePos != null);
+        if (abilities.linkedStoragePos != null) {
+            buf.writeBlockPos(abilities.linkedStoragePos);
+        }
+        buf.writeUtf(abilities.linkedStorageDim != null ? abilities.linkedStorageDim : "minecraft:overworld");
+        
         buf.writeCollection(unlockedHouses, FriendlyByteBuf::writeUtf);
         buf.writeMap(attributeBonuses, FriendlyByteBuf::writeUtf, FriendlyByteBuf::writeDouble);
     }
@@ -168,10 +183,21 @@ public class SyncMoneyPacket {
         ctx.get().enqueueWork(() -> {
             StorePriceManager.playerMoney = money;
             StorePriceManager.isEditor = isEditor;
-            StorePriceManager.clientActiveEffects = activeEffects;
             StorePriceManager.playerDrain = drain;
-            StorePriceManager.clientUnlockedHouses = unlockedHouses;
-            StorePriceManager.clientAttributeBonuses = attributeBonuses;
+            
+            if (activeEffects != null) {
+                StorePriceManager.clientActiveEffects.clear();
+                StorePriceManager.clientActiveEffects.putAll(activeEffects);
+            }
+            if (unlockedHouses != null) {
+                StorePriceManager.clientUnlockedHouses.clear();
+                StorePriceManager.clientUnlockedHouses.addAll(unlockedHouses);
+            }
+            if (attributeBonuses != null) {
+                StorePriceManager.clientAttributeBonuses.clear();
+                StorePriceManager.clientAttributeBonuses.putAll(attributeBonuses);
+            }
+
             if (StorePriceManager.clientAbilities == null) {
                 StorePriceManager.clientAbilities = abilities;
             } else {

@@ -25,51 +25,34 @@ this.guiTexture = guiTexture;
 }
 public SyncNodeInventoryPacket(FriendlyByteBuf buf) {
 this.nodeId = buf.readUUID();
-int size = buf.readInt();
-this.inventory = new ArrayList<>(size);
-this.slotX = new ArrayList<>(size);
-this.slotY = new ArrayList<>(size);
-for (int i = 0;
-i < size;
-i++) {
+int size = Math.min(buf.readInt(), 1000);
+this.inventory = new ArrayList<>(Math.max(0, size));
+this.slotX = new ArrayList<>(Math.max(0, size));
+this.slotY = new ArrayList<>(Math.max(0, size));
+for (int i = 0; i < size; i++) {
 this.inventory.add(buf.readItem());
 this.slotX.add(buf.readInt());
 this.slotY.add(buf.readInt());
 }
 if (buf.readBoolean()) this.guiTexture = buf.readResourceLocation();
 }
-public void encode(FriendlyByteBuf buf) {
-buf.writeUUID(nodeId);
-buf.writeInt(inventory.size());
-for (int i = 0;
-i < inventory.size();
-i++) {
-buf.writeItem(inventory.get(i));
-buf.writeInt(slotX.get(i));
-buf.writeInt(slotY.get(i));
-}
-buf.writeBoolean(guiTexture != null);
-if (guiTexture != null) buf.writeResourceLocation(guiTexture);
-}
-public void handle(Supplier<NetworkEvent.Context> ctx) {
-ctx.get().enqueueWork(() -> {
-net.minecraft.client.gui.screens.Screen screen = net.minecraft.client.Minecraft.getInstance().screen;
-if (screen instanceof com.example.modmenu.client.ui.screen.NodeConfigScreen ncs) {
-ncs.handleSyncInventory(nodeId, inventory, slotX, slotY, guiTexture);
-}
-else if (screen instanceof com.example.modmenu.client.ui.screen.PickItemFromNodeScreen pins) {
-pins.handleSyncInventory(nodeId, inventory, slotX, slotY);
-}
-else if (screen instanceof com.example.modmenu.client.ui.screen.PickSlotFromNodeScreen psns) {
-psns.handleSyncInventory(nodeId, inventory, slotX, slotY, guiTexture);
-}
-else if (screen instanceof com.example.modmenu.client.ui.screen.RuleConfigScreen rcs) {
-rcs.handleSyncInventory(nodeId, inventory, slotX, slotY, guiTexture);
-}
-else if (screen instanceof com.example.modmenu.client.ui.screen.FilterConfigScreen fcs) {
-fcs.handleSyncInventory(nodeId, inventory, slotX, slotY, guiTexture);
-}
-});
-ctx.get().setPacketHandled(true);
-}
+    public void encode(FriendlyByteBuf buf) {
+        buf.writeUUID(nodeId);
+        // Limit number of items to avoid oversized packets (2.0 MB limit)
+        int size = Math.min(inventory.size(), 500);
+        buf.writeInt(size);
+        for (int i = 0; i < size; i++) {
+            buf.writeItem(inventory.get(i));
+            buf.writeInt(slotX.get(i));
+            buf.writeInt(slotY.get(i));
+        }
+        buf.writeBoolean(guiTexture != null);
+        if (guiTexture != null) buf.writeResourceLocation(guiTexture);
+    }
+    public void handle(Supplier<NetworkEvent.Context> ctx) {
+        ctx.get().enqueueWork(() -> {
+            ClientPacketHandler.handleSyncNodeInventory(nodeId, inventory, slotX, slotY, guiTexture);
+        });
+        ctx.get().setPacketHandled(true);
+    }
 }

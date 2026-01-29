@@ -54,6 +54,9 @@ public class ServerForgeEvents {
                     entity.teleportTo(entity.getX(), entity.level().getMaxBuildHeight() + 10, entity.getZ());
                     entity.setDeltaMovement(0, 0, 0);
                     entity.resetFallDistance();
+                    // Add Void Shield (Resistance/Slow Falling) for 3s to prevent loop
+                    entity.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.DAMAGE_RESISTANCE, 60, 4));
+                    entity.addEffect(new net.minecraft.world.effect.MobEffectInstance(net.minecraft.world.effect.MobEffects.SLOW_FALLING, 60, 0));
                     if (entity instanceof ServerPlayer sp) {
                         sp.displayClientMessage(Component.literal("\u00A7b[Genesis Hub] Void Mirror Protocol Active!"), true);
                     }
@@ -288,7 +291,43 @@ public class ServerForgeEvents {
     private static final UUID GRAVITY_MODIFIER_UUID = UUID.fromString("6f3b0641-6963-448f-9a4f-561937965b79");
     public static Map<UUID, List<BlockPos>> pendingMining = new HashMap<>();
     public static Map<UUID, List<LiquidationRegion>> pendingRegions = new HashMap<>();
+    public static Map<UUID, List<MiningTask>> pendingMiningTasks = new HashMap<>();
+    public static Map<UUID, List<MiningTask>> pendingExecutionTasks = new HashMap<>();
     public static Map<Integer, LootBuffer> bufferedLoot = new HashMap<>();
+
+    public static class MiningTask {
+        public final UUID playerUuid;
+        public final BlockPos center;
+        public final int radius;
+        public final boolean isAreaMining;
+        public final List<String> blacklist;
+        public int currentX, currentY, currentZ;
+        public BigDecimal totalCost = BigDecimal.ZERO;
+        public final List<BlockPos> toBreak = new ArrayList<>();
+        public final Block targetBlock;
+        public final StorePriceManager.AbilitySettings settings;
+        public final StorePriceManager.SkillData skillData;
+        public final Map<net.minecraft.world.item.Item, BigDecimal> aggregatedDrops = new HashMap<>();
+        public BigDecimal totalValueCollected = BigDecimal.ZERO;
+
+        public MiningTask(UUID playerUuid, BlockPos center, int radius, boolean isAreaMining, List<String> blacklist, Block targetBlock, StorePriceManager.AbilitySettings settings, StorePriceManager.SkillData skillData) {
+            this.playerUuid = playerUuid;
+            this.center = center;
+            this.radius = radius;
+            this.isAreaMining = isAreaMining;
+            this.blacklist = blacklist;
+            this.currentX = -radius;
+            this.currentY = -radius;
+            this.currentZ = -radius;
+            this.targetBlock = targetBlock;
+            this.settings = settings;
+            this.skillData = skillData;
+        }
+
+        public boolean isDone() {
+            return currentX > radius;
+        }
+    }
 
     public static class LiquidationRegion {
         public final int minX, maxX, minY, maxY, minZ, maxZ;
@@ -536,37 +575,9 @@ public class ServerForgeEvents {
         if (size <= 1) return;
         
         int radius = (size - 1) / 2;
-        ServerLevel level = player.serverLevel();
-        BigDecimal currentMoney = StorePriceManager.getMoney(player.getUUID());
-        BigDecimal totalCost = BigDecimal.ZERO;
-        List<BlockPos> toBreak = new ArrayList<>();
-
-        BlockPos.MutableBlockPos mutablePos = new BlockPos.MutableBlockPos();
-
-        for (int x = -radius; x <= radius; x++) {
-            for (int y = -radius; y <= radius; y++) {
-                for (int z = -radius; z <= radius; z++) {
-                    if (x == 0 && y == 0 && z == 0) continue;
-                    mutablePos.set(pos.getX() + x, pos.getY() + y, pos.getZ() + z);
-                    BlockState s = level.getBlockState(mutablePos);
-                    if (s.isAir() || s.getBlock() == Blocks.BEDROCK) continue;
-                    if (isMiningBlacklisted(s, settings.miningBlacklist)) continue;
-                    
-                    BigDecimal cost = StorePriceManager.formulas.areaMiningCostBase;
-                    if (StorePriceManager.canAfford(player.getUUID(), totalCost.add(cost))) {
-                        totalCost = totalCost.add(cost);
-                        toBreak.add(mutablePos.immutable());
-                    }
-                }
-            }
-        }
-
-        if (!toBreak.isEmpty()) {
-            StorePriceManager.addMoney(player.getUUID(), totalCost.negate());
-            pendingMining.computeIfAbsent(player.getUUID(), k -> new ArrayList<>()).addAll(toBreak);
-            player.displayClientMessage(Component.literal("\u00A76[Area Mining] \u00A7aQueued " + toBreak.size() + " blocks for liquidation."), true);
-            StorePriceManager.sync(player);
-        }
+        MiningTask task = new MiningTask(player.getUUID(), pos, radius, true, settings.miningBlacklist, null, settings, skillData);
+        pendingMiningTasks.computeIfAbsent(player.getUUID(), k -> new ArrayList<>()).add(task);
+        player.displayClientMessage(Component.literal("\u00A76[Area Mining] \u00A7aScanning " + size + "x" + size + "x" + size + " area..."), true);
     }
 
     @SubscribeEvent
@@ -617,6 +628,16 @@ public class ServerForgeEvents {
         if (event.phase != TickEvent.Phase.END) return;
         long time = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer().overworld().getGameTime();
         
+        // Market Recovery (Every 20 minutes)
+        if (time > 0 && time % 24000 == 0) {
+            StorePriceManager.decayPrices();
+        }
+
+        // Batch Price Sync (Every 10 seconds)
+        if (time > 0 && time % 200 == 0) {
+            StorePriceManager.checkAndSyncBatch();
+        }
+
         for (UUID uuid : scheduledDamages.keySet()) {
             List<ScheduledDamage> list = scheduledDamages.get(uuid);
             list.removeIf(d -> {
@@ -631,6 +652,177 @@ public class ServerForgeEvents {
                 }
                 return false;
             });
+        }
+
+        // Process Mining Tasks (Scanning)
+        for (UUID uuid : pendingMiningTasks.keySet()) {
+            ServerPlayer player = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer().getPlayerList().getPlayer(uuid);
+            if (player == null) continue;
+            List<MiningTask> tasks = pendingMiningTasks.get(uuid);
+            if (tasks.isEmpty()) continue;
+
+            MiningTask task = tasks.get(0);
+            int scanned = 0;
+            ServerLevel level = player.serverLevel();
+            BlockPos.MutableBlockPos mpos = new BlockPos.MutableBlockPos();
+
+            while (scanned < 1000 && !task.isDone()) {
+                mpos.set(task.center.getX() + task.currentX, task.center.getY() + task.currentY, task.center.getZ() + task.currentZ);
+                BlockState state = level.getBlockState(mpos);
+                
+                if (!state.isAir() && state.getBlock() != Blocks.BEDROCK) {
+                    if (!isMiningBlacklisted(state, task.blacklist)) {
+                        boolean match = true;
+                        if (task.targetBlock != null) {
+                             match = state.getBlock() == task.targetBlock;
+                        }
+
+                        if (match) {
+                            BigDecimal cost = null;
+                            if (task.isAreaMining) {
+                                cost = StorePriceManager.formulas.areaMiningCostBase;
+                            } else {
+                                BigDecimal price = StorePriceManager.getPrice(state.getBlock().asItem());
+                                BigDecimal effectivePrice = StorePriceManager.isOre(state.getBlock().asItem()) ? BigDecimal.valueOf(1000) : price;
+                                if (effectivePrice.compareTo(BigDecimal.valueOf(10)) > 0) {
+                                    double distanceSq = mpos.distSqr(task.center);
+                                    double costFactor = 1.0 + (Math.sqrt(distanceSq) / 10.0);
+                                    cost = effectivePrice.divide(BigDecimal.valueOf(20), 10, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(costFactor));
+                                    
+                                    if (task.settings.useEnchantments) {
+                                        int enchantMultiplier = 1;
+                                        for (int lvl : task.settings.miningEnchants.values()) {
+                                            enchantMultiplier += lvl;
+                                        }
+                                        cost = cost.multiply(BigDecimal.valueOf(enchantMultiplier));
+                                    }
+                                }
+                            }
+
+                            if (cost != null) {
+                                if (StorePriceManager.canAfford(player.getUUID(), task.totalCost.add(cost))) {
+                                    task.totalCost = task.totalCost.add(cost);
+                                    task.toBreak.add(mpos.immutable());
+                                }
+                            }
+                        }
+                    }
+                }
+
+                task.currentY++;
+                if (task.currentY > task.radius) {
+                    task.currentY = -task.radius;
+                    task.currentZ++;
+                    if (task.currentZ > task.radius) {
+                        task.currentZ = -task.radius;
+                        task.currentX++;
+                    }
+                }
+                scanned++;
+            }
+
+            if (task.isDone()) {
+                tasks.remove(0);
+                if (!task.toBreak.isEmpty()) {
+                    if (task.isAreaMining) {
+                        StorePriceManager.addMoney(player.getUUID(), task.totalCost.negate());
+                        pendingMining.computeIfAbsent(player.getUUID(), k -> new ArrayList<>()).addAll(task.toBreak);
+                        player.displayClientMessage(Component.literal("\u00A76[Area Mining] \u00A7aQueued " + task.toBreak.size() + " blocks for liquidation."), true);
+                    } else {
+                        pendingExecutionTasks.computeIfAbsent(player.getUUID(), k -> new ArrayList<>()).add(task);
+                        player.displayClientMessage(Component.literal("\u00A76[Mining] \u00A7aQueued " + task.toBreak.size() + " blocks for harvesting."), true);
+                    }
+                    StorePriceManager.sync(player);
+                } else {
+                    player.displayClientMessage(Component.literal("\u00A7cNo suitable blocks found!"), true);
+                }
+            }
+        }
+
+        // Process Mining Execution (Harvesting)
+        for (UUID uuid : pendingExecutionTasks.keySet()) {
+            ServerPlayer player = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer().getPlayerList().getPlayer(uuid);
+            if (player == null) continue;
+            List<MiningTask> tasks = pendingExecutionTasks.get(uuid);
+            if (tasks.isEmpty()) continue;
+
+            MiningTask task = tasks.get(0);
+            ServerLevel level = player.serverLevel();
+            int processed = 0;
+            
+            ItemStack tool = new ItemStack(net.minecraft.world.item.Items.NETHERITE_PICKAXE);
+            if (task.settings.useEnchantments) {
+                task.settings.miningEnchants.forEach((id, lvl) -> {
+                    net.minecraft.world.item.enchantment.Enchantment enchant = net.minecraftforge.registries.ForgeRegistries.ENCHANTMENTS.getValue(ResourceLocation.tryParse(id));
+                    if (enchant != null) tool.enchant(enchant, lvl);
+                });
+            }
+
+            int replicationRank = SkillManager.getActiveRank(task.skillData, "UTILITY_MOLECULAR_REPLICATION");
+            BigDecimal replMultiplier = BigDecimal.ONE;
+            if (replicationRank > 0) {
+                if (replicationRank == 1) replMultiplier = BigDecimal.valueOf(2);
+                else if (replicationRank == 2) replMultiplier = BigDecimal.valueOf(5);
+                else if (replicationRank == 3) replMultiplier = BigDecimal.valueOf(10);
+                else if (replicationRank == 4) replMultiplier = BigDecimal.valueOf(25);
+                else if (replicationRank == 5) replMultiplier = BigDecimal.valueOf(100);
+                else if (replicationRank == 6) replMultiplier = BigDecimal.valueOf(250);
+                else if (replicationRank == 7) replMultiplier = BigDecimal.valueOf(500);
+                else if (replicationRank == 8) replMultiplier = BigDecimal.valueOf(1000);
+                else if (replicationRank >= 9) replMultiplier = BigDecimal.valueOf(10000);
+            }
+
+            while (processed < 100 && !task.toBreak.isEmpty()) {
+                BlockPos pos = task.toBreak.remove(0);
+                BlockState state = level.getBlockState(pos);
+                if (state.isAir() || state.getBlock() == Blocks.BEDROCK) {
+                    processed++;
+                    continue;
+                }
+
+                List<ItemStack> drops = Block.getDrops(state, level, pos, null, player, tool);
+                for (ItemStack drop : drops) {
+                    BigDecimal count = (replicationRank >= 10) ? BigDecimal.valueOf(64) : BigDecimal.valueOf(drop.getCount()).multiply(replMultiplier);
+                    task.aggregatedDrops.put(drop.getItem(), task.aggregatedDrops.getOrDefault(drop.getItem(), BigDecimal.ZERO).add(count));
+                }
+
+                level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
+                processed++;
+            }
+
+            if (task.toBreak.isEmpty()) {
+                tasks.remove(0);
+                StorePriceManager.addMoney(player.getUUID(), task.totalCost.negate());
+                
+                for (Map.Entry<net.minecraft.world.item.Item, BigDecimal> entry : task.aggregatedDrops.entrySet()) {
+                    net.minecraft.world.item.Item item = entry.getKey();
+                    BigDecimal count = entry.getValue();
+                    
+                    if (task.settings.autoSell) {
+                        BigDecimal sellPrice = StorePriceManager.getSellPrice(item);
+                        task.totalValueCollected = task.totalValueCollected.add(sellPrice.multiply(count));
+                        StorePriceManager.recordSale(item, count);
+                    } else {
+                        int intCount = count.intValue();
+                        while (intCount > 0) {
+                            int toGive = Math.min(intCount, 64);
+                            ItemStack stack = new ItemStack(item, toGive);
+                            if (!player.getInventory().add(stack)) {
+                                player.drop(stack, false);
+                            }
+                            intCount -= toGive;
+                        }
+                    }
+                }
+
+                if (task.totalValueCollected.compareTo(BigDecimal.ZERO) > 0) {
+                    StorePriceManager.addMoney(player.getUUID(), task.totalValueCollected);
+                    player.displayClientMessage(Component.literal("\u00A76[Mining] \u00A7aHarvest complete. Earned: \u00A7e$" + task.totalValueCollected.setScale(2, RoundingMode.HALF_UP)), false);
+                } else {
+                    player.displayClientMessage(Component.literal("\u00A76[Mining] \u00A7aHarvest complete."), true);
+                }
+                StorePriceManager.sync(player);
+            }
         }
 
         // Process Liquidation Regions (Scanning)
@@ -758,6 +950,8 @@ public class ServerForgeEvents {
             scheduledDamages.remove(uuid);
             pendingMining.remove(uuid);
             pendingRegions.remove(uuid);
+            pendingMiningTasks.remove(uuid);
+            pendingExecutionTasks.remove(uuid);
         }
     }
 
@@ -1003,8 +1197,12 @@ public class ServerForgeEvents {
         // Quantum Storage (Utility Branch)
         if (SkillManager.getActiveRank(skillData, "UTILITY_QUANTUM_STORAGE") > 0 && player.isShiftKeyDown() && event.getTarget() instanceof net.minecraft.world.entity.vehicle.ContainerEntity container) {
             // For entities like minecart with chest
+            settings.linkedStoragePos = event.getTarget().blockPosition();
+            settings.linkedStorageDim = player.level().dimension().location().toString();
             player.displayClientMessage(Component.literal("\u00A7b[Quantum Storage] \u00A7aContainer Synced!"), true);
-            // logic to store reference
+            StorePriceManager.sync(player);
+            event.setCanceled(true);
+            return;
         }
         
         if (settings.captureActive && player.isShiftKeyDown() && event.getTarget() instanceof LivingEntity victim) {
@@ -1041,9 +1239,12 @@ public class ServerForgeEvents {
         // Quantum Storage (Utility Branch)
         if (SkillManager.getActiveRank(skillData, "UTILITY_QUANTUM_STORAGE") > 0 && player.isShiftKeyDown()) {
             BlockPos pos = event.getPos();
-            if (player.level().getBlockEntity(pos) instanceof net.minecraft.world.level.block.entity.BaseContainerBlockEntity) {
-                player.displayClientMessage(Component.literal("\u00A7b[Quantum Storage] \u00A7aContainer Synced!"), true);
-                // logic to store location
+            net.minecraft.world.level.block.entity.BlockEntity be = player.level().getBlockEntity(pos);
+            if (be != null && be.getCapability(net.minecraftforge.common.capabilities.ForgeCapabilities.ITEM_HANDLER).isPresent()) {
+                settings.linkedStoragePos = pos;
+                settings.linkedStorageDim = player.level().dimension().location().toString();
+                player.displayClientMessage(Component.literal("\u00A7b[Quantum Storage] \u00A7aContainer Synced at " + pos.toShortString()), true);
+                StorePriceManager.sync(player);
                 event.setCanceled(true);
                 return;
             }
@@ -1140,43 +1341,10 @@ public class ServerForgeEvents {
         Block targetBlock = targetState.getBlock();
         BlockPos center = player.blockPosition();
         int radius = settings.focusedMiningRange;
-        BigDecimal currentMoney = StorePriceManager.getMoney(player.getUUID());
         
-        BigDecimal totalCost = BigDecimal.ZERO;
-        List<BlockPos> blocksToMine = new ArrayList<>();
-        BlockPos.MutableBlockPos mutablePos = new BlockPos.MutableBlockPos();
-        
-        for (int x = -radius; x <= radius; x++) {
-            for (int y = -radius; y <= radius; y++) {
-                for (int z = -radius; z <= radius; z++) {
-                    mutablePos.set(center.getX() + x, center.getY() + y, center.getZ() + z);
-                    BlockState state = level.getBlockState(mutablePos);
-                    if (state.getBlock() != targetBlock) continue;
-
-                    BigDecimal price = StorePriceManager.getPrice(state.getBlock().asItem());
-                    BigDecimal effectivePrice = StorePriceManager.isOre(state.getBlock().asItem()) ? BigDecimal.valueOf(1000) : price;
-                    
-                    double distanceSq = mutablePos.distSqr(center);
-                    double costFactor = 1.0 + (Math.sqrt(distanceSq) / 10.0);
-                    BigDecimal cost = effectivePrice.divide(BigDecimal.valueOf(20), 10, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(costFactor));
-                    
-                    if (settings.useEnchantments) {
-                        int enchantMultiplier = 1;
-                        for (int lvl : settings.miningEnchants.values()) {
-                            enchantMultiplier += lvl;
-                        }
-                        cost = cost.multiply(BigDecimal.valueOf(enchantMultiplier));
-                    }
-                    
-                    if (StorePriceManager.canAfford(player.getUUID(), totalCost.add(cost))) {
-                        totalCost = totalCost.add(cost);
-                        blocksToMine.add(mutablePos.immutable());
-                    }
-                }
-            }
-        }
-        
-        executeMining(player, settings, skillData, blocksToMine, totalCost);
+        MiningTask task = new MiningTask(player.getUUID(), center, radius, false, settings.miningBlacklist, targetBlock, settings, skillData);
+        pendingMiningTasks.computeIfAbsent(player.getUUID(), k -> new ArrayList<>()).add(task);
+        player.displayClientMessage(Component.literal("\u00A76[Focused Mining] \u00A7aScanning for " + targetBlock.getName().getString() + "..."), true);
     }
 
     private static boolean isMiningBlacklisted(BlockState state, List<String> blacklist) {
@@ -1195,135 +1363,15 @@ public class ServerForgeEvents {
     }
 
     private static void performMining(ServerPlayer player, StorePriceManager.AbilitySettings settings) {
-        ServerLevel level = player.serverLevel();
         BlockPos center = player.blockPosition();
         StorePriceManager.SkillData skillData = StorePriceManager.getSkills(player.getUUID());
         int radius = settings.miningRange;
-        BigDecimal currentMoney = StorePriceManager.getMoney(player.getUUID());
         
-        BigDecimal totalCost = BigDecimal.ZERO;
-        List<BlockPos> blocksToMine = new ArrayList<>();
-        BlockPos.MutableBlockPos mutablePos = new BlockPos.MutableBlockPos();
-        
-        for (int x = -radius; x <= radius; x++) {
-            for (int y = -radius; y <= radius; y++) {
-                for (int z = -radius; z <= radius; z++) {
-                    mutablePos.set(center.getX() + x, center.getY() + y, center.getZ() + z);
-                    BlockState state = level.getBlockState(mutablePos);
-                    if (state.isAir() || state.getBlock() == Blocks.BEDROCK) continue;
-                    
-                    if (isMiningBlacklisted(state, settings.miningBlacklist)) continue;
-
-                    BigDecimal price = StorePriceManager.getPrice(state.getBlock().asItem());
-                    BigDecimal effectivePrice = StorePriceManager.isOre(state.getBlock().asItem()) ? BigDecimal.valueOf(1000) : price;
-                    
-                    if (effectivePrice.compareTo(BigDecimal.valueOf(10)) > 0) { // Valued block
-                        double distanceSq = mutablePos.distSqr(center);
-                        double costFactor = 1.0 + (Math.sqrt(distanceSq) / 10.0);
-                        BigDecimal cost = effectivePrice.divide(BigDecimal.valueOf(20), 10, RoundingMode.HALF_UP).multiply(BigDecimal.valueOf(costFactor));
-                        
-                        if (settings.useEnchantments) {
-                            int enchantMultiplier = 1;
-                            for (int lvl : settings.miningEnchants.values()) {
-                                enchantMultiplier += lvl;
-                            }
-                            cost = cost.multiply(BigDecimal.valueOf(enchantMultiplier));
-                        }
-                        
-                        if (StorePriceManager.canAfford(player.getUUID(), totalCost.add(cost))) {
-                            totalCost = totalCost.add(cost);
-                            blocksToMine.add(mutablePos.immutable());
-                        }
-                    }
-                }
-            }
-        }
-        
-        executeMining(player, settings, skillData, blocksToMine, totalCost);
+        MiningTask task = new MiningTask(player.getUUID(), center, radius, false, settings.miningBlacklist, null, settings, skillData);
+        pendingMiningTasks.computeIfAbsent(player.getUUID(), k -> new ArrayList<>()).add(task);
+        player.displayClientMessage(Component.literal("\u00A76[Mining] \u00A7aScanning area..."), true);
     }
 
-    private static void executeMining(ServerPlayer player, StorePriceManager.AbilitySettings settings, StorePriceManager.SkillData skillData, List<BlockPos> blocksToMine, BigDecimal totalCost) {
-        ServerLevel level = player.serverLevel();
-        BigDecimal currentMoney = StorePriceManager.getMoney(player.getUUID());
-        
-        if (blocksToMine.isEmpty()) {
-            player.displayClientMessage(Component.literal("\u00A7cNo suitable blocks found or not enough money!"), true);
-            return;
-        }
-
-        int minedCount = 0;
-        BigDecimal totalValue = BigDecimal.ZERO;
-        Map<net.minecraft.world.item.Item, BigDecimal> aggregatedDrops = new HashMap<>();
-        
-        // Use a dummy pickaxe for drops if using enchantments
-        ItemStack tool = new ItemStack(net.minecraft.world.item.Items.NETHERITE_PICKAXE);
-        if (settings.useEnchantments) {
-            settings.miningEnchants.forEach((id, lvl) -> {
-                net.minecraft.world.item.enchantment.Enchantment enchant = net.minecraftforge.registries.ForgeRegistries.ENCHANTMENTS.getValue(ResourceLocation.tryParse(id));
-                if (enchant != null) {
-                    tool.enchant(enchant, lvl);
-                }
-            });
-        }
-
-        for (BlockPos pos : blocksToMine) {
-            BlockState state = level.getBlockState(pos);
-            List<ItemStack> drops = Block.getDrops(state, level, pos, null, player, tool);
-            
-            // Molecular Replication (Branch C)
-            int replicationRank = SkillManager.getActiveRank(skillData, "UTILITY_MOLECULAR_REPLICATION");
-            if (replicationRank > 0) {
-                BigDecimal multiplier = BigDecimal.ONE;
-                if (replicationRank == 1) multiplier = BigDecimal.valueOf(2);
-                else if (replicationRank == 2) multiplier = BigDecimal.valueOf(5);
-                else if (replicationRank == 3) multiplier = BigDecimal.valueOf(10);
-                else if (replicationRank == 4) multiplier = BigDecimal.valueOf(25);
-                else if (replicationRank == 5) multiplier = BigDecimal.valueOf(100);
-                else if (replicationRank == 6) multiplier = BigDecimal.valueOf(250);
-                else if (replicationRank == 7) multiplier = BigDecimal.valueOf(500);
-                else if (replicationRank == 8) multiplier = BigDecimal.valueOf(1000);
-                else if (replicationRank >= 9) multiplier = BigDecimal.valueOf(10000);
-                
-                for (ItemStack drop : drops) {
-                    BigDecimal count = replicationRank >= 10 ? BigDecimal.valueOf(64) : BigDecimal.valueOf(drop.getCount()).multiply(multiplier);
-                    aggregatedDrops.put(drop.getItem(), aggregatedDrops.getOrDefault(drop.getItem(), BigDecimal.ZERO).add(count));
-                }
-            } else {
-                for (ItemStack drop : drops) {
-                    aggregatedDrops.put(drop.getItem(), aggregatedDrops.getOrDefault(drop.getItem(), BigDecimal.ZERO).add(BigDecimal.valueOf(drop.getCount())));
-                }
-            }
-
-            level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
-            minedCount++;
-        }
-
-        for (Map.Entry<net.minecraft.world.item.Item, BigDecimal> entry : aggregatedDrops.entrySet()) {
-            net.minecraft.world.item.Item item = entry.getKey();
-            BigDecimal count = entry.getValue();
-            
-            if (settings.autoSell) {
-                BigDecimal sellPrice = StorePriceManager.getSellPrice(item);
-                totalValue = totalValue.add(sellPrice.multiply(count));
-                StorePriceManager.recordSale(item, count);
-            } else {
-                BigDecimal remainingCount = count;
-                // Handle large stacks by splitting
-                while (remainingCount.compareTo(BigDecimal.ZERO) > 0) {
-                    int toAddCount = (int) Math.min(remainingCount.longValue(), (long) item.getMaxStackSize(new ItemStack(item)));
-                    ItemStack toAdd = new ItemStack(item, toAddCount);
-                    if (!player.getInventory().add(toAdd)) {
-                        player.drop(toAdd, false);
-                    }
-                    remainingCount = remainingCount.subtract(BigDecimal.valueOf(toAddCount));
-                }
-            }
-        }
-        
-        StorePriceManager.setMoney(player.getUUID(), currentMoney.subtract(totalCost).add(totalValue));
-        player.displayClientMessage(Component.literal("\u00A7aMined " + minedCount + " blocks. Cost: \u00A7e$" + StorePriceManager.formatCurrency(totalCost) + (settings.autoSell ? " \u00A7aEarned: \u00A7e$" + StorePriceManager.formatCurrency(totalValue) : "")), true);
-        StorePriceManager.sync(player);
-    }
 
     @SubscribeEvent
     public static void onLivingExperienceDrop(net.minecraftforge.event.entity.living.LivingExperienceDropEvent event) {

@@ -5,6 +5,7 @@ import com.example.modmenu.client.ui.screen.MainMenuScreen;
 import com.example.modmenu.store.StorePriceManager;
 import com.example.modmenu.store.SkillManager;
 import com.example.modmenu.store.logistics.*;
+import com.example.modmenu.network.*;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LevelRenderer;
@@ -44,6 +45,7 @@ public class ClientForgeEvents {
     public static int linkModeProviderChamberIndex = -1;
     public static java.util.UUID networkLinkModeId = null;
     public static java.util.UUID viewedNetworkId = null;
+    public static int nodesAddedInSession = 0;
     private static java.util.Map<BlockPos, Long> activePings = new java.util.concurrent.ConcurrentHashMap<>();
     
     private static int musicTickDelay = 0;
@@ -64,7 +66,7 @@ public class ClientForgeEvents {
                     linkModeProviderChamberIndex = -1;
                     networkLinkModeId = null;
                     if (mc.getConnection() != null) {
-                        com.example.modmenu.network.PacketHandler.sendToServer(new com.example.modmenu.network.ActionNetworkPacket(18, (java.util.UUID)null));
+                        PacketHandler.sendToServer(NetworkControlPacket.setLinkMode(null));
                     }
                 }
             }
@@ -77,7 +79,7 @@ public class ClientForgeEvents {
                     linkModeProviderChamberIndex = -1;
                     networkLinkModeId = null;
                     if (mc.getConnection() != null) {
-                        com.example.modmenu.network.PacketHandler.sendToServer(new com.example.modmenu.network.ActionNetworkPacket(18, (java.util.UUID)null));
+                        PacketHandler.sendToServer(NetworkControlPacket.setLinkMode(null));
                     }
                 }
             }
@@ -325,12 +327,39 @@ public class ClientForgeEvents {
                     linkModeChamberIndex = -1;
                     event.setCanceled(true);
                 }
+            } else if (networkLinkModeId != null) {
+                if (event.getEntity().isShiftKeyDown()) {
+                    PacketHandler.sendToServer(NodeManagementPacket.addPhysical(networkLinkModeId, event.getPos(), event.getLevel().dimension().location().toString(), true));
+                } else {
+                    PacketHandler.sendToServer(NodeManagementPacket.addPhysical(networkLinkModeId, event.getPos(), event.getLevel().dimension().location().toString(), false));
+                }
+                nodesAddedInSession++;
+                event.setCanceled(true);
             }
         }
     }
 
     @SubscribeEvent
+    public static void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
+        if (event.getLevel().isClientSide && networkLinkModeId != null && event.getEntity().isShiftKeyDown()) {
+            networkLinkModeId = null;
+            PacketHandler.sendToServer(NetworkControlPacket.setLinkMode(null));
+            event.getEntity().displayClientMessage(Component.literal("\u00A7cLink Mode Deactivated"), true);
+        }
+    }
+
+    @SubscribeEvent
     public static void onRenderGui(RenderGuiOverlayEvent.Post event) {
+        if (event.getOverlay().id().equals(net.minecraftforge.client.gui.overlay.VanillaGuiOverlay.HOTBAR.id())) {
+            if (networkLinkModeId != null) {
+                net.minecraft.client.gui.GuiGraphics g = event.getGuiGraphics();
+                int x = g.guiWidth() / 2;
+                int y = g.guiHeight() - 60;
+                String text = "\u00A7b[LINK MODE] \u00A7fRight-Click: Add | Shift+RC: Bulk Add | Added: " + nodesAddedInSession;
+                g.drawCenteredString(net.minecraft.client.Minecraft.getInstance().font, text, x, y, 0xFFFFFFFF);
+                g.drawCenteredString(net.minecraft.client.Minecraft.getInstance().font, "\u00A77(Shift + Right-Click Air to cancel/finish)", x, y + 10, 0xFFFFFFFF);
+            }
+        }
     }
 
     @SubscribeEvent

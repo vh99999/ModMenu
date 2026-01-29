@@ -30,4 +30,27 @@ public class NodeGroup {
         snap.expanded = this.expanded;
         return snap;
     }
+
+    public void saveNBT(net.minecraft.nbt.CompoundTag nbt) {
+        if (groupId != null) nbt.putUUID("groupId", groupId);
+        nbt.putString("name", name != null ? name : "");
+        net.minecraft.nbt.ListTag list = new net.minecraft.nbt.ListTag();
+        for (UUID id : nodeIds) list.add(net.minecraft.nbt.NbtUtils.createUUID(id));
+        nbt.put("nodeIds", list);
+        nbt.putInt("guiX", guiX);
+        nbt.putInt("guiY", guiY);
+        nbt.putBoolean("expanded", expanded);
+    }
+
+    public static NodeGroup loadNBT(net.minecraft.nbt.CompoundTag nbt) {
+        NodeGroup group = new NodeGroup();
+        if (nbt.hasUUID("groupId")) group.groupId = nbt.getUUID("groupId");
+        group.name = nbt.getString("name");
+        net.minecraft.nbt.ListTag list = nbt.getList("nodeIds", 11); // UUID list
+        for (int i = 0; i < list.size(); i++) group.nodeIds.add(net.minecraft.nbt.NbtUtils.loadUUID(list.get(i)));
+        group.guiX = nbt.getInt("guiX");
+        group.guiY = nbt.getInt("guiY");
+        group.expanded = nbt.getBoolean("expanded");
+        return group;
+    }
 }

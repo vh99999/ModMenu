@@ -266,6 +266,42 @@ public class PacketHandler {
                 .consumerMainThread(ActionNetworkPacket::handle)
                 .add();
 
+        INSTANCE.messageBuilder(NetworkManagementPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(NetworkManagementPacket::new)
+                .encoder(NetworkManagementPacket::encode)
+                .consumerMainThread(NetworkManagementPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(NodeManagementPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(NodeManagementPacket::new)
+                .encoder(NodeManagementPacket::encode)
+                .consumerMainThread(NodeManagementPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(RuleManagementPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(RuleManagementPacket::new)
+                .encoder(RuleManagementPacket::encode)
+                .consumerMainThread(RuleManagementPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(GroupManagementPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(GroupManagementPacket::new)
+                .encoder(GroupManagementPacket::encode)
+                .consumerMainThread(GroupManagementPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(NetworkControlPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(NetworkControlPacket::new)
+                .encoder(NetworkControlPacket::encode)
+                .consumerMainThread(NetworkControlPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(LogisticsBlueprintPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(LogisticsBlueprintPacket::new)
+                .encoder(LogisticsBlueprintPacket::encode)
+                .consumerMainThread(LogisticsBlueprintPacket::handle)
+                .add();
+
         INSTANCE.messageBuilder(SyncNodeInventoryPacket.class, packetId++, NetworkDirection.PLAY_TO_CLIENT)
                 .decoder(SyncNodeInventoryPacket::new)
                 .encoder(SyncNodeInventoryPacket::encode)
@@ -288,6 +324,12 @@ public class PacketHandler {
                 .decoder(EnterDimensionPacket::new)
                 .encoder(EnterDimensionPacket::encode)
                 .consumerMainThread(EnterDimensionPacket::handle)
+                .add();
+
+        INSTANCE.messageBuilder(UpdateFormulasPacket.class, packetId++, NetworkDirection.PLAY_TO_SERVER)
+                .decoder(UpdateFormulasPacket::new)
+                .encoder(UpdateFormulasPacket::encode)
+                .consumerMainThread(UpdateFormulasPacket::handle)
                 .add();
     }
 

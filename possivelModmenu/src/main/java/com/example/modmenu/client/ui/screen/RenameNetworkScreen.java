@@ -2,8 +2,7 @@ package com.example.modmenu.client.ui.screen;
 
 import com.example.modmenu.client.ui.base.BaseResponsiveLodestoneScreen;
 import com.example.modmenu.client.ui.component.ResponsiveButton;
-import com.example.modmenu.network.ActionNetworkPacket;
-import com.example.modmenu.network.PacketHandler;
+import com.example.modmenu.network.*;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -19,7 +18,7 @@ public class RenameNetworkScreen extends BaseResponsiveLodestoneScreen {
 
     public RenameNetworkScreen(Screen parent, UUID networkId, String currentName) {
         this(parent, networkId, currentName, name -> {
-            PacketHandler.sendToServer(ActionNetworkPacket.renameNetwork(networkId, name));
+            PacketHandler.sendToServer(NetworkManagementPacket.rename(networkId, name));
         });
     }
 

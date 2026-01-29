@@ -51,24 +51,24 @@ public class StorePriceManager {
     public static final double MAX_ATTACK_SPEED = 20.0;
     public static final double MAX_REACH_DISTANCE = 20.0;
     
-    private static Map<String, BigDecimal> itemBuyPrices = new HashMap<>();
-    private static Map<String, BigDecimal> itemSellPrices = new HashMap<>();
-    private static Map<String, Long> totalSoldVolume = new ConcurrentHashMap<>(); // Dynamic Economy
-    private static Map<String, BigDecimal> enchantPrices = new HashMap<>();
-    private static Map<String, BigDecimal> effectBasePrices = new HashMap<>();
-    private static Set<String> editedPrices = ConcurrentHashMap.newKeySet();
-    private static Map<UUID, BigDecimal> playerMoneyMap = new ConcurrentHashMap<>();
-    private static Map<UUID, Map<String, Integer>> activeEffects = new ConcurrentHashMap<>();
-    private static Map<UUID, AbilitySettings> playerAbilities = new ConcurrentHashMap<>();
-    private static Map<UUID, Set<String>> unlockedHousesMap = new ConcurrentHashMap<>();
-    private static Map<UUID, Map<String, Double>> playerAttributeBonuses = new ConcurrentHashMap<>();
-    private static Map<UUID, SkillData> playerSkills = new ConcurrentHashMap<>();
-    private static Map<UUID, SavedLocation> playerLastLocations = new ConcurrentHashMap<>();
-    private static Set<UUID> editors = ConcurrentHashMap.newKeySet();
+    private static final Map<String, BigDecimal> itemBuyPrices = new ConcurrentHashMap<>();
+    private static final Map<String, BigDecimal> itemSellPrices = new ConcurrentHashMap<>();
+    private static final Map<String, Long> totalSoldVolume = new ConcurrentHashMap<>(); // Dynamic Economy
+    private static final Map<String, BigDecimal> enchantPrices = new ConcurrentHashMap<>();
+    private static final Map<String, BigDecimal> effectBasePrices = new ConcurrentHashMap<>();
+    private static final Set<String> editedPrices = ConcurrentHashMap.newKeySet();
+    private static final Map<UUID, BigDecimal> playerMoneyMap = new ConcurrentHashMap<>();
+    private static final Map<UUID, Map<String, Integer>> activeEffects = new ConcurrentHashMap<>();
+    private static final Map<UUID, AbilitySettings> playerAbilities = new ConcurrentHashMap<>();
+    private static final Map<UUID, Set<String>> unlockedHousesMap = new ConcurrentHashMap<>();
+    private static final Map<UUID, Map<String, Double>> playerAttributeBonuses = new ConcurrentHashMap<>();
+    private static final Map<UUID, SkillData> playerSkills = new ConcurrentHashMap<>();
+    private static final Map<UUID, SavedLocation> playerLastLocations = new ConcurrentHashMap<>();
+    private static final Set<UUID> editors = ConcurrentHashMap.newKeySet();
     private static UUID activeGodUuid = null;
     private static GenesisConfig globalGenesisConfig = new GenesisConfig();
-    private static final Set<UUID> successfulLoads = Collections.synchronizedSet(new HashSet<>());
-    private static final Set<UUID> dirtyPlayers = Collections.synchronizedSet(new HashSet<>());
+    private static final Set<UUID> successfulLoads = ConcurrentHashMap.newKeySet();
+    private static final Set<UUID> dirtyPlayers = ConcurrentHashMap.newKeySet();
     private static boolean globalDirty = false;
     public static boolean globalSkillsDisabled = false;
     public static boolean isDataCorrupted = false;
@@ -80,22 +80,22 @@ public class StorePriceManager {
     public static boolean isEditor = false;
     public static SkillData clientSkills = new SkillData();
     public static GenesisConfig clientGenesisConfig = new GenesisConfig();
-    public static Map<String, Integer> clientActiveEffects = new HashMap<>();
+    public static final Map<String, Integer> clientActiveEffects = new ConcurrentHashMap<>();
     public static AbilitySettings clientAbilities = new AbilitySettings();
-    public static Set<String> clientUnlockedHouses = new HashSet<>();
-    public static Map<String, BigDecimal> clientBuyPrices = new HashMap<>();
-    public static Map<String, BigDecimal> clientSellPrices = new HashMap<>();
-    public static Map<String, Long> clientSoldVolume = new HashMap<>();
-    public static Map<String, BigDecimal> clientEnchantPrices = new HashMap<>();
-    public static Map<String, BigDecimal> clientEffectPrices = new HashMap<>();
-    public static Map<String, Double> clientAttributeBonuses = new HashMap<>();
+    public static final Set<String> clientUnlockedHouses = ConcurrentHashMap.newKeySet();
+    public static final Map<String, BigDecimal> clientBuyPrices = new ConcurrentHashMap<>();
+    public static final Map<String, BigDecimal> clientSellPrices = new ConcurrentHashMap<>();
+    public static final Map<String, Long> clientSoldVolume = new ConcurrentHashMap<>();
+    public static final Map<String, BigDecimal> clientEnchantPrices = new ConcurrentHashMap<>();
+    public static final Map<String, BigDecimal> clientEffectPrices = new ConcurrentHashMap<>();
+    public static final Map<String, Double> clientAttributeBonuses = new ConcurrentHashMap<>();
 
     public static void setClientPrices(Map<String, BigDecimal> buy, Map<String, BigDecimal> sell, Map<String, Long> volume, Map<String, BigDecimal> enchants, Map<String, BigDecimal> effects) {
-        clientBuyPrices = buy;
-        clientSellPrices = sell;
-        clientSoldVolume = volume;
-        clientEnchantPrices = enchants;
-        clientEffectPrices = effects;
+        if (buy != null) { clientBuyPrices.clear(); clientBuyPrices.putAll(buy); }
+        if (sell != null) { clientSellPrices.clear(); clientSellPrices.putAll(sell); }
+        if (volume != null) { clientSoldVolume.clear(); clientSoldVolume.putAll(volume); }
+        if (enchants != null) { clientEnchantPrices.clear(); clientEnchantPrices.putAll(enchants); }
+        if (effects != null) { clientEffectPrices.clear(); clientEffectPrices.putAll(effects); }
     }
 
     public static void clearClientData() {
@@ -132,6 +132,7 @@ public class StorePriceManager {
         public boolean itemMagnetActive = false;
         public int itemMagnetRange = 16;
         public int itemMagnetOpsPerTick = 1;
+        public int quantumVacuumRange = 128; // Default boost range when skill is active
         
         public boolean xpMagnetActive = false;
         public int xpMagnetRange = 16;
@@ -177,6 +178,10 @@ public class StorePriceManager {
         public boolean growCropsActive = false;
         public int growCropsRange = 5;
 
+        public boolean linkMagnetActive = false;
+        public BlockPos linkedStoragePos = null;
+        public String linkedStorageDim = "minecraft:overworld";
+
         public void copyFrom(AbilitySettings other) {
             this.miningActive = other.miningActive;
             this.miningRange = other.miningRange;
@@ -195,6 +200,7 @@ public class StorePriceManager {
             this.itemMagnetActive = other.itemMagnetActive;
             this.itemMagnetRange = other.itemMagnetRange;
             this.itemMagnetOpsPerTick = other.itemMagnetOpsPerTick;
+            this.quantumVacuumRange = other.quantumVacuumRange;
             this.xpMagnetActive = other.xpMagnetActive;
             this.xpMagnetRange = other.xpMagnetRange;
             this.xpMagnetOpsPerTick = other.xpMagnetOpsPerTick;
@@ -232,6 +238,9 @@ public class StorePriceManager {
             this.disabledSpawnConditions.addAll(other.disabledSpawnConditions);
             this.growCropsActive = other.growCropsActive;
             this.growCropsRange = other.growCropsRange;
+            this.linkMagnetActive = other.linkMagnetActive;
+            this.linkedStoragePos = other.linkedStoragePos;
+            this.linkedStorageDim = other.linkedStorageDim;
         }
     }
 
@@ -585,6 +594,9 @@ public class StorePriceManager {
         public BigDecimal spawnBoostPerSpawnBase = BigDecimal.valueOf(1000);
         public BigDecimal growCropsMaintenance = BigDecimal.valueOf(200);
         public BigDecimal growCropsPerOperation = BigDecimal.valueOf(100);
+        public BigDecimal linkMagnetMaintenance = BigDecimal.valueOf(100);
+        public BigDecimal linkMagnetDistanceMultiplier = BigDecimal.valueOf(0.1);
+        public BigDecimal linkMagnetDimensionTax = BigDecimal.valueOf(1000);
         public double spMultiplier = 1.0;
     }
 
@@ -686,7 +698,7 @@ public class StorePriceManager {
         }
     }
 
-    private static void saveFormulas() {
+    public static void saveFormulas() {
         atomicWrite(FORMULA_FILE, formulas);
     }
 
@@ -718,41 +730,41 @@ public class StorePriceManager {
                 if (jsonObject.has("itemsBuy")) {
                     Type type = new TypeToken<Map<String, BigDecimal>>(){}.getType();
                     Map<String, BigDecimal> loaded = GSON.fromJson(jsonObject.get("itemsBuy"), type);
-                    if (loaded != null) itemBuyPrices = loaded;
+                    if (loaded != null) { itemBuyPrices.clear(); itemBuyPrices.putAll(loaded); }
                 }
                 if (jsonObject.has("itemsSell")) {
                     Type type = new TypeToken<Map<String, BigDecimal>>(){}.getType();
                     Map<String, BigDecimal> loaded = GSON.fromJson(jsonObject.get("itemsSell"), type);
-                    if (loaded != null) itemSellPrices = loaded;
+                    if (loaded != null) { itemSellPrices.clear(); itemSellPrices.putAll(loaded); }
                 }
                 if (jsonObject.has("enchantments")) {
                     Type type = new TypeToken<Map<String, BigDecimal>>(){}.getType();
                     Map<String, BigDecimal> loaded = GSON.fromJson(jsonObject.get("enchantments"), type);
-                    if (loaded != null) enchantPrices = loaded;
+                    if (loaded != null) { enchantPrices.clear(); enchantPrices.putAll(loaded); }
                 }
                 if (jsonObject.has("effects")) {
                     Type type = new TypeToken<Map<String, BigDecimal>>(){}.getType();
                     Map<String, BigDecimal> loaded = GSON.fromJson(jsonObject.get("effects"), type);
-                    if (loaded != null) effectBasePrices = loaded;
+                    if (loaded != null) { effectBasePrices.clear(); effectBasePrices.putAll(loaded); }
                 }
                 if (jsonObject.has("edited")) {
                     Type type = new TypeToken<Set<String>>(){}.getType();
                     Set<String> loaded = GSON.fromJson(jsonObject.get("edited"), type);
-                    if (loaded != null) editedPrices = loaded;
+                    if (loaded != null) { editedPrices.clear(); editedPrices.addAll(loaded); }
                 }
             } else if (jsonObject.has("items")) {
                 Type type = new TypeToken<Map<String, BigDecimal>>(){}.getType();
                 Map<String, BigDecimal> loaded = GSON.fromJson(jsonObject.get("items"), type);
                 if (loaded != null) {
-                    itemBuyPrices = new HashMap<>(loaded);
-                    itemSellPrices = new HashMap<>(loaded);
+                    itemBuyPrices.clear(); itemBuyPrices.putAll(loaded);
+                    itemSellPrices.clear(); itemSellPrices.putAll(loaded);
                 }
             } else {
                 Type type = new TypeToken<Map<String, BigDecimal>>(){}.getType();
                 Map<String, BigDecimal> loaded = GSON.fromJson(jsonObject, type);
                 if (loaded != null) {
-                    itemBuyPrices = new HashMap<>(loaded);
-                    itemSellPrices = new HashMap<>(loaded);
+                    itemBuyPrices.clear(); itemBuyPrices.putAll(loaded);
+                    itemSellPrices.clear(); itemSellPrices.putAll(loaded);
                 }
             }
         } catch (Exception e) {
@@ -1185,6 +1197,8 @@ public class StorePriceManager {
         return baseSellPrice.setScale(0, RoundingMode.HALF_UP);
     }
 
+    private static boolean priceSyncRequested = false;
+
     public static void recordSale(Item item, java.math.BigDecimal count) {
         String id = ForgeRegistries.ITEMS.getKey(item).toString();
         long added = count.longValue();
@@ -1207,11 +1221,42 @@ public class StorePriceManager {
         }
         
         if (newVolume / 10000 > oldVolume / 10000) { // Sync every 10k
+            priceSyncRequested = true;
+        }
+    }
+
+    public static void checkAndSyncBatch() {
+        if (priceSyncRequested) {
             net.minecraft.server.MinecraftServer server = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
             if (server != null) {
                 for (net.minecraft.server.level.ServerPlayer player : server.getPlayerList().getPlayers()) {
                     syncPrices(player);
                 }
+            }
+            priceSyncRequested = false;
+        }
+    }
+
+    /**
+     * Periodically called to simulate demand and allow prices to recover.
+     * Reduces total sold volume for all items.
+     */
+    public static void decayPrices() {
+        totalSoldVolume.forEach((id, volume) -> {
+            if (volume > 0) {
+                // Decay by ~5%
+                long newVolume = (long) (volume * 0.95);
+                if (newVolume < 10) newVolume = 0;
+                totalSoldVolume.put(id, newVolume);
+            }
+        });
+        markDirty(null);
+        
+        // Sync new prices to all players
+        net.minecraft.server.MinecraftServer server = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
+        if (server != null) {
+            for (net.minecraft.server.level.ServerPlayer player : server.getPlayerList().getPlayers()) {
+                syncPrices(player);
             }
         }
     }
@@ -1382,6 +1427,21 @@ public class StorePriceManager {
         }
         if (abilities.growCropsActive) {
             totalCost = totalCost.add(formulas.growCropsMaintenance);
+        }
+        if (abilities.linkMagnetActive) {
+            BigDecimal linkCost = formulas.linkMagnetMaintenance;
+            if (abilities.linkedStoragePos != null) {
+                net.minecraft.server.level.ServerPlayer player = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer().getPlayerList().getPlayer(uuid);
+                if (player != null) {
+                    if (player.level().dimension().location().toString().equals(abilities.linkedStorageDim)) {
+                        double dist = Math.sqrt(player.distanceToSqr(abilities.linkedStoragePos.getX(), abilities.linkedStoragePos.getY(), abilities.linkedStoragePos.getZ()));
+                        linkCost = linkCost.add(BigDecimal.valueOf(dist).multiply(formulas.linkMagnetDistanceMultiplier));
+                    } else {
+                        linkCost = linkCost.add(formulas.linkMagnetDimensionTax);
+                    }
+                }
+            }
+            totalCost = totalCost.add(linkCost);
         }
 
         // Virtual Containment Drain
@@ -1605,8 +1665,7 @@ public class StorePriceManager {
         );
         
         SkillData skills = getSkills(player.getUUID());
-        // Do NOT overwrite genesisConfig here, it should stay as is unless specifically updated
-        // skills.genesisConfig.copyFrom(globalGenesisConfig);
+        skills.genesisConfig.copyFrom(globalGenesisConfig);
         
         com.example.modmenu.network.PacketHandler.sendToPlayer(
             new com.example.modmenu.network.SyncSkillsPacket(skills),

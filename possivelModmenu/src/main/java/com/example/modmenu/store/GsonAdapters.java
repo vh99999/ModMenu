@@ -86,6 +86,31 @@ public class GsonAdapters {
         }
     }
 
+    public static class FluidStackAdapter extends TypeAdapter<net.minecraftforge.fluids.FluidStack> {
+        @Override
+        public void write(JsonWriter out, net.minecraftforge.fluids.FluidStack value) throws IOException {
+            if (value == null || value.isEmpty()) {
+                out.nullValue();
+            } else {
+                out.value(value.writeToNBT(new CompoundTag()).toString());
+            }
+        }
+
+        @Override
+        public net.minecraftforge.fluids.FluidStack read(JsonReader in) throws IOException {
+            if (in.peek() == JsonToken.NULL) {
+                in.nextNull();
+                return net.minecraftforge.fluids.FluidStack.EMPTY;
+            } else {
+                try {
+                    return net.minecraftforge.fluids.FluidStack.loadFluidStackFromNBT(TagParser.parseTag(in.nextString()));
+                } catch (Exception e) {
+                    return net.minecraftforge.fluids.FluidStack.EMPTY;
+                }
+            }
+        }
+    }
+
     public static class OptionalAdapterFactory implements TypeAdapterFactory {
         @Override
         @SuppressWarnings("unchecked")

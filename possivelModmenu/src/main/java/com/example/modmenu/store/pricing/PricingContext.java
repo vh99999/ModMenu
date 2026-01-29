@@ -5,9 +5,8 @@ import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.core.RegistryAccess;
 import java.math.BigDecimal;
 import java.util.Map;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class PricingContext {
     private final Level level;
@@ -24,8 +23,8 @@ public class PricingContext {
         this.level = level;
         this.recipeManager = level.getRecipeManager();
         this.registryAccess = level.registryAccess();
-        this.resolvedPrices = new HashMap<>();
-        this.visiting = new HashSet<>();
+        this.resolvedPrices = new ConcurrentHashMap<>();
+        this.visiting = ConcurrentHashMap.newKeySet();
         this.cache = cache;
     }
 

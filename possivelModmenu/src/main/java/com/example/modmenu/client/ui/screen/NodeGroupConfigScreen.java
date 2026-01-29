@@ -4,8 +4,7 @@ import com.example.modmenu.client.ui.base.BaseResponsiveLodestoneScreen;
 import com.example.modmenu.client.ui.base.ScrollableUIContainer;
 import com.example.modmenu.client.ui.base.UIElement;
 import com.example.modmenu.client.ui.component.ResponsiveButton;
-import com.example.modmenu.network.ActionNetworkPacket;
-import com.example.modmenu.network.PacketHandler;
+import com.example.modmenu.network.*;
 import com.example.modmenu.store.logistics.NetworkData;
 import com.example.modmenu.store.logistics.NetworkNode;
 import com.example.modmenu.store.logistics.NodeGroup;
@@ -65,6 +64,7 @@ public class NodeGroupConfigScreen extends BaseResponsiveLodestoneScreen {
         int currentY = 0;
         int rowHeight = 25;
         for (NetworkNode node : networkData.nodes) {
+            if (node == null) continue;
             nodeList.addElement(new NodeRowComponent(0, currentY, nodeList.getWidth() - 10, rowHeight - 2, node));
             currentY += rowHeight;
         }
@@ -79,7 +79,10 @@ public class NodeGroupConfigScreen extends BaseResponsiveLodestoneScreen {
                 int avgX = 0, avgY = 0;
                 int count = 0;
                 for (UUID id : selectedNodes) {
-                    NetworkNode n = networkData.nodes.stream().filter(node -> node.nodeId.equals(id)).findFirst().orElse(null);
+                    NetworkNode n = networkData.nodes.stream()
+                            .filter(java.util.Objects::nonNull)
+                            .filter(node -> node.nodeId.equals(id))
+                            .findFirst().orElse(null);
                     if (n != null) {
                         avgX += n.guiX;
                         avgY += n.guiY;
@@ -92,7 +95,7 @@ public class NodeGroupConfigScreen extends BaseResponsiveLodestoneScreen {
                 }
             }
 
-            PacketHandler.sendToServer(ActionNetworkPacket.addGroup(networkId, group));
+            PacketHandler.sendToServer(GroupManagementPacket.addUpdate(networkId, group));
             if (isNew && !networkData.groups.contains(group)) {
                 networkData.groups.add(group);
             }

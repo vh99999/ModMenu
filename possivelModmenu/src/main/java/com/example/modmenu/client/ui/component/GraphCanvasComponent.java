@@ -3,8 +3,7 @@ package com.example.modmenu.client.ui.component;
 import com.example.modmenu.client.ui.base.UIContainer;
 import com.example.modmenu.client.ui.base.UIElement;
 import com.example.modmenu.client.ui.screen.NodeConfigScreen;
-import com.example.modmenu.network.ActionNetworkPacket;
-import com.example.modmenu.network.PacketHandler;
+import com.example.modmenu.network.*;
 import com.example.modmenu.store.logistics.NetworkData;
 import com.example.modmenu.store.logistics.NetworkNode;
 import com.example.modmenu.store.logistics.NodeGroup;
@@ -37,6 +36,7 @@ public class GraphCanvasComponent extends UIContainer {
     private double lastMouseX, lastMouseY;
     private NetworkNode hoveredNode = null;
     private NodeGroup hoveredGroup = null;
+    private LogisticsRule hoveredRule = null;
     private final java.util.List<UIParticle> particles = new java.util.ArrayList<>();
     private String historySearchTerm = "";
     private NetworkNode copiedConfig = null;
@@ -82,6 +82,7 @@ public class GraphCanvasComponent extends UIContainer {
         double worldMY = (my - getY() - cameraY) / zoom;
 
         // Draw Rules (Lines)
+        hoveredRule = null;
         drawRuleConnections(g, worldMX, worldMY);
 
         // Linking Preview
@@ -112,7 +113,7 @@ public class GraphCanvasComponent extends UIContainer {
         // Draw Nodes
         hoveredNode = null;
         for (NetworkNode node : network.nodes) {
-            if (!isNodeVisible(node)) continue;
+            if (node == null || !isNodeVisible(node)) continue;
             // Expanded padding zone to ensure sub-buttons (P and X) don't flicker
             boolean isHovered = Math.abs(worldMX - node.guiX) < 30 && worldMY > node.guiY - 32 && worldMY < node.guiY + 25;
             if (isHovered && hoveredGroup == null) hoveredNode = node;
@@ -142,16 +143,44 @@ public class GraphCanvasComponent extends UIContainer {
             parentScreen.addPostRenderTask(graphics -> {
                 java.util.List<net.minecraft.network.chat.Component> lines = new java.util.ArrayList<>();
                 lines.add(net.minecraft.network.chat.Component.literal("\u00A7e\u00A7l" + (node.customName != null ? node.customName : node.nodeType)));
-                if (node.nodeType.equals("BLOCK") && node.pos != null) {
-                    lines.add(net.minecraft.network.chat.Component.literal("\u00A77Pos: \u00A7f" + node.pos.toShortString()));
-                    lines.add(net.minecraft.network.chat.Component.literal("\u00A77Dim: \u00A7f" + node.dimension));
+                
+                // Detailed Node Type Info
+                switch(node.nodeType) {
+                    case "BLOCK" -> {
+                        if (node.pos != null) {
+                            lines.add(net.minecraft.network.chat.Component.literal("\u00A77Type: \u00A7fPhysical Block"));
+                            lines.add(net.minecraft.network.chat.Component.literal("\u00A77Pos: \u00A7f" + node.pos.toShortString()));
+                            lines.add(net.minecraft.network.chat.Component.literal("\u00A77Dim: \u00A7f" + node.dimension));
+                        }
+                    }
+                    case "PLAYER" -> lines.add(net.minecraft.network.chat.Component.literal("\u00A77Type: \u00A7fPlayer Inventory (Virtual)"));
+                    case "MARKET" -> lines.add(net.minecraft.network.chat.Component.literal("\u00A77Type: \u00A7fGlobal Market (Auto-Sell)"));
+                    case "CHAMBER" -> lines.add(net.minecraft.network.chat.Component.literal("\u00A77Type: \u00A7fVirtual Chamber (Simulated)"));
+                    case "BUFFER" -> lines.add(net.minecraft.network.chat.Component.literal("\u00A77Type: \u00A7fNetwork Cloud Buffer"));
+                    case "TRASH" -> lines.add(net.minecraft.network.chat.Component.literal("\u00A77Type: \u00A7fAbsolute Deletion Port"));
+                    case "PORT_INPUT" -> lines.add(net.minecraft.network.chat.Component.literal("\u00A77Type: \u00A7fSub-Network Entrance"));
+                    case "PORT_OUTPUT" -> lines.add(net.minecraft.network.chat.Component.literal("\u00A77Type: \u00A7fSub-Network Exit"));
+                    case "SUB_NETWORK" -> {
+                        lines.add(net.minecraft.network.chat.Component.literal("\u00A77Type: \u00A7fExternal Network Proxy"));
+                        if (node.referencedNetworkId != null) {
+                            lines.add(net.minecraft.network.chat.Component.literal("\u00A77ID: \u00A7f" + node.referencedNetworkId.toString().substring(0, 8) + "..."));
+                        }
+                    }
+                }
+
+                if (!node.virtualItemBuffer.isEmpty() || node.virtualEnergyBuffer > 0 || !node.virtualFluidBuffer.isEmpty()) {
+                    lines.add(net.minecraft.network.chat.Component.literal(""));
+                    lines.add(net.minecraft.network.chat.Component.literal("\u00A7b[ INTERNAL BUFFER ]"));
+                    if (node.virtualEnergyBuffer > 0) lines.add(net.minecraft.network.chat.Component.literal("\u00A76Energy: \u00A7f" + node.virtualEnergyBuffer + " FE"));
+                    if (!node.virtualFluidBuffer.isEmpty()) lines.add(net.minecraft.network.chat.Component.literal("\u00A7aFluids: \u00A7f" + node.virtualFluidBuffer.size() + " types"));
+                    if (!node.virtualItemBuffer.isEmpty()) lines.add(net.minecraft.network.chat.Component.literal("\u00A7eItems: \u00A7f" + node.virtualItemBuffer.size() + " stacks"));
                 }
                 
                 if (node.isMissing) {
                     lines.add(net.minecraft.network.chat.Component.literal(""));
                     lines.add(net.minecraft.network.chat.Component.literal("\u00A7c\u00A7l\u26A0 ERROR: BLOCK OFFLINE"));
                     lines.add(net.minecraft.network.chat.Component.literal("\u00A77Expected: \u00A7f" + node.blockId));
-                    lines.add(net.minecraft.network.chat.Component.literal("\u00A77Status: Block missing or moved."));
+                    lines.add(net.minecraft.network.chat.Component.literal("\u00A77Status: Block missing or chunk unloaded."));
                 }
                 
                 graphics.renderComponentTooltip(Minecraft.getInstance().font, lines, mx, my);
@@ -177,6 +206,35 @@ public class GraphCanvasComponent extends UIContainer {
                 lines.add(net.minecraft.network.chat.Component.literal(""));
                 lines.add(net.minecraft.network.chat.Component.literal("\u00A77Ctrl+Click to " + (group.expanded ? "Collapse" : "Expand")));
                 lines.add(net.minecraft.network.chat.Component.literal("\u00A77Right-click to Configure"));
+                graphics.renderComponentTooltip(Minecraft.getInstance().font, lines, mx, my);
+            });
+        } else if (hoveredRule != null) {
+            final LogisticsRule rule = hoveredRule;
+            parentScreen.addPostRenderTask(graphics -> {
+                java.util.List<net.minecraft.network.chat.Component> lines = new java.util.ArrayList<>();
+                String typeCol = switch(rule.type) {
+                    case "ENERGY" -> "\u00A76";
+                    case "FLUIDS" -> "\u00A7a";
+                    default -> "\u00A7b";
+                };
+                lines.add(net.minecraft.network.chat.Component.literal(typeCol + "\u00A7l[ RULE: " + rule.type + " ]"));
+                lines.add(net.minecraft.network.chat.Component.literal("\u00A77Action: \u00A7f" + rule.ruleAction));
+                lines.add(net.minecraft.network.chat.Component.literal("\u00A77Trigger: \u00A7f" + rule.triggerType + (rule.triggerType.equals("SIGNAL") ? " (" + rule.signalFilter + ")" : "")));
+                lines.add(net.minecraft.network.chat.Component.literal("\u00A77Priority: \u00A7f" + rule.priority + " \u00A77| Mode: \u00A7f" + rule.mode));
+                
+                if (!rule.variableName.isEmpty()) {
+                    lines.add(net.minecraft.network.chat.Component.literal("\u00A77Target Var: \u00A7e" + rule.variableName));
+                }
+
+                if (rule.lastReport != null && !rule.lastReport.isEmpty()) {
+                    lines.add(net.minecraft.network.chat.Component.literal(""));
+                    lines.add(net.minecraft.network.chat.Component.literal("\u00A77Last Report:"));
+                    lines.add(net.minecraft.network.chat.Component.literal("  " + rule.lastReport.replace("[ACTIVE] ", "\u00A7a").replace("[SEARCH] ", "\u00A7e").replace("[FULL] ", "\u00A76").replace("[BLOCKED] ", "\u00A7c").replace("[ERROR] ", "\u00A7c\u00A7l")));
+                }
+                
+                lines.add(net.minecraft.network.chat.Component.literal(""));
+                lines.add(net.minecraft.network.chat.Component.literal("\u00A77Click Left Side to Edit"));
+                lines.add(net.minecraft.network.chat.Component.literal("\u00A77Click Right Side to Test"));
                 graphics.renderComponentTooltip(Minecraft.getInstance().font, lines, mx, my);
             });
         }
@@ -212,6 +270,28 @@ public class GraphCanvasComponent extends UIContainer {
                         int[] dstPos = getTargetPos(rec.destNodeId, false);
                         if (srcPos != null && dstPos != null && Math.random() < 0.05) {
                             particles.add(new UIParticle(srcPos[0], srcPos[1], dstPos[0], dstPos[1], 0xFFFFCC00, 2)); // Gold for history, size 2
+                        }
+                    }
+                }
+            }
+        }
+
+        // Phase 5: Signal Pulses visualization
+        if (!network.recentSignals.isEmpty() && System.currentTimeMillis() % 100 < 50) {
+            for (com.example.modmenu.store.logistics.LogisticsSignal sig : network.recentSignals) {
+                int[] srcPos = getTargetPos(sig.sourceNodeId, false);
+                if (srcPos == null) continue;
+                
+                // Visualize signal traveling to matching rules
+                for (LogisticsRule rule : network.rules) {
+                    if (rule.active && "SIGNAL".equals(rule.triggerType) && sig.type.equals(rule.signalFilter)) {
+                        if (rule.triggerNodeId == null || rule.triggerNodeId.equals(sig.sourceNodeId)) {
+                            int[] dstPos = getTargetPos(rule.ruleId, false); // Signals target the rule itself!
+                            if (dstPos == null) dstPos = getTargetPos(rule.sourceNodeId, rule.sourceIsGroup);
+                            
+                            if (dstPos != null && Math.random() < 0.2) {
+                                particles.add(new UIParticle(srcPos[0], srcPos[1], dstPos[0], dstPos[1], 0xFFFF55FF, 1)); // Magenta for signals
+                            }
                         }
                     }
                 }
@@ -307,6 +387,10 @@ public class GraphCanvasComponent extends UIContainer {
                 
                 int midX = (srcPos[0] + dstPos[0]) / 2;
                 int midY = (srcPos[1] + dstPos[1]) / 2;
+
+                if (Math.sqrt(Math.pow(worldMX - midX, 2) + Math.pow(worldMY - midY, 2)) < 15) {
+                    hoveredRule = rule;
+                }
 
                 if (!statusIcon.isEmpty()) {
                     g.pose().pushPose();
@@ -537,7 +621,10 @@ public class GraphCanvasComponent extends UIContainer {
     }
 
     private NetworkNode findNode(UUID id) {
-        for (NetworkNode n : network.nodes) if (n.nodeId.equals(id)) return n;
+        if (id == null) return null;
+        for (NetworkNode n : network.nodes) {
+            if (n != null && n.nodeId.equals(id)) return n;
+        }
         return null;
     }
 
@@ -554,6 +641,7 @@ public class GraphCanvasComponent extends UIContainer {
     }
 
     private boolean isNodeVisible(NetworkNode node) {
+        if (node == null) return false;
         com.example.modmenu.store.logistics.NodeGroup g = getNodeGroup(node.nodeId);
         return g == null || g.expanded;
     }
@@ -592,7 +680,7 @@ public class GraphCanvasComponent extends UIContainer {
                 // Check EXP/COL sub-button
                 if (worldMX > group.guiX + radius - 12 && worldMX < group.guiX + radius + 6 && worldMY > group.guiY - radius - 15 && worldMY < group.guiY - radius - 3) {
                     group.expanded = !group.expanded;
-                    PacketHandler.sendToServer(ActionNetworkPacket.addGroup(network.networkId, group));
+                    PacketHandler.sendToServer(GroupManagementPacket.addUpdate(network.networkId, group));
                     return true;
                 }
 
@@ -601,7 +689,7 @@ public class GraphCanvasComponent extends UIContainer {
                         linkingFromGroupId = group.groupId;
                     } else if (Screen.hasControlDown()) {
                         group.expanded = !group.expanded;
-                        PacketHandler.sendToServer(ActionNetworkPacket.addGroup(network.networkId, group));
+                        PacketHandler.sendToServer(GroupManagementPacket.addUpdate(network.networkId, group));
                     } else {
                         draggingGroupId = group.groupId;
                     }
@@ -617,12 +705,12 @@ public class GraphCanvasComponent extends UIContainer {
 
         // Check Nodes
         for (NetworkNode node : network.nodes) {
-            if (!isNodeVisible(node)) continue;
+            if (node == null || !isNodeVisible(node)) continue;
             if (Math.abs(worldMX - node.guiX) < 30 && worldMY > node.guiY - 32 && worldMY < node.guiY + 25) {
                 // Check sub-buttons hitboxes
                 if (worldMX > node.guiX + 11 && worldMX < node.guiX + 25 && worldMY > node.guiY - 28 && worldMY < node.guiY - 16) {
                     // Delete
-                    PacketHandler.sendToServer(ActionNetworkPacket.removeNode(network.networkId, node.nodeId));
+                    PacketHandler.sendToServer(NodeManagementPacket.remove(network.networkId, node.nodeId));
                     return true;
                 }
                 if (worldMX > node.guiX - 25 && worldMX < node.guiX - 11 && worldMY > node.guiY - 28 && worldMY < node.guiY - 16) {
@@ -640,7 +728,7 @@ public class GraphCanvasComponent extends UIContainer {
                             copiedConfig = node.snapshot();
                             Minecraft.getInstance().getSoundManager().play(net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(net.minecraft.sounds.SoundEvents.EXPERIENCE_ORB_PICKUP, 1.5f));
                         } else {
-                            PacketHandler.sendToServer(ActionNetworkPacket.pasteNodeConfig(network.networkId, node.nodeId, copiedConfig));
+                            PacketHandler.sendToServer(NodeManagementPacket.pasteConfig(network.networkId, node.nodeId, copiedConfig));
                             Minecraft.getInstance().getSoundManager().play(net.minecraft.client.resources.sounds.SimpleSoundInstance.forUI(net.minecraft.sounds.SoundEvents.ITEM_PICKUP, 1.0f));
                         }
                         return true;
@@ -673,7 +761,7 @@ public class GraphCanvasComponent extends UIContainer {
                         Minecraft.getInstance().setScreen(new com.example.modmenu.client.ui.screen.RuleConfigScreen(parentScreen, network.networkId, network, rule, false));
                     } else {
                         // Test
-                        PacketHandler.sendToServer(ActionNetworkPacket.testRule(network.networkId, rule.ruleId));
+                        PacketHandler.sendToServer(RuleManagementPacket.test(network.networkId, rule.ruleId));
                     }
                     return true;
                 }
@@ -694,11 +782,11 @@ public class GraphCanvasComponent extends UIContainer {
         if (button == 0) {
             if (draggingNodeId != null) {
                 NetworkNode node = findNode(draggingNodeId);
-                if (node != null) PacketHandler.sendToServer(new ActionNetworkPacket(11, network.networkId, node));
+                if (node != null) PacketHandler.sendToServer(NodeManagementPacket.update(network.networkId, node));
             }
             if (draggingGroupId != null) {
                 com.example.modmenu.store.logistics.NodeGroup group = findGroup(draggingGroupId);
-                if (group != null) PacketHandler.sendToServer(ActionNetworkPacket.addGroup(network.networkId, group));
+                if (group != null) PacketHandler.sendToServer(GroupManagementPacket.addUpdate(network.networkId, group));
             }
 
             if (linkingFromNodeId != null || linkingFromGroupId != null) {
@@ -721,7 +809,7 @@ public class GraphCanvasComponent extends UIContainer {
                 // Check Node targets if no group found
                 if (targetId == null) {
                     for (NetworkNode n : network.nodes) {
-                        if (!isNodeVisible(n)) continue;
+                        if (n == null || !isNodeVisible(n)) continue;
                         if (Math.abs(worldMX - n.guiX) < 30 && Math.abs(worldMY - n.guiY) < 30) {
                             targetId = n.nodeId;
                             targetIsGroup = false;

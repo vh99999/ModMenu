@@ -4,8 +4,7 @@ import com.example.modmenu.client.ui.base.BaseResponsiveLodestoneScreen;
 import com.example.modmenu.client.ui.base.ScrollableUIContainer;
 import com.example.modmenu.client.ui.base.UIElement;
 import com.example.modmenu.client.ui.component.ResponsiveButton;
-import com.example.modmenu.network.ActionNetworkPacket;
-import com.example.modmenu.network.PacketHandler;
+import com.example.modmenu.network.*;
 import com.example.modmenu.store.logistics.NetworkData;
 import com.example.modmenu.store.logistics.NodeGroup;
 import net.minecraft.client.Minecraft;
@@ -96,7 +95,7 @@ public class NodeGroupsListScreen extends BaseResponsiveLodestoneScreen {
             }
             bx += 75;
             if (mx >= bx && mx < bx + 70) {
-                PacketHandler.sendToServer(ActionNetworkPacket.removeGroup(networkId, group.groupId));
+                PacketHandler.sendToServer(GroupManagementPacket.remove(networkId, group.groupId));
                 networkData.groups.remove(group);
                 refreshList();
                 return true;

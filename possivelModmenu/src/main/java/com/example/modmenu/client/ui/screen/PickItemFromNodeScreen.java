@@ -3,8 +3,7 @@ import com.example.modmenu.client.ui.base.BaseResponsiveLodestoneScreen;
 import com.example.modmenu.client.ui.base.ScrollableUIContainer;
 import com.example.modmenu.client.ui.base.UIElement;
 import com.example.modmenu.client.ui.component.ResponsiveButton;
-import com.example.modmenu.network.ActionNetworkPacket;
-import com.example.modmenu.network.PacketHandler;
+import com.example.modmenu.network.*;
 import com.example.modmenu.store.logistics.NetworkNode;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -33,9 +32,9 @@ public class PickItemFromNodeScreen extends BaseResponsiveLodestoneScreen {
         this.onPick = onPick;
 
         if (isGroup) {
-            PacketHandler.sendToServer(ActionNetworkPacket.requestGroupInventoryProbe(networkId, targetId));
+            PacketHandler.sendToServer(GroupManagementPacket.probeInventory(networkId, targetId));
         } else {
-            PacketHandler.sendToServer(ActionNetworkPacket.requestInventoryProbe(networkId, targetId));
+            PacketHandler.sendToServer(NodeManagementPacket.probeInventory(networkId, targetId));
         }
     }
     public void handleSyncInventory(UUID id, List<ItemStack> inventory, List<Integer> slotX, List<Integer> slotY) {

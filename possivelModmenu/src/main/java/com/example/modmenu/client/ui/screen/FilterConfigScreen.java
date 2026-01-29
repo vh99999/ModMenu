@@ -3,8 +3,7 @@ package com.example.modmenu.client.ui.screen;
 import com.example.modmenu.client.ui.base.BaseResponsiveLodestoneScreen;
 import com.example.modmenu.client.ui.base.UIElement;
 import com.example.modmenu.client.ui.component.ResponsiveButton;
-import com.example.modmenu.network.ActionNetworkPacket;
-import com.example.modmenu.network.PacketHandler;
+import com.example.modmenu.network.*;
 import com.example.modmenu.store.logistics.LogisticsFilter;
 import com.example.modmenu.store.logistics.NetworkData;
 import com.example.modmenu.store.logistics.NetworkNode;
@@ -39,9 +38,9 @@ public class FilterConfigScreen extends BaseResponsiveLodestoneScreen {
         
         if (sourceNodeId != null) {
             if (sourceIsGroup) {
-                PacketHandler.sendToServer(ActionNetworkPacket.requestGroupInventoryProbe(networkId, sourceNodeId));
+                PacketHandler.sendToServer(GroupManagementPacket.probeInventory(networkId, sourceNodeId));
             } else {
-                PacketHandler.sendToServer(ActionNetworkPacket.requestInventoryProbe(networkId, sourceNodeId));
+                PacketHandler.sendToServer(NodeManagementPacket.probeInventory(networkId, sourceNodeId));
             }
         }
     }

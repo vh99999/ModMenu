@@ -8,15 +8,16 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class PricingEngine {
     private static final Logger LOGGER = LogManager.getLogger();
     private final List<PriceProvider> providers = new ArrayList<>();
     private final MultiLayerCache cache = new MultiLayerCache();
-    private final Map<String, String> priceSources = new HashMap<>();
-    private final Map<String, List<String>> dependencyChains = new HashMap<>();
-    private final Map<String, BigDecimal> appliedMultipliers = new HashMap<>();
-    private final Map<String, Boolean> usedFallback = new HashMap<>();
+    private final Map<String, String> priceSources = new ConcurrentHashMap<>();
+    private final Map<String, List<String>> dependencyChains = new ConcurrentHashMap<>();
+    private final Map<String, BigDecimal> appliedMultipliers = new ConcurrentHashMap<>();
+    private final Map<String, Boolean> usedFallback = new ConcurrentHashMap<>();
 
     public PricingEngine() {
         registerProvider(new ProjectEPriceProvider());
@@ -34,13 +35,32 @@ public class PricingEngine {
 
     public void computeAllPrices(Level level) {
         LOGGER.info("Starting deterministic pricing engine...");
+        cache.clearAll();
         PricingContext context = new PricingContext(level, cache);
         
-        // Build dependency graph if needed (e.g. for RecipePriceProvider)
-        // This could be done inside providers that need it
+        // 1. Pre-build dependency graph and sort items
+        RecipeDependencyGraph graph = null;
+        for (PriceProvider provider : providers) {
+            if (provider instanceof RecipePriceProvider recipeProvider) {
+                recipeProvider.ensureGraphBuilt(context);
+                graph = recipeProvider.getGraph();
+                break;
+            }
+        }
 
+        if (graph != null) {
+            List<String> sortedIds = graph.getTopologicalSort();
+            LOGGER.info("Topologically sorted {} items with recipes.", sortedIds.size());
+            for (String id : sortedIds) {
+                Item item = ForgeRegistries.ITEMS.getValue(net.minecraft.resources.ResourceLocation.tryParse(id));
+                if (item != null) {
+                    resolvePrice(item, context);
+                }
+            }
+        }
+
+        // 2. Price everything else (base items, etc.)
         for (Item item : ForgeRegistries.ITEMS) {
-            String id = ForgeRegistries.ITEMS.getKey(item).toString();
             resolvePrice(item, context);
         }
         LOGGER.info("Pricing engine completed. Priced {} items.", cache.getPersistentCache().size());

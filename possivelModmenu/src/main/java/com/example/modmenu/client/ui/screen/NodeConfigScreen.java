@@ -3,8 +3,7 @@ package com.example.modmenu.client.ui.screen;
 import com.example.modmenu.client.ui.base.BaseResponsiveLodestoneScreen;
 import com.example.modmenu.client.ui.component.BlockSideSelector;
 import com.example.modmenu.client.ui.component.ResponsiveButton;
-import com.example.modmenu.network.ActionNetworkPacket;
-import com.example.modmenu.network.PacketHandler;
+import com.example.modmenu.network.*;
 import com.example.modmenu.store.logistics.NetworkNode;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.Direction;
@@ -44,7 +43,7 @@ public class NodeConfigScreen extends BaseResponsiveLodestoneScreen {
         this.node = node;
         
         // Request probe on open
-        PacketHandler.sendToServer(ActionNetworkPacket.requestInventoryProbe(networkId, node.nodeId));
+        PacketHandler.sendToServer(NodeManagementPacket.probeInventory(networkId, node.nodeId));
     }
 
     @Override
@@ -92,7 +91,7 @@ public class NodeConfigScreen extends BaseResponsiveLodestoneScreen {
 
             // Open Real Machine GUI button
             this.layoutRoot.addElement(new ResponsiveButton(20, currentY, 150, 20, Component.literal("\u00A7eOpen Machine GUI"), btn -> {
-                PacketHandler.sendToServer(ActionNetworkPacket.openNodeGui(networkId, node.nodeId));
+                PacketHandler.sendToServer(NodeManagementPacket.openGui(networkId, node.nodeId));
                 this.minecraft.setScreen(null);
             }));
             currentY += 22;
@@ -161,7 +160,7 @@ public class NodeConfigScreen extends BaseResponsiveLodestoneScreen {
         }
 
         this.layoutRoot.addElement(new ResponsiveButton(midX - 50, this.height - 30, 100, 20, Component.literal("Save"), btn -> {
-            PacketHandler.sendToServer(new ActionNetworkPacket(11, networkId, node));
+            PacketHandler.sendToServer(NodeManagementPacket.update(networkId, node));
             this.minecraft.setScreen(parent);
         }));
     }

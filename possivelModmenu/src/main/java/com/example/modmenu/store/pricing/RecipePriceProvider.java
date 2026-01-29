@@ -12,18 +12,28 @@ import java.util.List;
 import java.util.Optional;
 
 public class RecipePriceProvider implements PriceProvider {
-    private RecipeDependencyGraph graph;
-    private PricingEngine engine;
+    private volatile RecipeDependencyGraph graph;
+    private final PricingEngine engine;
 
     public RecipePriceProvider(PricingEngine engine) {
         this.engine = engine;
     }
 
-    @Override
-    public Optional<BigDecimal> getPrice(Item item, PricingContext context) {
+    public synchronized void ensureGraphBuilt(PricingContext context) {
         if (graph == null) {
             graph = new RecipeDependencyGraph();
             graph.build(context);
+        }
+    }
+
+    public RecipeDependencyGraph getGraph() {
+        return graph;
+    }
+
+    @Override
+    public Optional<BigDecimal> getPrice(Item item, PricingContext context) {
+        if (graph == null) {
+            ensureGraphBuilt(context);
         }
 
         String id = ForgeRegistries.ITEMS.getKey(item).toString();
@@ -61,7 +71,7 @@ public class RecipePriceProvider implements PriceProvider {
 
             if (allIngredientsPriced && recipeCost.compareTo(BigDecimal.ZERO) > 0) {
                 ItemStack result = recipe.getResultItem(context.getRegistryAccess());
-                if (result.isEmpty()) continue;
+                if (result.isEmpty() || result.getCount() <= 0) continue;
                 
                 BigDecimal perItemCost = recipeCost.divide(BigDecimal.valueOf(result.getCount()), 10, java.math.RoundingMode.HALF_UP);
                 

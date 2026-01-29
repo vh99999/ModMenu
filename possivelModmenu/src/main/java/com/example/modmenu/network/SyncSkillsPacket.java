@@ -131,6 +131,7 @@ public class SyncSkillsPacket {
         this.data.genesisConfig.resourceDensity = buf.readDouble();
         this.data.genesisConfig.structureDensity = buf.readDouble();
         this.data.genesisConfig.seaLevelFluid = buf.readUtf();
+        this.data.genesisConfig.spawnLavaLakes = buf.readBoolean();
         this.data.genesisConfig.dimensionScale = buf.readDouble();
         this.data.genesisConfig.spawnHostile = buf.readBoolean();
         this.data.genesisConfig.spawnPassive = buf.readBoolean();
@@ -281,6 +282,7 @@ public class SyncSkillsPacket {
         buf.writeDouble(data.genesisConfig.resourceDensity);
         buf.writeDouble(data.genesisConfig.structureDensity);
         buf.writeUtf(data.genesisConfig.seaLevelFluid);
+        buf.writeBoolean(data.genesisConfig.spawnLavaLakes);
         buf.writeDouble(data.genesisConfig.dimensionScale);
         buf.writeBoolean(data.genesisConfig.spawnHostile);
         buf.writeBoolean(data.genesisConfig.spawnPassive);
@@ -320,65 +322,7 @@ public class SyncSkillsPacket {
 
     public void handle(Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
-            synchronized (StorePriceManager.clientSkills) {
-                StorePriceManager.SkillData client = StorePriceManager.clientSkills;
-                client.totalSP = this.data.totalSP;
-                client.spentSP = this.data.spentSP;
-                client.skillRanks.clear(); client.skillRanks.putAll(this.data.skillRanks);
-                client.unlockedRanks.clear(); client.unlockedRanks.putAll(this.data.unlockedRanks);
-                client.activeToggles.clear(); client.activeToggles.addAll(this.data.activeToggles);
-                client.mobSatiety.clear(); client.mobSatiety.putAll(this.data.mobSatiety);
-                client.branchOrder.clear(); client.branchOrder.addAll(this.data.branchOrder);
-                client.permanentAttributes.clear(); client.permanentAttributes.putAll(this.data.permanentAttributes);
-                client.lastCaptureTimes.clear(); client.lastCaptureTimes.putAll(this.data.lastCaptureTimes);
-                client.blacklistedSpecies.clear(); client.blacklistedSpecies.addAll(this.data.blacklistedSpecies);
-                client.overclockKillsRemaining = this.data.overclockKillsRemaining;
-                client.unlockedChambers = this.data.unlockedChambers;
-                client.totalKills = this.data.totalKills;
-                client.damageReflected = this.data.damageReflected;
-                client.damageHealed = this.data.damageHealed;
-                
-                for (int i = 0; i < this.data.chambers.size(); i++) {
-                    StorePriceManager.ChamberData other = this.data.chambers.get(i);
-                    if (i < client.chambers.size()) {
-                        StorePriceManager.ChamberData c = client.chambers.get(i);
-                        c.mobId = other.mobId;
-                        c.customName = other.customName;
-                        c.nbt = other.nbt;
-                        c.isExact = other.isExact;
-                        c.storedXP = other.storedXP;
-                        c.lastHarvestTime = other.lastHarvestTime;
-                        c.killerWeapon = other.killerWeapon;
-                        c.rerollCount = other.rerollCount;
-                        c.paused = other.paused;
-                        c.lastOfflineProcessingTime = other.lastOfflineProcessingTime;
-                        c.voidFilter.clear(); c.voidFilter.addAll(other.voidFilter);
-                        c.updateVersion = other.updateVersion;
-                        
-                        c.barteringMode = other.barteringMode;
-                        c.condensationMode = other.condensationMode;
-                        c.speedSlider = other.speedSlider;
-                        c.threadSlider = other.threadSlider;
-                        c.advancedFilters.clear(); c.advancedFilters.addAll(other.advancedFilters);
-                        c.isExcavation = other.isExcavation;
-                        c.lootTableId = other.lootTableId;
-                        c.linkedContainerPos = other.linkedContainerPos;
-                        c.linkedContainerDimension = other.linkedContainerDimension;
-                        c.inputLinkPos = other.inputLinkPos;
-                        c.inputLinkDimension = other.inputLinkDimension;
-                        // Stored loot, input buffer, and yield targets are kept as is on client
-                        // until SyncChamberLootPacket arrives
-                    } else {
-                        client.chambers.add(other);
-                    }
-                }
-                while (client.chambers.size() > this.data.chambers.size()) {
-                    client.chambers.remove(client.chambers.size() - 1);
-                }
-
-                client.genesisConfig.copyFrom(this.data.genesisConfig);
-                StorePriceManager.clientGenesisConfig.copyFrom(this.data.genesisConfig);
-            }
+            ClientPacketHandler.handleSyncSkills(this.data);
         });
         ctx.get().setPacketHandled(true);
     }

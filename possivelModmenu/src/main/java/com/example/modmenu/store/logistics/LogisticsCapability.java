@@ -41,14 +41,14 @@ public class LogisticsCapability {
         @SubscribeEvent
         public static void onRightClickBlock(net.minecraftforge.event.entity.player.PlayerInteractEvent.RightClickBlock event) {
             Player player = event.getEntity();
+            if (player.level().isClientSide) return;
+            
             getNetworks(player).ifPresent(data -> {
-                    if (data.linkingNetworkId != null) {
-                        if (player.isShiftKeyDown()) {
-                            event.setCanceled(true);
-                            event.setResult(net.minecraftforge.eventbus.api.Event.Result.DENY);
-                        } else {
-                            data.linkingNetworkId = null;
-                        }
+                    if (data.linkingNetworkId != null && !LogisticsUtil.isPermissionCheck()) {
+                        // Logic is now handled via packets from client to allow persistence and bulk add
+                        // We only cancel the event here to block inventory opening
+                        event.setCanceled(true);
+                        event.setResult(net.minecraftforge.eventbus.api.Event.Result.DENY);
                     }
                 });
         }

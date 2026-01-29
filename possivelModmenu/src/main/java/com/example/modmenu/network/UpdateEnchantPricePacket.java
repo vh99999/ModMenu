@@ -1,6 +1,7 @@
 package com.example.modmenu.network;
 
 import com.example.modmenu.store.StorePriceManager;
+import com.example.modmenu.store.StoreSecurity;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.enchantment.Enchantment;
@@ -32,7 +33,7 @@ public class UpdateEnchantPricePacket {
     public void handle(Supplier<NetworkEvent.Context> ctx) {
         ctx.get().enqueueWork(() -> {
             net.minecraft.server.level.ServerPlayer player = ctx.get().getSender();
-            if (player != null && StorePriceManager.isEditor(player.getUUID())) {
+            if (player != null && StoreSecurity.canModifyPrices(player)) {
                 Enchantment enchantment = ForgeRegistries.ENCHANTMENTS.getValue(enchantId);
                 if (enchantment != null) {
                     StorePriceManager.setEnchantPrice(enchantment, price);

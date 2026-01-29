@@ -126,7 +126,8 @@ public class WikiData {
             "Simulation Logic: Every interval, the engine rolls the loot table associated with the entity. This is a pure-data operation; no entity is spawned. It supports 'Looting' and 'Fortune' via the 'Killer Weapon' slot.\n\n" +
             "Apotheosis Integration: The engine manually fires 'onLivingDeath' and 'onLivingDrops' Forge hooks on a dummy entity instance. This ensures that Apotheosis affix gear, gems, and rarity rolls are applied exactly as if the mob were killed in the world.\n\n" +
             "Loot Resolution: Drops are first filtered (Keep/Void/Liquidate), then potentially condensed (Auto-crafted), then pushed to linked containers or stored in the chamber's high-capacity buffer (up to 2,000 unique item stacks).\n\n" +
-            "Virtual Bartering: If 'Bartering Mode' is active and the entity is a Piglin, the chamber will consume Gold Ingots from the input buffer to roll the Piglin Bartering loot table."));
+            "Virtual Bartering: If 'Bartering Mode' is active and the entity is a Piglin, the chamber will consume Gold Ingots from the input buffer to roll the Piglin Bartering loot table.\n\n" +
+            "Neural Logistics Integration: Each chamber can be used as a 'CHAMBER' node in the Neural Logistics system. This allows for direct extraction of loot into the global virtual bus or other processing networks without physical intermediaries."));
 
         // 4. SP COST SYSTEM
         sections.add(new WikiSection("4.0 Skill Point (SP) Cost System",
@@ -148,74 +149,50 @@ public class WikiData {
             "How to break: Setting base values to 0 in config (allows free upgrades)."));
 
         // 5. USER INTERFACE – EVERY BUTTON
-        sections.add(new WikiSection("5.0 User Interface: Reference Manual",
-            "What it is: A comprehensive guide to every interactive element within the System Mod's GUI suite.\n" +
-            "Why it exists: To ensure players can navigate the mod's complexity without external aid.\n" +
-            "Problem Solved: UI ambiguity and accidental activation of high-cost features.\n" +
-            "Data Read: Player's current SP, Balance, active toggles, and network states.\n" +
-            "Data Mutate: Active skill states, logistics rules, and virtualization parameters.\n" +
-            "Internal Behavior: Buttons trigger packets (e.g., SkillUpgradePacket) which are processed on the server to validate and apply changes.\n" +
-            "Player View: Clickable buttons, sliders, and color-coded status indicators.\n" +
-            "Engine View: Event-driven GUI listeners sending NBT-wrapped data to the server.\n" +
-            "Failure States: Button unresponsive due to server lag or insufficient permissions.\n" +
-            "Edge Cases: Opening multiple screens simultaneously (prevented by Minecraft's single-screen limit).\n" +
-            "Misuse: Spamming 'Collect All' to cause packet overflow (protected by cooldowns).\n" +
-            "Performance Impact: Minimal client-side overhead for rendering.\n" +
-            "Multiplayer Impact: UI is entirely client-side; only packets affect the shared server state.\n" +
-            "Interaction: Integrates with all other systems (Store, Logistics, etc.).\n" +
-            "Verification: Observe UI updates (e.g., Rank number incrementing) after clicking.\n" +
-            "How to break: Using macros to click at sub-tick speeds (prevented by server-side rate limiting).\n\n" +
+        sections.add(new WikiSection("5.0 User Interface: Neural Graph Manual",
+            "What it is: A professional-grade visual orchestration suite for managing infinite-scale logistics.\n\n" +
             "Interactive Element Guide:\n" +
-            "- 'Add Rule' (Logistics): Creates a new Logic Task. Mutates NetworkData.\n" +
-            "- 'Manage' (Containment): Opens the Loot Dashboard for a specific Chamber.\n" +
-            "- 'Link/Transfer' (Containment): Sets PULL/PUSH targets in the world.\n" +
-            "- 'Void-All' (Containment): Purges the storedLoot buffer.\n" +
-            "- 'Set Killer Weapon': Records hand item NBT for simulation.\n" +
-            "- 'Reroll Loot': Discards current drops for a new roll via SP."));
+            "- Neural Canvas: A 2D space where nodes and rules are represented as a connected graph. Supports panning (Left-Drag) and zooming (Scroll).\n" +
+            "- Physical/Virtual Nodes: Blocks, Players, Chambers, and Markets are visual nodes. Use 'Add Node' buttons to populate the canvas.\n" +
+            "- Logic Rules (Connections): Lines between nodes represent logistics rules. Success is shown in Green, Overflow in Purple.\n" +
+            "- Visual Debugging: Real-time Magenta pulses show Signals traveling through the network. Success pulses (Green) show actual resource movement.\n" +
+            "- Brush Tool: Toggle 'Brush' mode to copy a node's configuration (Sides, Slots, Icons) with a click and paste it onto other nodes.\n" +
+            "- Blueprinting: Export your entire network design (nodes, groups, rules) as a base64 string to share with others or reuse in different networks.\n" +
+            "- History Search: Filter movement history in real-time; matching items will highlight their paths on the canvas with Gold pulses.\n" +
+            "- Grouping: Select multiple nodes and 'Group' them to collapse complex logic into a single movable unit."));
 
         // 6. LINKING, TRANSFER & NETWORKS
-        sections.add(new WikiSection("6.0 Linking, Transfer & Networks",
-            "What it is: A lag-free logistics framework for moving Items, Energy, and Fluids between physical and virtual nodes.\n" +
-            "Why it exists: To provide a unified automation system that scales to thousands of instructions without impacting TPS.\n" +
-            "Problem Solved: The performance bottleneck of pipes and conduits in large-scale factories.\n" +
-            "Data Read: Resource levels in nodes, Logic Conditions, and Side/Slot configurations.\n" +
-            "Data Mutates: BlockEntity inventories/buffers and virtual storage.\n" +
-            "Internal Behavior: The NetworkTickHandler processes a global budget of 10,000 rules per tick. Rules are executed in priority order. Successful transfers can trigger 'Chaining' (immediate execution of downstream rules).\n" +
-            "Player View: A network map with nodes and rules; real-time status reports (e.g., '[ACTIVE] Moved 64x Iron Ingot').\n" +
-            "Engine View: A list of LogisticsRule objects evaluated against the capability cache to avoid redundant BE lookups.\n" +
-            "Failure States: Node missing (block broken); Dimension not loaded; Conditions not met.\n" +
-            "Edge Cases: Transferring across dimensions—requires the node to be chunk-loaded.\n" +
-            "Misuse: Attempting to use a single network for 1M+ rules, which exceeds the tick budget.\n" +
-            "Performance Impact: Extremely low due to capability caching and budget-limited processing.\n" +
-            "Multiplayer Impact: Networks are private to the player, but can interact with shared world blocks.\n" +
-            "Interaction: Fully compatible with Mekanism, AE2, and any mod using standard Forge Capabilities.\n" +
-            "Verification: Check the 'Last Report' in the Rule Config screen for real-time status.\n" +
-            "How to break: Placing nodes in rapidly loading/unloading chunks may cause temporary transfer interruptions.\n\n" +
-            "Transfer Logic: Mode ROUND_ROBIN rotates targets; Mode BALANCED targets the emptiest node. Mode PRIORITY fills targets in list order."));
+        sections.add(new WikiSection("6.0 Neural Logistics Graph: Wireless Orchestration",
+            "What it is: A fully virtualized, event-driven logistics engine that replaces physical pipes with a Neural Graph of resource flows.\n\n" +
+            "The 5-Phase Evolution:\n" +
+            "1. Virtual Bus Foundation: Breaks the point-to-point link. Resources can be EXTRACTED into the 'Network Cloud' and then INSERTED where needed.\n" +
+            "2. Signal-Driven Logic: Replaces slow polling with instant events. Rules can trigger on Signals (ITEM_ADDED, ENERGY_LOW) or custom success triggers.\n" +
+            "3. Modular Network: Treat an entire network as a component. Use Input/Output Ports and Sub-Network nodes to link different bases without wires.\n" +
+            "4. The Brain (State Management): Persistent network variables and math operations allow the network to 'calculate' its own priorities.\n" +
+            "5. Neural GUI: A visual 2D canvas that turns logistics configuration into 'Flow-Programming' with real-time signal visualization.\n\n" +
+            "Engine Performance: Uses a Capability Cache and a 10,000-rule global budget to ensure even complex networks remain tick-friendly."));
 
-        sections.add(new WikiSection("6.1 Logistics: Advanced Semantics",
-            "Memory Semantics: The system uses a 'Capability Cache' that persists for one server tick. This ensures that even if 100 rules access the same chest, the engine only probes the chest's memory once, drastically reducing overhead.\n\n" +
-            "Transfer Tick Logic: Rules are processed sequentially within the 10,000-rule budget. If a rule succeeds, it can trigger a 'Chaining' event where any downstream rule (source = previous destination) is executed immediately, regardless of its position in the list.\n\n" +
-            "Side Rules: 'AUTO' mode uses the mod's internal heuristic to find the first valid side for the requested capability (Items, Energy, or Fluids). Manual overrides (North, South, etc.) strictly follow the vanilla Direction protocols.\n\n" +
-            "Storage Mod Compatibility: Using standard Forge IItemHandler, IEnergyStorage, and IFluidHandler capabilities ensures 100% compatibility with Mekanism, Applied Energistics 2, Refined Storage, and Sophisticated Storage.\n\n" +
-            "Loop Prevention: The engine maintains a 'Chain Depth' counter. If a transfer chain exceeds 20 consecutive rules in a single tick, the chain is forcefully terminated to prevent stack overflow and server crashes."));
+        sections.add(new WikiSection("6.1 Logistics: Signaling & The Virtual Bus",
+            "The Virtual Bus: A rule can have an action of EXTRACT (Source -> Network Buffer), INSERT (Network Buffer -> Dest), or MOVE (Direct).\n\n" +
+            "Signaling System: Rules can be set to 'SIGNAL' trigger mode. They only consume CPU when a specific event happens.\n" +
+            "Automatic Signals: The engine fires signals like ITEM_ADDED or FLUID_REMOVED whenever a transfer succeeds. Rules can subscribe to these to form complex chains.\n\n" +
+            "Custom Signals: Rules can emit a custom signal string upon success, allowing for sophisticated multi-step 'Programs' without complex conditions.\n\n" +
+            "Trash Node: A virtual destination that permanently deletes any resources sent to it at infinite speed."));
+
+        sections.add(new WikiSection("6.2 Logistics: Modular Networks & The Brain",
+            "Ports & Sub-Networks: Create 'Input Port' and 'Output Port' nodes. Other networks can then reference this network as a 'Sub-Network' node and pump resources directly into its ports.\n\n" +
+            "Network Variables: Store data (e.g., 'TotalIron', 'BatteryStatus') in persistent variables. Rules can read these or write to them using 'SET_VARIABLE' and 'MATH' actions.\n\n" +
+            "Math Engine: Perform ADD, SUB, MUL, and DIV on variables. Example: Sum energy from 10 batteries into one 'GlobalEnergy' variable.\n\n" +
+            "Variable Conditions: Gate your logistics based on these variables. 'If GlobalEnergy < 100,000, then STOP high-power machines'."));
 
         // 7. VOIDING / DESTRUCTION
         sections.add(new WikiSection("7.0 Voiding and Deletion Semantics",
             "What it is: The absolute and irreversible removal of data or items from the system.\n" +
             "Why it exists: To provide high-performance trash-can logic and emergency purges for massive automation overflows.\n" +
-            "Problem Solved: Buffer clogging and inventory overflow in high-throughput factories.\n" +
-            "Data Read: Items matching a specific filter (ID, Tag, or NBT).\n" +
-            "Data Mutates: Absolute deletion of the object from memory.\n" +
-            "Internal Behavior: When a 'Void' rule or button is triggered, the engine calls .shrink(count) or .clear() on the target buffer. No item entities are spawned in the world.\n" +
-            "Player View: Items simply vanish from the buffer or container.\n" +
-            "Engine View: Reference removal from the relevant List or IItemHandler.\n" +
+            "Implementation: Use the 'TRASH' node as a destination rule. It accepts Items, Energy, and Fluids at infinite speed and deletes them instantly.\n" +
+            "Internal Behavior: When resources are moved to a Trash node or a Chamber void-purge is triggered, the engine removes the objects from memory without spawning item entities.\n" +
             "Failure States: None—voiding is a guaranteed operation.\n" +
-            "Edge Cases: Voiding items with complex NBT—this safely deletes the entire data structure.\n" +
-            "Misuse: Accidental deletion of valuable gear (mitigated by 'Locked' item protection).\n" +
-            "Performance Impact: Positive. Reducing item counts in buffers reduces memory pressure.\n" +
-            "Multiplayer Impact: Only the owner of the network/chamber can trigger a voiding action.\n" +
-            "Interaction: Can be gated by Logistics Conditions (e.g., 'Only void if chest is 90% full').\n" +
+            "Safety: The system detects valuable items (Ores, Diamonds, Netherite) and highlights rules targeting the Market or Trash with a 'Valuable at Risk' warning on the Neural Canvas.\n" +
             "Verification: Observe the item count in the chamber or container dropping to zero.\n" +
             "How to break: Irreversible by design; once voided, the data is gone forever."));
 

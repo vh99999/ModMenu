@@ -3,6 +3,7 @@ package com.example.modmenu.store;
 import com.example.modmenu.modmenu;
 import com.example.modmenu.store.SkillManager;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -18,6 +19,11 @@ import net.minecraftforge.event.entity.player.EntityItemPickupEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.items.IItemHandler;
+import net.minecraftforge.items.ItemHandlerHelper;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.core.registries.Registries;
+import net.minecraftforge.common.capabilities.ForgeCapabilities;
 
 import net.minecraftforge.event.level.LevelEvent;
 import net.minecraft.world.level.biome.MobSpawnSettings;
@@ -288,7 +294,7 @@ public class EffectMaintenanceHandler {
         int vacuumRank = SkillManager.getActiveRank(skillData, "UTILITY_QUANTUM_VACUUM");
         
         double range = settings.itemMagnetRange;
-        if (vacuumRank > 0) range += 128 * StorePriceManager.dampedDouble(BigDecimal.valueOf(vacuumRank), 5.0);
+        if (vacuumRank > 0) range += settings.quantumVacuumRange * StorePriceManager.dampedDouble(BigDecimal.valueOf(vacuumRank), 5.0);
 
         // Magnet Throttling (Phase 3.3)
         if (range > 32 && player.level().getGameTime() % 5 != 0) return;
@@ -311,6 +317,21 @@ public class EffectMaintenanceHandler {
 
         int batchRank = SkillManager.getActiveRank(skillData, "UTILITY_BATCH_PROCESSING");
         
+        // Link Magnet Preparation
+        IItemHandler linkedHandler = null;
+        if (settings.linkMagnetActive && settings.linkedStoragePos != null) {
+            ResourceLocation dimLoc = ResourceLocation.tryParse(settings.linkedStorageDim);
+            if (dimLoc != null) {
+                ServerLevel targetLevel = player.getServer().getLevel(ResourceKey.create(Registries.DIMENSION, dimLoc));
+                if (targetLevel != null && targetLevel.hasChunkAt(settings.linkedStoragePos)) {
+                    net.minecraft.world.level.block.entity.BlockEntity be = targetLevel.getBlockEntity(settings.linkedStoragePos);
+                    if (be != null) {
+                        linkedHandler = be.getCapability(ForgeCapabilities.ITEM_HANDLER).orElse(null);
+                    }
+                }
+            }
+        }
+
         for (net.minecraft.world.entity.item.ItemEntity itemEntity : items) {
             if (!itemEntity.isAlive()) continue;
             if (processed >= maxOps) break;
@@ -345,6 +366,22 @@ public class EffectMaintenanceHandler {
                 }
             }
             
+            // Link Magnet Transport
+            if (linkedHandler != null) {
+                ItemStack remainder = ItemHandlerHelper.insertItemStacked(linkedHandler, stack, false);
+                if (remainder.isEmpty()) {
+                    // Visual feedback: particles at the item position
+                    player.serverLevel().sendParticles(ParticleTypes.PORTAL, itemEntity.getX(), itemEntity.getY() + 0.5, itemEntity.getZ(), 8, 0.2, 0.2, 0.2, 0.1);
+                    itemEntity.discard();
+                    processed++;
+                    continue;
+                } else if (remainder.getCount() != stack.getCount()) {
+                    player.serverLevel().sendParticles(ParticleTypes.PORTAL, itemEntity.getX(), itemEntity.getY() + 0.5, itemEntity.getZ(), 4, 0.1, 0.1, 0.1, 0.05);
+                    itemEntity.setItem(remainder);
+                    stack = remainder; 
+                }
+            }
+
             if (player.getInventory().add(stack)) {
                 if (stack.isEmpty()) {
                     itemEntity.discard();

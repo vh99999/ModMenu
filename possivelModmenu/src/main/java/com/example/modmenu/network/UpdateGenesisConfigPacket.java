@@ -1,6 +1,7 @@
 package com.example.modmenu.network;
 
 import com.example.modmenu.store.StorePriceManager;
+import com.example.modmenu.store.StoreSecurity;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -33,6 +34,7 @@ public class UpdateGenesisConfigPacket {
         this.config.resourceDensity = buf.readDouble();
         this.config.structureDensity = buf.readDouble();
         this.config.seaLevelFluid = buf.readUtf();
+        this.config.spawnLavaLakes = buf.readBoolean();
         this.config.dimensionScale = buf.readDouble();
         this.config.spawnHostile = buf.readBoolean();
         this.config.spawnPassive = buf.readBoolean();
@@ -83,6 +85,7 @@ public class UpdateGenesisConfigPacket {
         buf.writeDouble(config.resourceDensity);
         buf.writeDouble(config.structureDensity);
         buf.writeUtf(config.seaLevelFluid);
+        buf.writeBoolean(config.spawnLavaLakes);
         buf.writeDouble(config.dimensionScale);
         buf.writeBoolean(config.spawnHostile);
         buf.writeBoolean(config.spawnPassive);
@@ -124,6 +127,11 @@ public class UpdateGenesisConfigPacket {
         ctx.get().enqueueWork(() -> {
             ServerPlayer player = ctx.get().getSender();
             if (player != null) {
+                // Security check: must be editor or have configurator unlocked
+                if (!StoreSecurity.canAccessDimensionConfigurator(player)) {
+                    return;
+                }
+
                 StorePriceManager.SkillData data = StorePriceManager.getSkills(player.getUUID());
                 data.genesisConfig.copyFrom(this.config);
                 

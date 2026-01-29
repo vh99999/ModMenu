@@ -22,8 +22,16 @@ public class UpdateAbilityPacket {
         this.settings.autoSell = buf.readBoolean();
         this.settings.autoSellerIsBlacklist = buf.readBoolean();
         this.settings.useEnchantments = buf.readBoolean();
-        this.settings.miningEnchants = buf.readMap(FriendlyByteBuf::readUtf, FriendlyByteBuf::readInt);
-        this.settings.miningBlacklist = buf.readCollection(ArrayList::new, FriendlyByteBuf::readUtf);
+        
+        int miningEnchantsSize = buf.readVarInt();
+        if (miningEnchantsSize > 100) throw new RuntimeException("Too many mining enchants");
+        this.settings.miningEnchants = new java.util.HashMap<>();
+        for (int i = 0; i < miningEnchantsSize; i++) this.settings.miningEnchants.put(buf.readUtf(), buf.readInt());
+
+        int miningBlacklistSize = buf.readVarInt();
+        if (miningBlacklistSize > 1000) throw new RuntimeException("Too many mining blacklist entries");
+        this.settings.miningBlacklist = new ArrayList<>(miningBlacklistSize);
+        for (int i = 0; i < miningBlacklistSize; i++) this.settings.miningBlacklist.add(buf.readUtf());
         
         this.settings.focusedMiningActive = buf.readBoolean();
         this.settings.focusedMiningRange = buf.readInt();
@@ -32,18 +40,35 @@ public class UpdateAbilityPacket {
         this.settings.itemMagnetActive = buf.readBoolean();
         this.settings.itemMagnetRange = buf.readInt();
         this.settings.itemMagnetOpsPerTick = buf.readInt();
+        this.settings.quantumVacuumRange = buf.readInt();
         
         this.settings.xpMagnetActive = buf.readBoolean();
         this.settings.xpMagnetRange = buf.readInt();
         this.settings.xpMagnetOpsPerTick = buf.readInt();
         
         this.settings.autoSellerActive = buf.readBoolean();
-        this.settings.autoSellerWhitelist = buf.readCollection(ArrayList::new, FriendlyByteBuf::readUtf);
-        this.settings.sellAllWhitelistActive = buf.readBoolean();
-        this.settings.sellAllWhitelist = buf.readCollection(ArrayList::new, FriendlyByteBuf::readUtf);
-        this.settings.sellAllBlacklist = buf.readCollection(ArrayList::new, FriendlyByteBuf::readUtf);
         
-        this.settings.smelterWhitelist = buf.readCollection(ArrayList::new, FriendlyByteBuf::readUtf);
+        int autoSellerSize = buf.readVarInt();
+        if (autoSellerSize > 1000) throw new RuntimeException("Too many auto seller whitelist entries");
+        this.settings.autoSellerWhitelist = new ArrayList<>(autoSellerSize);
+        for (int i = 0; i < autoSellerSize; i++) this.settings.autoSellerWhitelist.add(buf.readUtf());
+
+        this.settings.sellAllWhitelistActive = buf.readBoolean();
+        
+        int sellAllWhitelistSize = buf.readVarInt();
+        if (sellAllWhitelistSize > 1000) throw new RuntimeException("Too many sell all whitelist entries");
+        this.settings.sellAllWhitelist = new ArrayList<>(sellAllWhitelistSize);
+        for (int i = 0; i < sellAllWhitelistSize; i++) this.settings.sellAllWhitelist.add(buf.readUtf());
+
+        int sellAllBlacklistSize = buf.readVarInt();
+        if (sellAllBlacklistSize > 1000) throw new RuntimeException("Too many sell all blacklist entries");
+        this.settings.sellAllBlacklist = new ArrayList<>(sellAllBlacklistSize);
+        for (int i = 0; i < sellAllBlacklistSize; i++) this.settings.sellAllBlacklist.add(buf.readUtf());
+        
+        int smelterWhitelistSize = buf.readVarInt();
+        if (smelterWhitelistSize > 1000) throw new RuntimeException("Too many smelter whitelist entries");
+        this.settings.smelterWhitelist = new ArrayList<>(smelterWhitelistSize);
+        for (int i = 0; i < smelterWhitelistSize; i++) this.settings.smelterWhitelist.add(buf.readUtf());
         
         this.settings.chestHighlightActive = buf.readBoolean();
         this.settings.chestHighlightRange = buf.readInt();
@@ -69,11 +94,30 @@ public class UpdateAbilityPacket {
         this.settings.captureActive = buf.readBoolean();
         this.settings.spawnBoostActive = buf.readBoolean();
         this.settings.spawnBoostMultiplier = buf.readDouble();
-        this.settings.spawnBoostTargets = buf.readCollection(ArrayList::new, FriendlyByteBuf::readUtf);
-        this.settings.disabledSpawnConditions = buf.readCollection(ArrayList::new, FriendlyByteBuf::readUtf);
-        this.settings.selectedEnchantments = buf.readCollection(ArrayList::new, FriendlyByteBuf::readUtf);
+        
+        int spawnBoostSize = buf.readVarInt();
+        if (spawnBoostSize > 100) throw new RuntimeException("Too many spawn boost targets");
+        this.settings.spawnBoostTargets = new ArrayList<>(spawnBoostSize);
+        for (int i = 0; i < spawnBoostSize; i++) this.settings.spawnBoostTargets.add(buf.readUtf());
+
+        int disabledSpawnSize = buf.readVarInt();
+        if (disabledSpawnSize > 100) throw new RuntimeException("Too many disabled spawn conditions");
+        this.settings.disabledSpawnConditions = new ArrayList<>(disabledSpawnSize);
+        for (int i = 0; i < disabledSpawnSize; i++) this.settings.disabledSpawnConditions.add(buf.readUtf());
+
+        int selectedEnchantsSize = buf.readVarInt();
+        if (selectedEnchantsSize > 100) throw new RuntimeException("Too many selected enchantments");
+        this.settings.selectedEnchantments = new ArrayList<>(selectedEnchantsSize);
+        for (int i = 0; i < selectedEnchantsSize; i++) this.settings.selectedEnchantments.add(buf.readUtf());
+        
         this.settings.growCropsActive = buf.readBoolean();
         this.settings.growCropsRange = buf.readInt();
+        
+        this.settings.linkMagnetActive = buf.readBoolean();
+        if (buf.readBoolean()) {
+            this.settings.linkedStoragePos = buf.readBlockPos();
+        }
+        this.settings.linkedStorageDim = buf.readUtf();
     }
 
     public void encode(FriendlyByteBuf buf) {
@@ -92,6 +136,7 @@ public class UpdateAbilityPacket {
         buf.writeBoolean(settings.itemMagnetActive);
         buf.writeInt(settings.itemMagnetRange);
         buf.writeInt(settings.itemMagnetOpsPerTick);
+        buf.writeInt(settings.quantumVacuumRange);
         
         buf.writeBoolean(settings.xpMagnetActive);
         buf.writeInt(settings.xpMagnetRange);
@@ -134,6 +179,13 @@ public class UpdateAbilityPacket {
         buf.writeCollection(settings.selectedEnchantments, FriendlyByteBuf::writeUtf);
         buf.writeBoolean(settings.growCropsActive);
         buf.writeInt(settings.growCropsRange);
+        
+        buf.writeBoolean(settings.linkMagnetActive);
+        buf.writeBoolean(settings.linkedStoragePos != null);
+        if (settings.linkedStoragePos != null) {
+            buf.writeBlockPos(settings.linkedStoragePos);
+        }
+        buf.writeUtf(settings.linkedStorageDim != null ? settings.linkedStorageDim : "minecraft:overworld");
     }
 
     public void handle(Supplier<NetworkEvent.Context> ctx) {

@@ -113,27 +113,24 @@ public class SkillDefinitions {
         add("UTILITY_MOLECULAR_REPLICATION", "Molecular Replication", "Multiplies drops from blocks (up to 1,000x or full stack).", 10, Branch.UTILITY, "UTILITY_QUANTUM_VACUUM", 1, 0, 200);
         add("UTILITY_BATCH_PROCESSING", "Batch Processing", "Industrial Auto-Seller logic. Items are converted to cash instantly.", 5, Branch.UTILITY, "UTILITY_MOLECULAR_REPLICATION", 1, 0, 300);
         add("UTILITY_STRUCTURAL_REFACTORING", "Structural Refactoring", "Expands Area Mining to massive 65x65x65 area.", 5, Branch.UTILITY, "UTILITY_BATCH_PROCESSING", 1, 0, 400);
-        add("UTILITY_SPATIAL_FOLDING", "Spatial Folding", "Infinite inventory capacity and remote Store/System access.", 3, Branch.UTILITY, "UTILITY_STRUCTURAL_REFACTORING", 1, 0, 500);
-        add("UTILITY_BIOMETRIC_OPTIMIZATION", "Biometric Optimization", "Permanent Night Vision, Haste, Water Breathing, Flight.", 3, Branch.UTILITY, "UTILITY_SPATIAL_FOLDING", 1, 0, 600);
-        add("UTILITY_MATTER_TRANSMUTATION", "Matter Transmutation", "Transmute blocks into anything using SP, including bedrock.", 5, Branch.UTILITY, "UTILITY_BIOMETRIC_OPTIMIZATION", 1, 0, 700);
-        add("UTILITY_CHUNK_LIQUIDATION", "Total Chunk Liquidation", "Delete and sell entire 5x5 chunk areas instantly.", 3, Branch.UTILITY, "UTILITY_MATTER_TRANSMUTATION", 1, 0, 800);
-        add("UTILITY_WORMHOLE_PROTOCOL", "Wormhole Protocol", "Instant teleportation to any coord/dim and Return to Death anchor.", 3, Branch.UTILITY, "UTILITY_CHUNK_LIQUIDATION", 1, 0, 900);
-        add("UTILITY_ATMOSPHERIC_CONTROL", "Atmospheric Control", "Rewrite world constants (Time, Weather, Gravity, Tick Speed).", 3, Branch.UTILITY, "UTILITY_WORMHOLE_PROTOCOL", 1, 0, 1000);
-        add("UTILITY_ENTITY_DEFRAGMENTATION", "Data Extraction", "Harvest System Logs from mobs for profit or buffs.", 5, Branch.UTILITY, "UTILITY_ATMOSPHERIC_CONTROL", 1, 0, 1100);
-        add("UTILITY_SYSTEM_OVERCLOCK", "System Overclock", "Multiplies speed of all actions (up to 32x speed).", 5, Branch.UTILITY, "UTILITY_ENTITY_DEFRAGMENTATION", 1, 0, 1200);
-        add("UTILITY_MOLECULAR_SYNTHESIS", "Molecular Synthesis", "System Crafting interface to synthesize any item using balance.", 10, Branch.UTILITY, "UTILITY_SYSTEM_OVERCLOCK", 1, 0, 1300);
-        add("UTILITY_VECTOR_MANIPULATION", "Vector Manipulation", "Control physics engine velocity and Time Stop.", 5, Branch.UTILITY, "UTILITY_MOLECULAR_SYNTHESIS", 1, 0, 1400);
-        add("UTILITY_TECTONIC_SHIFT", "Tectonic Shift", "Macro-scale world editing (Push/Pull earth).", 5, Branch.UTILITY, "UTILITY_VECTOR_MANIPULATION", 1, 0, 1500);
-        add("UTILITY_QUANTUM_STORAGE", "Quantum Storage", "Remote access to any container via Shift-click sync.", 1, Branch.UTILITY, "UTILITY_TECTONIC_SHIFT", 1, 0, 1600);
-                                        add("UTILITY_MATTER_SYNTHESIS_PASSIVE", "Matter Synthesis (Passive)", "Passively generate stacks of items every 60 seconds.", 5, Branch.UTILITY, "UTILITY_QUANTUM_STORAGE", 1, 0, 1700);
-        add("UTILITY_STATIC_RIFTS", "Dimensional Anchor", "Prevents forced teleports and sets 10 Static Rifts.", 5, Branch.UTILITY, "UTILITY_MATTER_SYNTHESIS_PASSIVE", 1, 0, 1800);
-        add("UTILITY_NBT_REFACTOR", "NBT Refactor", "Modify item names and base attributes using SP.", 5, Branch.UTILITY, "UTILITY_STATIC_RIFTS", 1, 0, 1900);
-        add("UTILITY_TIME_DILATION_AURA", "Time Dilation Aura", "16-block field where everything moves at 0.1x speed.", 5, Branch.UTILITY, "UTILITY_NBT_REFACTOR", 1, 0, 2000);
+        add("UTILITY_BIOMETRIC_OPTIMIZATION", "Biometric Optimization", "Permanent Night Vision, Haste, Water Breathing, Flight.", 3, Branch.UTILITY, "UTILITY_STRUCTURAL_REFACTORING", 1, 0, 500);
+        add("UTILITY_MATTER_TRANSMUTATION", "Matter Transmutation", "Transmute blocks into anything using SP, including bedrock.", 5, Branch.UTILITY, "UTILITY_BIOMETRIC_OPTIMIZATION", 1, 0, 600);
+        add("UTILITY_CHUNK_LIQUIDATION", "Total Chunk Liquidation", "Delete and sell entire 5x5 chunk areas instantly.", 3, Branch.UTILITY, "UTILITY_MATTER_TRANSMUTATION", 1, 0, 700);
+        add("UTILITY_ATMOSPHERIC_CONTROL", "Atmospheric Control", "Rewrite world constants (Time, Weather, Gravity, Tick Speed).", 3, Branch.UTILITY, "UTILITY_CHUNK_LIQUIDATION", 1, 0, 800);
+        add("UTILITY_ENTITY_DEFRAGMENTATION", "Data Extraction", "Harvest System Logs from mobs for profit or buffs.", 5, Branch.UTILITY, "UTILITY_ATMOSPHERIC_CONTROL", 1, 0, 900);
+        add("UTILITY_SYSTEM_OVERCLOCK", "System Overclock", "Multiplies speed of all actions (up to 32x speed).", 5, Branch.UTILITY, "UTILITY_ENTITY_DEFRAGMENTATION", 1, 0, 1000);
+        add("UTILITY_MOLECULAR_SYNTHESIS", "Molecular Synthesis", "System Crafting interface to synthesize any item using balance.", 10, Branch.UTILITY, "UTILITY_SYSTEM_OVERCLOCK", 1, 0, 1100);
+        add("UTILITY_VECTOR_MANIPULATION", "Vector Manipulation", "Control physics engine velocity and Time Stop.", 5, Branch.UTILITY, "UTILITY_MOLECULAR_SYNTHESIS", 1, 0, 1200);
+        add("UTILITY_TECTONIC_SHIFT", "Tectonic Shift", "Macro-scale world editing (Push/Pull earth).", 5, Branch.UTILITY, "UTILITY_VECTOR_MANIPULATION", 1, 0, 1300);
+        add("UTILITY_MATTER_SYNTHESIS_PASSIVE", "Matter Synthesis (Passive)", "Passively generate stacks of items every 60 seconds.", 5, Branch.UTILITY, "UTILITY_TECTONIC_SHIFT", 1, 0, 1400);
+        add("UTILITY_STATIC_RIFTS", "Dimensional Anchor", "Prevents forced teleports and sets 10 Static Rifts.", 5, Branch.UTILITY, "UTILITY_MATTER_SYNTHESIS_PASSIVE", 1, 0, 1500);
+        add("UTILITY_NBT_REFACTOR", "NBT Refactor", "Modify item names and base attributes using SP.", 5, Branch.UTILITY, "UTILITY_STATIC_RIFTS", 1, 0, 1600);
+        add("UTILITY_TIME_DILATION_AURA", "Time Dilation Aura", "16-block field where everything moves at 0.1x speed.", 5, Branch.UTILITY, "UTILITY_NBT_REFACTOR", 1, 0, 1700);
 
         // Utility Keystones
-        add("UTILITY_KEYSTONE_ARCHITECT", "Architect's Will", "ULTIMATE KEYSTONE: Delete Mode for any block clicked (up to 256m).", 1, Branch.UTILITY, "UTILITY_TECTONIC_SHIFT", 1, 100, 1500);
-        add("UTILITY_KEYSTONE_ROOT_ACCESS", "World Root Access", "/god-style shell to change biomes and world rules.", 1, Branch.UTILITY, "UTILITY_TIME_DILATION_AURA", 1, -100, 2100);
-        add("UTILITY_KEYSTONE_ETERNAL_SIM", "Eternal Simulation", "Save and rollback chunk regions (128x128).", 1, Branch.UTILITY, "UTILITY_TIME_DILATION_AURA", 1, 100, 2100);
+        add("UTILITY_KEYSTONE_ARCHITECT", "Architect's Will", "ULTIMATE KEYSTONE: Delete Mode for any block clicked (up to 256m).", 1, Branch.UTILITY, "UTILITY_TECTONIC_SHIFT", 1, 100, 1300);
+        add("UTILITY_KEYSTONE_ROOT_ACCESS", "World Root Access", "/god-style shell to change biomes and world rules.", 1, Branch.UTILITY, "UTILITY_TIME_DILATION_AURA", 1, -100, 1800);
+        add("UTILITY_KEYSTONE_ETERNAL_SIM", "Eternal Simulation", "Save and rollback chunk regions (128x128).", 1, Branch.UTILITY, "UTILITY_TIME_DILATION_AURA", 1, 100, 1800);
 
         // --- BRANCH D: VIRTUALIZATION ---
         // (Coordinates: South-East quadrant)

@@ -23,10 +23,14 @@ import net.minecraftforge.fml.common.Mod;
 
 import java.util.UUID;
 import java.util.Optional;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.Iterator;
 
 @Mod.EventBusSubscriber(modid = "modmenu")
 public class GenesisManager {
     public static final ResourceKey<Level> GENESIS_DIM = ResourceKey.create(Registries.DIMENSION, ResourceLocation.tryParse("modmenu:genesis"));
+    private static final List<Runnable> scheduledTasks = new ArrayList<>();
 
     @SubscribeEvent
     public static void onPlayerChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
@@ -328,23 +332,56 @@ public class GenesisManager {
             if (!(e instanceof ServerPlayer)) e.discard();
         });
         
-        // Reset a 64x64 area around spawn to provide a clean start with new settings
-        for (int x = -radius; x < radius; x++) {
-            for (int z = -radius; z < radius; z++) {
-                // Clear everything above ground
-                for (int y = level.getMinBuildHeight(); y < level.getMaxBuildHeight(); y++) {
-                    BlockPos pos = new BlockPos(x, y, z);
-                    level.setBlock(pos, Blocks.AIR.defaultBlockState(), 2 | 16);
-                }
-                // Generate a small platform
-                level.setBlock(new BlockPos(x, 100, z), Blocks.GRASS_BLOCK.defaultBlockState(), 2 | 16);
-                level.setBlock(new BlockPos(x, 99, z), Blocks.DIRT.defaultBlockState(), 2 | 16);
-                level.setBlock(new BlockPos(x, 98, z), Blocks.BEDROCK.defaultBlockState(), 2 | 16);
-            }
+        // Start asynchronous clearing
+        synchronized (scheduledTasks) {
+            scheduledTasks.add(new BlockClearTask(level, radius));
         }
         
-        player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00A7aGenesis Dimension spawn area reset."), true);
+        player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00A7aGenesis Dimension spawn area reset started."), true);
         player.displayClientMessage(net.minecraft.network.chat.Component.literal("\u00A7e[Full Reset] \u00A77A complete world wipe is scheduled for the next server restart."), false);
+    }
+
+    private static class BlockClearTask implements Runnable {
+        private final ServerLevel level;
+        private final int radius;
+        private int currentX;
+        private int currentZ;
+        private boolean finished = false;
+
+        public BlockClearTask(ServerLevel level, int radius) {
+            this.level = level;
+            this.radius = radius;
+            this.currentX = -radius;
+            this.currentZ = -radius;
+        }
+
+        @Override
+        public void run() {
+            int columnsProcessed = 0;
+            while (columnsProcessed < 64 && !finished) {
+                for (int y = level.getMinBuildHeight(); y < level.getMaxBuildHeight(); y++) {
+                    level.setBlock(new BlockPos(currentX, y, currentZ), Blocks.AIR.defaultBlockState(), 2 | 16);
+                }
+                level.setBlock(new BlockPos(currentX, 100, currentZ), Blocks.GRASS_BLOCK.defaultBlockState(), 2 | 16);
+                level.setBlock(new BlockPos(currentX, 99, currentZ), Blocks.DIRT.defaultBlockState(), 2 | 16);
+                level.setBlock(new BlockPos(currentX, 98, currentZ), Blocks.BEDROCK.defaultBlockState(), 2 | 16);
+
+                columnsProcessed++;
+                currentZ++;
+                if (currentZ >= radius) {
+                    currentZ = -radius;
+                    currentX++;
+                    if (currentX >= radius) {
+                        finished = true;
+                    }
+                }
+            }
+            if (!finished) {
+                synchronized (scheduledTasks) {
+                    scheduledTasks.add(this);
+                }
+            }
+        }
     }
 
     private static double timeAccumulator = 0;
@@ -352,11 +389,28 @@ public class GenesisManager {
     @SubscribeEvent
     public static void onWorldTick(TickEvent.LevelTickEvent event) {
         if (event.phase != TickEvent.Phase.END || event.level.isClientSide) return;
+
+        if (!scheduledTasks.isEmpty()) {
+            List<Runnable> tasksToRun;
+            synchronized (scheduledTasks) {
+                tasksToRun = new ArrayList<>(scheduledTasks);
+                scheduledTasks.clear();
+            }
+            for (Runnable task : tasksToRun) {
+                task.run();
+            }
+        }
+
         if (event.level.dimension().equals(GENESIS_DIM)) {
             ServerLevel level = (ServerLevel) event.level;
+            if (level.players().isEmpty()) return;
+
             StorePriceManager.GenesisConfig config = getConfig(level);
             if (config != null) {
-                applyConfig(level, config);
+                // Slower frequency for non-critical config application
+                if (level.getGameTime() % 20 == 0) {
+                    applyConfig(level, config);
+                }
                 
                 // Celestial Sync
                 if (config.celestialSync && !config.tickFreeze) {
@@ -500,9 +554,9 @@ public class GenesisManager {
         // 2. Clear head space
         if (!above.isAir() || !above2.isAir()) return false;
         
-        // 3. Hazard checks
+        // 3. Hazard checks (Feet and Head level)
         if (state.is(Blocks.LAVA) || state.is(Blocks.MAGMA_BLOCK) || state.is(Blocks.FIRE) || state.is(Blocks.SOUL_FIRE)) return false;
-        if (above.is(Blocks.FIRE) || above.is(Blocks.SOUL_FIRE)) return false;
+        if (above.is(Blocks.LAVA) || above.is(Blocks.MAGMA_BLOCK) || above.is(Blocks.FIRE) || above.is(Blocks.SOUL_FIRE)) return false;
         
         // 4. Fluid check (unless it's the sea level fluid and player explicitly chose it, 
         // but generally we want dry land for spawn)
@@ -512,6 +566,9 @@ public class GenesisManager {
         for (Direction dir : Direction.Plane.HORIZONTAL) {
             BlockState neighbor = level.getBlockState(pos.above().relative(dir));
             if (neighbor.is(Blocks.LAVA) || neighbor.is(Blocks.FIRE)) return false;
+            
+            BlockState neighborFeet = level.getBlockState(pos.relative(dir));
+            if (neighborFeet.is(Blocks.LAVA) || neighborFeet.is(Blocks.FIRE)) return false;
         }
         
         return true;

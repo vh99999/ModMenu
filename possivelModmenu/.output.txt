@@ -1,527 +1,274 @@
+warning: in the working copy of 'possivelModmenu/src/main/java/com/example/modmenu/store/StorePriceManager.java', LF will be replaced by CRLF the next time Git touches it
+diff --git a/possivelModmenu/src/main/java/com/example/modmenu/store/StorePriceManager.java b/possivelModmenu/src/main/java/com/example/modmenu/store/StorePriceManager.java
+index db8dff9..081d3b4 100644
+--- a/possivelModmenu/src/main/java/com/example/modmenu/store/StorePriceManager.java
++++ b/possivelModmenu/src/main/java/com/example/modmenu/store/StorePriceManager.java
+@@ -51,24 +51,24 @@ public class StorePriceManager {
+     public static final double MAX_ATTACK_SPEED = 20.0;
+     public static final double MAX_REACH_DISTANCE = 20.0;
 
-.output.txt:111:-a----        24/01/2026     12:57           4615
-PickColorScreen.java
-Select-String : O arquivo C:\Users\prang\Desktop\VARZEA\possivelModmenu\.gradle
-\8.8\checksums\checksums.lock não pode ser lido: O processo não pode acessar o
-arquivo porque outro processo bloqueou parte do arquivo.
-No linha:1 caractere:26
-+ Get-ChildItem -Recurse | Select-String "PickColorScreen"
-+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    + CategoryInfo          : InvalidArgument: (:) [Select-String], ArgumentEx
-   ception
-    + FullyQualifiedErrorId : ProcessingFile,Microsoft.PowerShell.Commands.Sel
-   ectStringCommand
+-    private static Map<String, BigDecimal> itemBuyPrices = new HashMap<>();
+-    private static Map<String, BigDecimal> itemSellPrices = new HashMap<>();
+-    private static Map<String, Long> totalSoldVolume = new ConcurrentHashMap<>(); // Dynamic Economy
+-    private static Map<String, BigDecimal> enchantPrices = new HashMap<>();
+-    private static Map<String, BigDecimal> effectBasePrices = new HashMap<>();
+-    private static Set<String> editedPrices = ConcurrentHashMap.newKeySet();
+-    private static Map<UUID, BigDecimal> playerMoneyMap = new ConcurrentHashMap<>();
+-    private static Map<UUID, Map<String, Integer>> activeEffects = new ConcurrentHashMap<>();
+-    private static Map<UUID, AbilitySettings> playerAbilities = new ConcurrentHashMap<>();
+-    private static Map<UUID, Set<String>> unlockedHousesMap = new ConcurrentHashMap<>();
+-    private static Map<UUID, Map<String, Double>> playerAttributeBonuses = new ConcurrentHashMap<>();
+-    private static Map<UUID, SkillData> playerSkills = new ConcurrentHashMap<>();
+-    private static Map<UUID, SavedLocation> playerLastLocations = new ConcurrentHashMap<>();
+-    private static Set<UUID> editors = ConcurrentHashMap.newKeySet();
++    private static final Map<String, BigDecimal> itemBuyPrices = new ConcurrentHashMap<>();
++    private static final Map<String, BigDecimal> itemSellPrices = new ConcurrentHashMap<>();
++    private static final Map<String, Long> totalSoldVolume = new ConcurrentHashMap<>(); // Dynamic Economy
++    private static final Map<String, BigDecimal> enchantPrices = new ConcurrentHashMap<>();
++    private static final Map<String, BigDecimal> effectBasePrices = new ConcurrentHashMap<>();
++    private static final Set<String> editedPrices = ConcurrentHashMap.newKeySet();
++    private static final Map<UUID, BigDecimal> playerMoneyMap = new ConcurrentHashMap<>();
++    private static final Map<UUID, Map<String, Integer>> activeEffects = new ConcurrentHashMap<>();
++    private static final Map<UUID, AbilitySettings> playerAbilities = new ConcurrentHashMap<>();
++    private static final Map<UUID, Set<String>> unlockedHousesMap = new ConcurrentHashMap<>();
++    private static final Map<UUID, Map<String, Double>> playerAttributeBonuses = new ConcurrentHashMap<>();
++    private static final Map<UUID, SkillData> playerSkills = new ConcurrentHashMap<>();
++    private static final Map<UUID, SavedLocation> playerLastLocations = new ConcurrentHashMap<>();
++    private static final Set<UUID> editors = ConcurrentHashMap.newKeySet();
+     private static UUID activeGodUuid = null;
+     private static GenesisConfig globalGenesisConfig = new GenesisConfig();
+-    private static final Set<UUID> successfulLoads = Collections.synchronizedSet(new HashSet<>());
+-    private static final Set<UUID> dirtyPlayers = Collections.synchronizedSet(new HashSet<>());
++    private static final Set<UUID> successfulLoads = ConcurrentHashMap.newKeySet();
++    private static final Set<UUID> dirtyPlayers = ConcurrentHashMap.newKeySet();
+     private static boolean globalDirty = false;
+     public static boolean globalSkillsDisabled = false;
+     public static boolean isDataCorrupted = false;
+@@ -80,22 +80,22 @@ public class StorePriceManager {
+     public static boolean isEditor = false;
+     public static SkillData clientSkills = new SkillData();
+     public static GenesisConfig clientGenesisConfig = new GenesisConfig();
+-    public static Map<String, Integer> clientActiveEffects = new HashMap<>();
++    public static final Map<String, Integer> clientActiveEffects = new ConcurrentHashMap<>();
+     public static AbilitySettings clientAbilities = new AbilitySettings();
+-    public static Set<String> clientUnlockedHouses = new HashSet<>();
+-    public static Map<String, BigDecimal> clientBuyPrices = new HashMap<>();
+-    public static Map<String, BigDecimal> clientSellPrices = new HashMap<>();
+-    public static Map<String, Long> clientSoldVolume = new HashMap<>();
+-    public static Map<String, BigDecimal> clientEnchantPrices = new HashMap<>();
+-    public static Map<String, BigDecimal> clientEffectPrices = new HashMap<>();
+-    public static Map<String, Double> clientAttributeBonuses = new HashMap<>();
++    public static final Set<String> clientUnlockedHouses = ConcurrentHashMap.newKeySet();
++    public static final Map<String, BigDecimal> clientBuyPrices = new ConcurrentHashMap<>();
++    public static final Map<String, BigDecimal> clientSellPrices = new ConcurrentHashMap<>();
++    public static final Map<String, Long> clientSoldVolume = new ConcurrentHashMap<>();
++    public static final Map<String, BigDecimal> clientEnchantPrices = new ConcurrentHashMap<>();
++    public static final Map<String, BigDecimal> clientEffectPrices = new ConcurrentHashMap<>();
++    public static final Map<String, Double> clientAttributeBonuses = new ConcurrentHashMap<>();
 
-.gradle\8.8\executionHistory\executionHistory.bin:2896:><`��com/example/modme
-nu/client/ui/screen/NetworkManagerScreen.java�C:\Users\prang\Desktop\VARZEA\po
-ssivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\NodeConfigScre
-en.java5��g�_�
-              `���( ��com/example/modmenu/client/ui/screen/NodeConfigScree
-n.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\com\example
-\modmenu\client\ui\screen\NodeGroupConfigScreen.javaK��1-��ǔ�d$���com/exa
-mple/modmenu/client/ui/screen/NodeGroupConfigScreen.java�C:\Users\prang\Deskto
-p\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Nod
-eGroupsListScreen.javao�4�./��̳.�ކ%�com/example/modmenu/client/ui/screen/No
-deGroupsListScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main
-\java\com\example\modmenu\client\ui\screen\PickBiomeScreen.java�B~<O����ᕶ�h�
-com/example/modmenu/client/ui/screen/PickBiomeScreen.java�C:\Users\prang\Deskt
-op\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Pi
-ckColorScreen.java"-X��@w>z������com/example/modmenu/client/ui/screen/PickC
-olorScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\co
-m\example\modmenu\client\ui\screen\PickIconScreen.java��?�j��U�HQ       ��com/e
-xample/modmenu/client/ui/screen/PickIconScreen.java�C:\Users\prang\Desktop\VAR
-ZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\PickItem
-FromNodeScreen.javaI��Խ;/pgߧOa*
-.gradle\8.8\executionHistory\executionHistory.bin:2926:B�v�4#����ؓy��ȗ��3��N
-odeGroupConfigScreen.class��Y�Xځ~(k�}_-�ȗ��3�9�NodeGroupsListScreen$GroupR
-owComponent.class�Ax�lGD��3�a��ȗ��3�#�NodeGroupsListScreen.class��[�u#
-��N     So~���ȗ��3�#�PickBiomeScreen.class���ЩG>�20L���ʶ��3�?�PickColorScreen$
-1.class�
-        �F����9a�?9ra�����3��PickColorScreen$RGBSlider.class��7L��A6�
-ǰ�c������3��PickColorScreen.class�7�q`7�o�L�������3�%�PickIconScreen$1.
-classKU���2{��,R�.&�]����3��PickIconScreen.classC=������>�Cobz����3�5�
-PickItemFromNodeScreen$1.class.�{�e����D���
-                                           �ɗ��3�+�PickItemFromNodeScreen
-$2.classwf�ԉ6}�9G�ɗ��3�
-.gradle\8.8\executionHistory\executionHistory.bin:2999:><`��com/example/modme
-nu/client/ui/screen/NetworkManagerScreen.java�C:\Users\prang\Desktop\VARZEA\po
-ssivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\NodeConfigScre
-en.java5��g�_�
-              `���( ��com/example/modmenu/client/ui/screen/NodeConfigScree
-n.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\com\example
-\modmenu\client\ui\screen\NodeGroupConfigScreen.javaK��1-��ǔ�d$���com/exa
-mple/modmenu/client/ui/screen/NodeGroupConfigScreen.java�C:\Users\prang\Deskto
-p\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Nod
-eGroupsListScreen.javao�4�./��̳.�ކ%�com/example/modmenu/client/ui/screen/No
-deGroupsListScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main
-\java\com\example\modmenu\client\ui\screen\PickBiomeScreen.java�B~<O����ᕶ�h�
-com/example/modmenu/client/ui/screen/PickBiomeScreen.java�C:\Users\prang\Deskt
-op\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Pi
-ckColorScreen.java"-X��@w>z������com/example/modmenu/client/ui/screen/PickC
-olorScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\co
-m\example\modmenu\client\ui\screen\PickIconScreen.java��?�j��U�HQ       ��com/e
-xample/modmenu/client/ui/screen/PickIconScreen.java�C:\Users\prang\Desktop\VAR
-ZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\PickItem
-FromNodeScreen.javaI��Խ;/pgߧOa*
-.gradle\8.8\executionHistory\executionHistory.bin:3031:B�v�4#����ؓy��ȗ��3��N
-odeGroupConfigScreen.class��Y�Xځ~(k�}_-�ȗ��3�9�NodeGroupsListScreen$GroupR
-owComponent.class�Ax�lGD��3�a��ȗ��3�#�NodeGroupsListScreen.class��[�u#
-��N     So~���ȗ��3�#�PickBiomeScreen.class���ЩG>�20L���ʶ��3�?�PickColorScreen$
-1.class�
-        �F����9a�?9ra�����3��PickColorScreen$RGBSlider.class��7L��A6�
-ǰ�c������3��PickColorScreen.class�7�q`7�o�L�������3�%�PickIconScreen$1.
-classKU���2{��,R�.&�]����3��PickIconScreen.classC=������>�Cobz����3�5�
-PickItemFromNodeScreen$1.class.�{�e����D���
-                                           �ɗ��3�+�PickItemFromNodeScreen
-$2.classwf�ԉ6}�9G�ɗ��3�
-.gradle\8.8\executionHistory\executionHistory.bin:3110:><`��com/example/modme
-nu/client/ui/screen/NetworkManagerScreen.java�C:\Users\prang\Desktop\VARZEA\po
-ssivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\NodeConfigScre
-en.java5��g�_�
-              `���( ��com/example/modmenu/client/ui/screen/NodeConfigScree
-n.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\com\example
-\modmenu\client\ui\screen\NodeGroupConfigScreen.javaK��1-��ǔ�d$���com/exa
-mple/modmenu/client/ui/screen/NodeGroupConfigScreen.java�C:\Users\prang\Deskto
-p\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Nod
-eGroupsListScreen.javao�4�./��̳.�ކ%�com/example/modmenu/client/ui/screen/No
-deGroupsListScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main
-\java\com\example\modmenu\client\ui\screen\PickBiomeScreen.java�B~<O����ᕶ�h�
-com/example/modmenu/client/ui/screen/PickBiomeScreen.java�C:\Users\prang\Deskt
-op\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Pi
-ckColorScreen.java"-X��@w>z������com/example/modmenu/client/ui/screen/PickC
-olorScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\co
-m\example\modmenu\client\ui\screen\PickIconScreen.java��?�j��U�HQ       ��com/e
-xample/modmenu/client/ui/screen/PickIconScreen.java�C:\Users\prang\Desktop\VAR
-ZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\PickItem
-FromNodeScreen.javaI��Խ;/pgߧOa*
-.gradle\8.8\executionHistory\executionHistory.bin:3145:B�v�4#����ؓy�҇���3��N
-odeGroupConfigScreen.class��Y�Xځ~(k�}_-և���3�9�NodeGroupsListScreen$GroupR
-owComponent.class�Ax�lGD��3�a�ۇ���3�#�NodeGroupsListScreen.class��[�u#
-��N     So~��܇���3�#�PickBiomeScreen.class���ЩG>�20L��懀��3�?�PickColorScreen$1
-.class�]#::k/�E���J��3��PickColorScreen$RGBSlider.class��7L��A6�ǰ�c
-���3��PickColorScreen.class�7�q`7�o�L��񇀉�3�%�PickIconScreen$1.class
-KU���2{��,R�.&�]�����3��PickIconScreen.classC=������>�Cobz�����3�5�PickI
-temFromNodeScreen$1.class�_��7҂^~z���������3�+�PickItemFromNodeScreen$2.cl
-ass%bSI��Mm��: ����3�
-.gradle\8.8\executionHistory\executionHistory.bin:3223:><`��com/example/modme
-nu/client/ui/screen/NetworkManagerScreen.java�C:\Users\prang\Desktop\VARZEA\po
-ssivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\NodeConfigScre
-en.java5��g�_�
-              `���( ��com/example/modmenu/client/ui/screen/NodeConfigScree
-n.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\com\example
-\modmenu\client\ui\screen\NodeGroupConfigScreen.javaK��1-��ǔ�d$���com/exa
-mple/modmenu/client/ui/screen/NodeGroupConfigScreen.java�C:\Users\prang\Deskto
-p\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Nod
-eGroupsListScreen.javao�4�./��̳.�ކ%�com/example/modmenu/client/ui/screen/No
-deGroupsListScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main
-\java\com\example\modmenu\client\ui\screen\PickBiomeScreen.java�B~<O����ᕶ�h�
-com/example/modmenu/client/ui/screen/PickBiomeScreen.java�C:\Users\prang\Deskt
-op\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Pi
-ckColorScreen.java"-X��@w>z������com/example/modmenu/client/ui/screen/PickC
-olorScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\co
-m\example\modmenu\client\ui\screen\PickIconScreen.java��?�j��U�HQ       ��com/e
-xample/modmenu/client/ui/screen/PickIconScreen.java�C:\Users\prang\Desktop\VAR
-ZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\PickItem
-FromNodeScreen.javaI��Խ;/pgߧOa*
-.gradle\8.8\executionHistory\executionHistory.bin:3260:B�v�4#����ؓy���ǉ�3��N
-odeGroupConfigScreen.class��Y�Xځ~(k�}_-��ǉ�3�9�NodeGroupsListScreen$GroupR
-owComponent.class�Ax�lGD��3�a���ǉ�3�#�NodeGroupsListScreen.class��[�u#
-��N     So~����ǉ�3�#�PickBiomeScreen.class���ЩG>�20L����ǉ�3�?�PickColorScreen$
-1.class�]#::k/�E���J��ǉ�3��PickColorScreen$RGBSlider.class��7L��A6�ǰ
-�c���ǉ�3��PickColorScreen.class�7�q`7�o�L����ǉ�3�%�PickIconScreen$1.cla
-ssKU���2{��,R�.&�]��ǉ�3��PickIconScreen.classC=������>�Cobz��ǉ�3�5�Pic
-kItemFromNodeScreen$1.class�_��7҂^~z������ǉ�3�+�PickItemFromNodeScreen$2.c
-lass%bSI��Mm��:¢�ǉ�3�
-.gradle\8.8\executionHistory\executionHistory.bin:3336:><`��com/example/modme
-nu/client/ui/screen/NetworkManagerScreen.java�C:\Users\prang\Desktop\VARZEA\po
-ssivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\NodeConfigScre
-en.java5��g�_�
-              `���( ��com/example/modmenu/client/ui/screen/NodeConfigScree
-n.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\com\example
-\modmenu\client\ui\screen\NodeGroupConfigScreen.javaK��1-��ǔ�d$���com/exa
-mple/modmenu/client/ui/screen/NodeGroupConfigScreen.java�C:\Users\prang\Deskto
-p\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Nod
-eGroupsListScreen.javao�4�./��̳.�ކ%�com/example/modmenu/client/ui/screen/No
-deGroupsListScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main
-\java\com\example\modmenu\client\ui\screen\PickBiomeScreen.java�B~<O����ᕶ�h�
-com/example/modmenu/client/ui/screen/PickBiomeScreen.java�C:\Users\prang\Deskt
-op\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Pi
-ckColorScreen.java"-X��@w>z������com/example/modmenu/client/ui/screen/PickC
-olorScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\co
-m\example\modmenu\client\ui\screen\PickIconScreen.java��?�j��U�HQ       ��com/e
-xample/modmenu/client/ui/screen/PickIconScreen.java�C:\Users\prang\Desktop\VAR
-ZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\PickItem
-FromNodeScreen.javaI��Խ;/pgߧOa*
-.gradle\8.8\executionHistory\executionHistory.bin:3372:B�v�4#����ؓy�۹���3��N
-odeGroupConfigScreen.class��Y�Xځ~(k�}_-㹰��3�9�NodeGroupsListScreen$GroupRo
-wComponent.class�Ax�lGD��3�a������3�#�NodeGroupsListScreen.class��[�u#
-��N     So~�������3�#�PickBiomeScreen.class���ЩG>�20L�������3�?�PickColorScree
-n$1.class�]#::k/�E���J�����3��PickColorScreen$RGBSlider.class��7L��A6
-�ǰ�c������3��PickColorScreen.class�7�q`7�o�L�������3�%�PickIconScreen$
-1.classKU���2{��,R�.&�]Ժ���3��PickIconScreen.classC=������>�Cobzۺ���3�5
-�PickItemFromNodeScreen$1.class�_��7҂^~z����𺰊�3�+�PickItemFromNodeScreen
-$2.class%bSI��Mm��:������3�
-.gradle\8.8\executionHistory\executionHistory.bin:3452:><`��com/example/modme
-nu/client/ui/screen/NetworkManagerScreen.java�C:\Users\prang\Desktop\VARZEA\po
-ssivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\NodeConfigScre
-en.java5��g�_�
-              `���( ��com/example/modmenu/client/ui/screen/NodeConfigScree
-n.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\com\example
-\modmenu\client\ui\screen\NodeGroupConfigScreen.javaK��1-��ǔ�d$���com/exa
-mple/modmenu/client/ui/screen/NodeGroupConfigScreen.java�C:\Users\prang\Deskto
-p\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Nod
-eGroupsListScreen.javao�4�./��̳.�ކ%�com/example/modmenu/client/ui/screen/No
-deGroupsListScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main
-\java\com\example\modmenu\client\ui\screen\PickBiomeScreen.java�B~<O����ᕶ�h�
-com/example/modmenu/client/ui/screen/PickBiomeScreen.java�C:\Users\prang\Deskt
-op\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Pi
-ckColorScreen.java"-X��@w>z������com/example/modmenu/client/ui/screen/PickC
-olorScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\co
-m\example\modmenu\client\ui\screen\PickIconScreen.java��?�j��U�HQ       ��com/e
-xample/modmenu/client/ui/screen/PickIconScreen.java�C:\Users\prang\Desktop\VAR
-ZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\PickItem
-FromNodeScreen.javaI��Խ;/pgߧOa*
-.gradle\8.8\executionHistory\executionHistory.bin:3491:B�v�4#����ؓy�����3��N
-odeGroupConfigScreen.class��Y�Xځ~(k�}_-�����3�9�NodeGroupsListScreen$Group
-RowComponent.class�Ax�lGD��3�a������3�#�NodeGroupsListScreen.class��[�u
-#��N    So~�������3�#�PickBiomeScreen.class���ЩG>�20L�������3�?�PickColorScr
-een$1.class�]#::k/�E���JǑ���3��PickColorScreen$RGBSlider.class��7L��A
-6�ǰ�c�ʑ���3��PickColorScreen.class�7�q`7�o�L��Б���3�%�PickIconScreen$1
-.classKU���2{��,R�.&�]����3��PickIconScreen.classC=������>�Cobz����3�5
-�PickItemFromNodeScreen$1.class�_��7҂^~z���������3�+�PickItemFromNodeScree
-n$2.class%bSI��Mm��: ����3�
-.gradle\8.8\executionHistory\executionHistory.bin:3572:><`��com/example/modme
-nu/client/ui/screen/NetworkManagerScreen.java�C:\Users\prang\Desktop\VARZEA\po
-ssivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\NodeConfigScre
-en.java5��g�_�
-              `���( ��com/example/modmenu/client/ui/screen/NodeConfigScree
-n.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\com\example
-\modmenu\client\ui\screen\NodeGroupConfigScreen.javaK��1-��ǔ�d$���com/exa
-mple/modmenu/client/ui/screen/NodeGroupConfigScreen.java�C:\Users\prang\Deskto
-p\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Nod
-eGroupsListScreen.javao�4�./��̳.�ކ%�com/example/modmenu/client/ui/screen/No
-deGroupsListScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main
-\java\com\example\modmenu\client\ui\screen\PickBiomeScreen.java�B~<O����ᕶ�h�
-com/example/modmenu/client/ui/screen/PickBiomeScreen.java�C:\Users\prang\Deskt
-op\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Pi
-ckColorScreen.java"-X��@w>z������com/example/modmenu/client/ui/screen/PickC
-olorScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\co
-m\example\modmenu\client\ui\screen\PickIconScreen.java��?�j��U�HQ       ��com/e
-xample/modmenu/client/ui/screen/PickIconScreen.java�C:\Users\prang\Desktop\VAR
-ZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\PickItem
-FromNodeScreen.javaI��Խ;/pgߧOa*
-.gradle\8.8\executionHistory\executionHistory.bin:3615:B�v�4#����ؓy�݇䍿3��Nod
-eGroupConfigScreen.class��Y�Xځ~(k�}_-�䍿3�9�NodeGroupsListScreen$GroupRowCo
-mponent.class�Ax�lGD��3�a���䍿3�#�NodeGroupsListScreen.class��[�u#��N   S
-o~����䍿3�#�PickBiomeScreen.class���ЩG>�20L��ȉ䍿3�?�PickColorScreen$1.class
-�]#::k/�E���J�䍿3��PickColorScreen$RGBSlider.class��7L��A6�ǰ�c��䍿3��
-PickColorScreen.class�7�q`7�o�L���䍿3�%�PickIconScreen$1.classKU���2{��,
-R�.&�]�䍿3��PickIconScreen.classC=������>�Cobz�䍿3�5�PickItemFromNodeScree
-n$1.class�_��7҂^~z������䍿3�+�PickItemFromNodeScreen$2.class%bSI��Mm��
-:���䍿3�
-.gradle\8.8\executionHistory\executionHistory.bin:3696:><`��com/example/modme
-nu/client/ui/screen/NetworkManagerScreen.java�C:\Users\prang\Desktop\VARZEA\po
-ssivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\NodeConfigScre
-en.java5��g�_�
-              `���( ��com/example/modmenu/client/ui/screen/NodeConfigScree
-n.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\com\example
-\modmenu\client\ui\screen\NodeGroupConfigScreen.javaK��1-��ǔ�d$���com/exa
-mple/modmenu/client/ui/screen/NodeGroupConfigScreen.java�C:\Users\prang\Deskto
-p\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Nod
-eGroupsListScreen.javao�4�./��̳.�ކ%�com/example/modmenu/client/ui/screen/No
-deGroupsListScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main
-\java\com\example\modmenu\client\ui\screen\PickBiomeScreen.java�B~<O����ᕶ�h�
-com/example/modmenu/client/ui/screen/PickBiomeScreen.java�C:\Users\prang\Deskt
-op\VARZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\Pi
-ckColorScreen.java"-X��@w>z������com/example/modmenu/client/ui/screen/PickC
-olorScreen.java�C:\Users\prang\Desktop\VARZEA\possivelModmenu\src\main\java\co
-m\example\modmenu\client\ui\screen\PickIconScreen.java��?�j��U�HQ       ��com/e
-xample/modmenu/client/ui/screen/PickIconScreen.java�C:\Users\prang\Desktop\VAR
-ZEA\possivelModmenu\src\main\java\com\example\modmenu\client\ui\screen\PickItem
-FromNodeScreen.javaI��Խ;/pgߧOa*
-.gradle\8.8\executionHistory\executionHistory.bin:3734:B�v�4#����ؓyŕ����3��N
-odeGroupConfigScreen.class��Y�Xځ~(k�}_-�����3�9�NodeGroupsListScreen$Group
-RowComponent.class�Ax�lGD��3�a������3�#�NodeGroupsListScreen.class��[�u
-#��N    So~�������3�#�PickBiomeScreen.class���ЩG>�20L�������3�?�PickColorScr
-een$1.class�]#::k/�E���J�����3��PickColorScreen$RGBSlider.class��7L��A
-6�ǰ�c������3��PickColorScreen.class�7�q`7�o�L�������3�%�PickIconScree
-n$1.classKU���2{��,R�.&�]�����3��PickIconScreen.classC=������>�Cobz����
-�3�5�PickItemFromNodeScreen$1.class�_��7҂^~z���������3�+�PickItemFromNode
-Screen$2.class%bSI��Mm��:������3�
-Select-String : O arquivo C:\Users\prang\Desktop\VARZEA\possivelModmenu\.gradle
-\8.8\executionHistory\executionHistory.lock não pode ser lido: O processo não
-pode acessar o arquivo porque outro processo bloqueou parte do arquivo.
-No linha:1 caractere:26
-+ Get-ChildItem -Recurse | Select-String "PickColorScreen"
-+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    + CategoryInfo          : InvalidArgument: (:) [Select-String], ArgumentEx
-   ception
-    + FullyQualifiedErrorId : ProcessingFile,Microsoft.PowerShell.Commands.Sel
-   ectStringCommand
+     public static void setClientPrices(Map<String, BigDecimal> buy, Map<String, BigDecimal> sell, Map<String, Long> volume, Map<String, BigDecimal> enchants, Map<String, BigDecimal> effects) {
+-        clientBuyPrices = buy;
+-        clientSellPrices = sell;
+-        clientSoldVolume = volume;
+-        clientEnchantPrices = enchants;
+-        clientEffectPrices = effects;
++        if (buy != null) { clientBuyPrices.clear(); clientBuyPrices.putAll(buy); }
++        if (sell != null) { clientSellPrices.clear(); clientSellPrices.putAll(sell); }
++        if (volume != null) { clientSoldVolume.clear(); clientSoldVolume.putAll(volume); }
++        if (enchants != null) { clientEnchantPrices.clear(); clientEnchantPrices.putAll(enchants); }
++        if (effects != null) { clientEffectPrices.clear(); clientEffectPrices.putAll(effects); }
+     }
 
-Select-String : O arquivo C:\Users\prang\Desktop\VARZEA\possivelModmenu\.gradle
-\8.8\fileHashes\fileHashes.lock não pode ser lido: O processo não pode acessar
-o arquivo porque outro processo bloqueou parte do arquivo.
-No linha:1 caractere:26
-+ Get-ChildItem -Recurse | Select-String "PickColorScreen"
-+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    + CategoryInfo          : InvalidArgument: (:) [Select-String], ArgumentEx
-   ception
-    + FullyQualifiedErrorId : ProcessingFile,Microsoft.PowerShell.Commands.Sel
-   ectStringCommand
+     public static void clearClientData() {
+@@ -132,6 +132,7 @@ public class StorePriceManager {
+         public boolean itemMagnetActive = false;
+         public int itemMagnetRange = 16;
+         public int itemMagnetOpsPerTick = 1;
++        public int quantumVacuumRange = 128; // Default boost range when skill is active
 
-Select-String : O arquivo C:\Users\prang\Desktop\VARZEA\possivelModmenu\.gradle
-\buildOutputCleanup\buildOutputCleanup.lock não pode ser lido: O processo não
-pode acessar o arquivo porque outro processo bloqueou parte do arquivo.
-No linha:1 caractere:26
-+ Get-ChildItem -Recurse | Select-String "PickColorScreen"
-+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    + CategoryInfo          : InvalidArgument: (:) [Select-String], ArgumentEx
-   ception
-    + FullyQualifiedErrorId : ProcessingFile,Microsoft.PowerShell.Commands.Sel
-   ectStringCommand
+         public boolean xpMagnetActive = false;
+         public int xpMagnetRange = 16;
+@@ -177,6 +178,10 @@ public class StorePriceManager {
+         public boolean growCropsActive = false;
+         public int growCropsRange = 5;
 
-build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen$1.
-class:1:����=b
-                6com/example/modmenu/client/ui/screen/PickColo
-rScreen$1this$06Lcom/example/modmenu/client/ui/screen/PickColorScreen;
-build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen$1.
-class:3:
-        ,com/example/modmenu/client/ui/base/UIElement<init>(IIII)V
-�
-4com/example/modmenu/client/ui/screen/PickColorScreenrI
-g
-        b
-build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen$1.
-class:12:access$000W(Lcom/example/modmenu/client/ui/screen/PickColorScreen;)L
-net/minecraft/client/gui/Font5
-build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen$1.
-class:16:(E
-           FGdrawCenteredString7(Lnet/minecraft/client/gui/Font;Ljava
-/lang/String;III)V=(Lcom/example/modmenu/client/ui/screen/PickColorScreen;III
-I)VCodeLineNumberTableLocalVariableTablethis8Lcom/example/modmenu
-/client/ui/screen/PickColorScreen$1;xywidthheightrender,(Lnet/
-minecraft/client/gui/GuiGraphics;IIF)V&Lnet/minecraft/client/gui/GuiGraphics;
-mxmyptFcolor
-build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen$1.
-class:17:SourceFilePickColorScreen.javaEnclosingMethod
-                                                      ^_
-                                                        setupLayout
-()NestHost
-          InnerClasses
-                      HIl*+�
-*��J.K>LMNO
-PQRSI�
-build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen$RG
-BSlider.class:1:����=�
-                        >com/example/modmenu/client/ui/screen/
-PickColorScreen$RGBSliderthis$06Lcom/example/modmenu/client/ui/screen/Pick
-ColorScreen;
-build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen$RG
-BSlider.class:5:345
-                   674com/example/modmenu/client/ui/screen/PickColorSc
-reen
-build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen$RG
-BSlider.class:6:access$100W(Lcom/example/modmenu/client/ui/screen/PickColorSc
-reen;)Lnet/minecraft/client/gui/Font;9
-                                      :;makeConcatWithConstants'(Lj
-ava/lang/String;I)Ljava/lang/String;
-build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen$RG
-BSlider.class:13:RST
-                    UVjava/lang/IntegervalueOf(I)Ljava/lang/Int
-eger;
-     XYZ
-        [\ava/util/function/Consumeraccept(Ljava/lang/Object;
-)V      Signature2Ljava/util/function/Consumer<Ljava/lang/Integer;>;m(Lcom/exa
-mple/modmenu/client/ui/screen/PickColorScreen;IIIILjava/lang/String;ILjava/util
-/function/Consumer;)VCodeLineNumberTableLocalVariableTablethis@Lc
-om/example/modmenu/client/ui/screen/PickColorScreen$RGBSlider;initialLoca
-lVariableTypeTableL(IIIILjava/lang/String;ILjava/util/function/Consumer<Ljava
-/lang/Integer;>;)Vrender,(Lnet/minecraft/client/gui/GuiGraphics;IIF)Vg
-&Lnet/minecraft/client/gui/GuiGraphics;mxmyptknobX
-                                                  mouseClicked
-(DDI)ZDbutton
-build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen$RG
-BSlider.class:16:SourceFilePickColorScreen.javNestHostBootstrapMethod
-s
-build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen.cl
-ass:1:����=�
-                4com/example/modmenu/client/ui/screen/PickColorS
-creenfontLnet/minecraft/client/gui/Font;
-build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen.cl
-ass:6:layoutRoot0Lcom/example/modmenu/client/ui/base/UIContainer;,8com/ex
-ample/modmenu/client/ui/component/ResponsiveButto.Cancel0
-                                                         12acce
-ptU(Lcom/example/modmenu/client/ui/screen/PickColorScreen;)Ljava/util/functio
-n/Consumer;
-build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen.cl
-ass:10:F
-        GH      addSlider6(Ljava/lang/String;IIILjava/util/function/Consum
-er;I)JGreenMBlue0P6com/example/modmenu/client/ui/screen
-/PickColorScreen$1
-build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen.cl
-ass:11:OR
-         S=(Lcom/example/modmenu/client/ui/screen/PickColorScreen;IIII)
-VU>com/example/modmenu/client/ui/screen/PickColorScreen$RGBSlider
-build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen.cl
-ass:12:TW
-         Xm(Lcom/example/modmenu/client/ui/screen/PickColorScreen;IIIIL
-java/lang/String;ILjava/util/function/Consumer;)V
-build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen.cl
-ass:15:mno
-          pqnet/minecraft/client/Minecraft
-setScreen,(Lnet/minecraft/client/gui/screens/Screen;)V  Signature2Ljava/ut
-il/function/Consumer<Ljava/lang/Integer;>;J(Lnet/minecraft/client/gui/screens
-/Screen;ILjava/util/function/Consumer;)VCodeLineNumberTableLocalVariab
-leTablethis6Lcom/example/modmenu/client/ui/screen/PickColorScreen;
-                                                                  initi
-alColorLocalVariableTypeTable_(Lnet/minecraft/client/gui/screens/Screen;IL
-java/util/function/Consumer<Ljava/lang/Integer;>;)V
-                                                   setupLayout()Vcente
-rXstartY
-        sliderWidthlabelLjava/lang/String;xywsetteri
-nitialK(Ljava/lang/String;IIILjava/util/function/Consumer<Ljava/lang/Integer;
->;I)Vlambda$setupLayout$4(Ljava/lang/Integer;)VvalLjava/lang/Intege
-r;lambda$setupLayout$3lambda$setupLayout$2lambda$setupLayout$1=(Lcom
-/example/modmenu/client/ui/component/ResponsiveButton;)Vbtn:Lcom/example/m
-odmenu/client/ui/component/ResponsiveButton;lambda$setupLayout$0
-build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen.cl
-ass:16:access$000W(Lcom/example/modmenu/client/ui/screen/PickColorScreen;)Lne
-t/minecraft/client/gui/Font;x0
-build\classes\java\main\com\example\modmenu\client\ui\screen\PickColorScreen.cl
-ass:18:SourceFilePickColorScreen.java
-                                     NestMembersBootstrapMethods�
-build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen$1.class.uniq
-ueId144:1:����=b
-                        6com/example/modmenu/client/ui/screen/PickCo
-lorScreen$1this$06Lcom/example/modmenu/client/ui/screen/PickColorScreen;
-build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen$1.class.uniq
-ueId144:3:
-          ,com/example/modmenu/client/ui/base/UIElement<init>(IIII
-)V�
-4com/example/modmenu/client/ui/screen/PickColorScreenrI
-g
-        b
-build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen$1.class.uniq
-ueId144:12:access$000W(Lcom/example/modmenu/client/ui/screen/PickColorScreen;
-)Lnet/minecraft/client/gui/Font5
-build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen$1.class.uniq
-ueId144:16:(E
-             FGdrawCenteredString7(Lnet/minecraft/client/gui/Font;Lja
-va/lang/String;III)V=(Lcom/example/modmenu/client/ui/screen/PickColorScreen;I
-III)VCodeLineNumberTableLocalVariableTablethis8Lcom/example/modme
-nu/client/ui/screen/PickColorScreen$1;xywidthheightrender,(Lne
-t/minecraft/client/gui/GuiGraphics;IIF)V&Lnet/minecraft/client/gui/GuiGraphic
-s;mxmyptFcolor
-build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen$1.class.uniq
-ueId144:17:SourceFilePickColorScreen.javaEnclosingMethod
-                                                        ^_
-                                                          setupLayo
-ut()NestHost
-            InnerClasses
-                        HIl*+�
-*��J.K>LMNO
-PQRSI�
-build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen$RGBSlider.cl
-ass.uniqueId200:1:����=�
-                                >com/example/modmenu/client/ui/scree
-n/PickColorScreen$RGBSliderthis$06Lcom/example/modmenu/client/ui/screen/Pi
-ckColorScreen;
-build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen$RGBSlider.cl
-ass.uniqueId200:5:345
-                     674com/example/modmenu/client/ui/screen/PickColor
-Screen
-build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen$RGBSlider.cl
-ass.uniqueId200:6:access$100W(Lcom/example/modmenu/client/ui/screen/PickColor
-Screen;)Lnet/minecraft/client/gui/Font;9
-                                        :;makeConcatWithConstants'(
-Ljava/lang/String;I)Ljava/lang/String;
-build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen$RGBSlider.cl
-ass.uniqueId200:13:RST
-                      UVjava/lang/IntegervalueOf(I)Ljava/lang/I
-nteger;
-       XYZ
-          [\ava/util/function/Consumeraccept(Ljava/lang/Objec
-t;)V    Signature2Ljava/util/function/Consumer<Ljava/lang/Integer;>;m(Lcom/e
-xample/modmenu/client/ui/screen/PickColorScreen;IIIILjava/lang/String;ILjava/ut
-il/function/Consumer;)VCodeLineNumberTableLocalVariableTablethis@
-Lcom/example/modmenu/client/ui/screen/PickColorScreen$RGBSlider;initialLo
-calVariableTypeTableL(IIIILjava/lang/String;ILjava/util/function/Consumer<Lja
-va/lang/Integer;>;)Vrender,(Lnet/minecraft/client/gui/GuiGraphics;IIF)V
-g&Lnet/minecraft/client/gui/GuiGraphics;mxmyptknobX
-                                                   mouseClicke
-d(DDI)ZDbutton
-build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen$RGBSlider.cl
-ass.uniqueId200:16:SourceFilePickColorScreen.javNestHostBootstrapMeth
-ods
-build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen.class.unique
-Id197:1:����=�
-                4com/example/modmenu/client/ui/screen/PickColo
-rScreenfontLnet/minecraft/client/gui/Font;
-build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen.class.unique
-Id197:6:layoutRoot0Lcom/example/modmenu/client/ui/base/UIContainer;,8com/
-example/modmenu/client/ui/component/ResponsiveButto.Cancel0
-                                                           12ac
-ceptU(Lcom/example/modmenu/client/ui/screen/PickColorScreen;)Ljava/util/funct
-ion/Consumer;
-build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen.class.unique
-Id197:10:F
-          GH    addSlider6(Ljava/lang/String;IIILjava/util/function/Cons
-umer;I)JGreenMBlue0P6com/example/modmenu/client/ui/scre
-en/PickColorScreen$1
-build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen.class.unique
-Id197:11:OR
-           S=(Lcom/example/modmenu/client/ui/screen/PickColorScreen;III
-I)VU>com/example/modmenu/client/ui/screen/PickColorScreen$RGBSlider
-build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen.class.unique
-Id197:12:TW
-           Xm(Lcom/example/modmenu/client/ui/screen/PickColorScreen;III
-ILjava/lang/String;ILjava/util/function/Consumer;)V
-build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen.class.unique
-Id197:15:mno
-            pqnet/minecraft/client/Minecraft
-setScreen,(Lnet/minecraft/client/gui/screens/Screen;)V  Signature2Ljava/ut
-il/function/Consumer<Ljava/lang/Integer;>;J(Lnet/minecraft/client/gui/screens
-/Screen;ILjava/util/function/Consumer;)VCodeLineNumberTableLocalVariab
-leTablethis6Lcom/example/modmenu/client/ui/screen/PickColorScreen;
-                                                                  initi
-alColorLocalVariableTypeTable_(Lnet/minecraft/client/gui/screens/Screen;IL
-java/util/function/Consumer<Ljava/lang/Integer;>;)V
-                                                   setupLayout()Vcente
-rXstartY
-        sliderWidthlabelLjava/lang/String;xywsetteri
-nitialK(Ljava/lang/String;IIILjava/util/function/Consumer<Ljava/lang/Integer;
->;I)Vlambda$setupLayout$4(Ljava/lang/Integer;)VvalLjava/lang/Intege
-r;lambda$setupLayout$3lambda$setupLayout$2lambda$setupLayout$1=(Lcom
-/example/modmenu/client/ui/component/ResponsiveButton;)Vbtn:Lcom/example/m
-odmenu/client/ui/component/ResponsiveButton;lambda$setupLayout$0
-build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen.class.unique
-Id197:16:access$000W(Lcom/example/modmenu/client/ui/screen/PickColorScreen;)L
-net/minecraft/client/gui/Font;x0
-build\tmp\compileJava\compileTransaction\stash-dir\PickColorScreen.class.unique
-Id197:18:SourceFilePickColorScreen.java
-                                       NestMembersBootstrapMethods�
-Select-String : O arquivo
-C:\Users\prang\Desktop\VARZEA\possivelModmenu\run\saves\New World
-(1)\session.lock não pode ser lido: O processo não pode acessar o arquivo
-porque outro processo bloqueou parte do arquivo.
-No linha:1 caractere:26
-+ Get-ChildItem -Recurse | Select-String "PickColorScreen"
-+                          ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    + CategoryInfo          : InvalidArgument: (:) [Select-String], ArgumentEx
-   ception
-    + FullyQualifiedErrorId : ProcessingFile,Microsoft.PowerShell.Commands.Sel
-   ectStringCommand
++        public boolean linkMagnetActive = false;
++        public BlockPos linkedStoragePos = null;
++        public String linkedStorageDim = "minecraft:overworld";
++
+         public void copyFrom(AbilitySettings other) {
+             this.miningActive = other.miningActive;
+             this.miningRange = other.miningRange;
+@@ -195,6 +200,7 @@ public class StorePriceManager {
+             this.itemMagnetActive = other.itemMagnetActive;
+             this.itemMagnetRange = other.itemMagnetRange;
+             this.itemMagnetOpsPerTick = other.itemMagnetOpsPerTick;
++            this.quantumVacuumRange = other.quantumVacuumRange;
+             this.xpMagnetActive = other.xpMagnetActive;
+             this.xpMagnetRange = other.xpMagnetRange;
+             this.xpMagnetOpsPerTick = other.xpMagnetOpsPerTick;
+@@ -232,6 +238,9 @@ public class StorePriceManager {
+             this.disabledSpawnConditions.addAll(other.disabledSpawnConditions);
+             this.growCropsActive = other.growCropsActive;
+             this.growCropsRange = other.growCropsRange;
++            this.linkMagnetActive = other.linkMagnetActive;
++            this.linkedStoragePos = other.linkedStoragePos;
++            this.linkedStorageDim = other.linkedStorageDim;
+         }
+     }
 
-src\main\java\com\example\modmenu\client\ui\screen\PickColorScreen.java:11:publ
-ic class PickColorScreen extends BaseResponsiveLodestoneScreen {
-src\main\java\com\example\modmenu\client\ui\screen\PickColorScreen.java:16:
-public PickColorScreen(Screen parent, int initialColor, Consumer<Integer>
-onConfirm) {
-src\main\java\com\example\modmenu\client\ui\screen\PickColorScreen.java:49:
-            int color = 0xFF000000 | (r << 16) | (PickColorScreen.this.g << 8)
-| b;
-src\main\java\com\example\modmenu\client\ui\screen\PickColorScreen.java:52:
-            g.drawCenteredString(font, String.format("#%02X%02X%02X", r,
-PickColorScreen.this.g, b), getX() + getWidth() / 2, getY() + getHeight() + 5,
-0xFFFFFFFF);
+@@ -585,6 +594,9 @@ public class StorePriceManager {
+         public BigDecimal spawnBoostPerSpawnBase = BigDecimal.valueOf(1000);
+         public BigDecimal growCropsMaintenance = BigDecimal.valueOf(200);
+         public BigDecimal growCropsPerOperation = BigDecimal.valueOf(100);
++        public BigDecimal linkMagnetMaintenance = BigDecimal.valueOf(100);
++        public BigDecimal linkMagnetDistanceMultiplier = BigDecimal.valueOf(0.1);
++        public BigDecimal linkMagnetDimensionTax = BigDecimal.valueOf(1000);
+         public double spMultiplier = 1.0;
+     }
+
+@@ -686,7 +698,7 @@ public class StorePriceManager {
+         }
+     }
+
+-    private static void saveFormulas() {
++    public static void saveFormulas() {
+         atomicWrite(FORMULA_FILE, formulas);
+     }
+
+@@ -718,41 +730,41 @@ public class StorePriceManager {
+                 if (jsonObject.has("itemsBuy")) {
+                     Type type = new TypeToken<Map<String, BigDecimal>>(){}.getType();
+                     Map<String, BigDecimal> loaded = GSON.fromJson(jsonObject.get("itemsBuy"), type);
+-                    if (loaded != null) itemBuyPrices = loaded;
++                    if (loaded != null) { itemBuyPrices.clear(); itemBuyPrices.putAll(loaded); }
+                 }
+                 if (jsonObject.has("itemsSell")) {
+                     Type type = new TypeToken<Map<String, BigDecimal>>(){}.getType();
+                     Map<String, BigDecimal> loaded = GSON.fromJson(jsonObject.get("itemsSell"), type);
+-                    if (loaded != null) itemSellPrices = loaded;
++                    if (loaded != null) { itemSellPrices.clear(); itemSellPrices.putAll(loaded); }
+                 }
+                 if (jsonObject.has("enchantments")) {
+                     Type type = new TypeToken<Map<String, BigDecimal>>(){}.getType();
+                     Map<String, BigDecimal> loaded = GSON.fromJson(jsonObject.get("enchantments"), type);
+-                    if (loaded != null) enchantPrices = loaded;
++                    if (loaded != null) { enchantPrices.clear(); enchantPrices.putAll(loaded); }
+                 }
+                 if (jsonObject.has("effects")) {
+                     Type type = new TypeToken<Map<String, BigDecimal>>(){}.getType();
+                     Map<String, BigDecimal> loaded = GSON.fromJson(jsonObject.get("effects"), type);
+-                    if (loaded != null) effectBasePrices = loaded;
++                    if (loaded != null) { effectBasePrices.clear(); effectBasePrices.putAll(loaded); }
+                 }
+                 if (jsonObject.has("edited")) {
+                     Type type = new TypeToken<Set<String>>(){}.getType();
+                     Set<String> loaded = GSON.fromJson(jsonObject.get("edited"), type);
+-                    if (loaded != null) editedPrices = loaded;
++                    if (loaded != null) { editedPrices.clear(); editedPrices.addAll(loaded); }
+                 }
+             } else if (jsonObject.has("items")) {
+                 Type type = new TypeToken<Map<String, BigDecimal>>(){}.getType();
+                 Map<String, BigDecimal> loaded = GSON.fromJson(jsonObject.get("items"), type);
+                 if (loaded != null) {
+-                    itemBuyPrices = new HashMap<>(loaded);
+-                    itemSellPrices = new HashMap<>(loaded);
++                    itemBuyPrices.clear(); itemBuyPrices.putAll(loaded);
++                    itemSellPrices.clear(); itemSellPrices.putAll(loaded);
+                 }
+             } else {
+                 Type type = new TypeToken<Map<String, BigDecimal>>(){}.getType();
+                 Map<String, BigDecimal> loaded = GSON.fromJson(jsonObject, type);
+                 if (loaded != null) {
+-                    itemBuyPrices = new HashMap<>(loaded);
+-                    itemSellPrices = new HashMap<>(loaded);
++                    itemBuyPrices.clear(); itemBuyPrices.putAll(loaded);
++                    itemSellPrices.clear(); itemSellPrices.putAll(loaded);
+                 }
+             }
+         } catch (Exception e) {
+@@ -1185,6 +1197,8 @@ public class StorePriceManager {
+         return baseSellPrice.setScale(0, RoundingMode.HALF_UP);
+     }
+
++    private static boolean priceSyncRequested = false;
++
+     public static void recordSale(Item item, java.math.BigDecimal count) {
+         String id = ForgeRegistries.ITEMS.getKey(item).toString();
+         long added = count.longValue();
+@@ -1207,12 +1221,43 @@ public class StorePriceManager {
+         }
+
+         if (newVolume / 10000 > oldVolume / 10000) { // Sync every 10k
++            priceSyncRequested = true;
++        }
++    }
++
++    public static void checkAndSyncBatch() {
++        if (priceSyncRequested) {
+             net.minecraft.server.MinecraftServer server = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
+             if (server != null) {
+                 for (net.minecraft.server.level.ServerPlayer player : server.getPlayerList().getPlayers()) {
+                     syncPrices(player);
+                 }
+             }
++            priceSyncRequested = false;
++        }
++    }
++
++    /**
++     * Periodically called to simulate demand and allow prices to recover.
++     * Reduces total sold volume for all items.
++     */
++    public static void decayPrices() {
++        totalSoldVolume.forEach((id, volume) -> {
++            if (volume > 0) {
++                // Decay by ~5%
++                long newVolume = (long) (volume * 0.95);
++                if (newVolume < 10) newVolume = 0;
++                totalSoldVolume.put(id, newVolume);
++            }
++        });
++        markDirty(null);
++
++        // Sync new prices to all players
++        net.minecraft.server.MinecraftServer server = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer();
++        if (server != null) {
++            for (net.minecraft.server.level.ServerPlayer player : server.getPlayerList().getPlayers()) {
++                syncPrices(player);
++            }
+         }
+     }
+
+@@ -1383,6 +1428,21 @@ public class StorePriceManager {
+         if (abilities.growCropsActive) {
+             totalCost = totalCost.add(formulas.growCropsMaintenance);
+         }
++        if (abilities.linkMagnetActive) {
++            BigDecimal linkCost = formulas.linkMagnetMaintenance;
++            if (abilities.linkedStoragePos != null) {
++                net.minecraft.server.level.ServerPlayer player = net.minecraftforge.server.ServerLifecycleHooks.getCurrentServer().getPlayerList().getPlayer(uuid);
++                if (player != null) {
++                    if (player.level().dimension().location().toString().equals(abilities.linkedStorageDim)) {
++                        double dist = Math.sqrt(player.distanceToSqr(abilities.linkedStoragePos.getX(), abilities.linkedStoragePos.getY(), abilities.linkedStoragePos.getZ()));
++                        linkCost = linkCost.add(BigDecimal.valueOf(dist).multiply(formulas.linkMagnetDistanceMultiplier));
++                    } else {
++                        linkCost = linkCost.add(formulas.linkMagnetDimensionTax);
++                    }
++                }
++            }
++            totalCost = totalCost.add(linkCost);
++        }
+
+         // Virtual Containment Drain
+         for (ChamberData chamber : skillData.chambers) {
+@@ -1605,8 +1665,7 @@ public class StorePriceManager {
+         );
+
+         SkillData skills = getSkills(player.getUUID());
+-        // Do NOT overwrite genesisConfig here, it should stay as is unless specifically updated
+-        // skills.genesisConfig.copyFrom(globalGenesisConfig);
++        skills.genesisConfig.copyFrom(globalGenesisConfig);
+
+         com.example.modmenu.network.PacketHandler.sendToPlayer(
+             new com.example.modmenu.network.SyncSkillsPacket(skills),

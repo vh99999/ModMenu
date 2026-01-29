@@ -84,6 +84,7 @@ public class PickTargetScreen extends BaseResponsiveLodestoneScreen {
                 .collect(Collectors.toSet());
 
             for (NetworkNode n : data.nodes) {
+                if (n == null) continue;
                 if (!groupedIds.contains(n.nodeId)) {
                     String name = n.customName != null ? n.customName : n.nodeType;
                     if (!search.isEmpty() && !name.toLowerCase().contains(search) && (n.blockId == null || !n.blockId.toLowerCase().contains(search))) continue;
@@ -123,7 +124,10 @@ public class PickTargetScreen extends BaseResponsiveLodestoneScreen {
             cy += 27;
 
             for (UUID id : selectedGroup.nodeIds) {
-                NetworkNode n = data.nodes.stream().filter(node -> node.nodeId.equals(id)).findFirst().orElse(null);
+                NetworkNode n = data.nodes.stream()
+                        .filter(java.util.Objects::nonNull)
+                        .filter(node -> node.nodeId.equals(id))
+                        .findFirst().orElse(null);
                 if (n == null) continue;
                 String name = n.customName != null ? n.customName : n.nodeType;
                 if (!search.isEmpty() && !name.toLowerCase().contains(search) && (n.blockId == null || !n.blockId.toLowerCase().contains(search))) continue;

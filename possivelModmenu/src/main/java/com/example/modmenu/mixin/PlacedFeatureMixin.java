@@ -18,8 +18,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(PlacedFeature.class)
 public abstract class PlacedFeatureMixin {
     @Shadow @Final private Holder<ConfiguredFeature<?, ?>> feature;
-
-    private boolean isDecorating = false;
+    
+    private static final ThreadLocal<Boolean> IS_DECORATING = ThreadLocal.withInitial(() -> false);
 
     @Inject(method = "place", at = @At("HEAD"), cancellable = true)
     private void onPlace(WorldGenLevel level, ChunkGenerator generator, RandomSource random, BlockPos pos, CallbackInfoReturnable<Boolean> cir) {
@@ -31,7 +31,7 @@ public abstract class PlacedFeatureMixin {
             if (!config.spawnLavaLakes) {
                 feature.unwrapKey().ifPresent(key -> {
                     String path = key.location().getPath();
-                    if (path.contains("lava_lake") || path.contains("lava_pool")) {
+                    if (path.contains("lava") && (path.contains("lake") || path.contains("pool"))) {
                         cir.setReturnValue(false);
                     }
                 });
@@ -48,9 +48,9 @@ public abstract class PlacedFeatureMixin {
                 }
             } else if (density > 1.0) {
                 // To avoid infinite recursion, we check if we are already in a recursive call
-                if (isDecorating) return;
+                if (IS_DECORATING.get()) return;
                 
-                isDecorating = true;
+                IS_DECORATING.set(true);
                 try {
                     int extraPasses = (int) Math.floor(density) - 1;
                     double chance = density - Math.floor(density);
@@ -62,7 +62,7 @@ public abstract class PlacedFeatureMixin {
                         ((PlacedFeature)(Object)this).place(level, generator, random, pos);
                     }
                 } finally {
-                    isDecorating = false;
+                    IS_DECORATING.set(false);
                 }
             }
         }

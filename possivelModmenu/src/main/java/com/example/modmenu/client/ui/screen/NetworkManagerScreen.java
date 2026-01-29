@@ -5,8 +5,7 @@ import com.example.modmenu.client.ui.base.ScrollableUIContainer;
 import com.example.modmenu.client.ui.base.UIElement;
 import com.example.modmenu.client.ui.component.GraphCanvasComponent;
 import com.example.modmenu.client.ui.component.ResponsiveButton;
-import com.example.modmenu.network.ActionNetworkPacket;
-import com.example.modmenu.network.PacketHandler;
+import com.example.modmenu.network.*;
 import com.example.modmenu.store.logistics.LogisticsCapability;
 import com.example.modmenu.store.logistics.NetworkData;
 import com.example.modmenu.store.logistics.NetworkNode;
@@ -41,7 +40,7 @@ public class NetworkManagerScreen extends BaseResponsiveLodestoneScreen {
     @Override
     protected void setupLayout() {
         com.example.modmenu.client.ClientForgeEvents.viewedNetworkId = networkId;
-        PacketHandler.sendToServer(ActionNetworkPacket.setViewedNetwork(networkId));
+        PacketHandler.sendToServer(NetworkManagementPacket.setViewed(networkId));
         refreshData();
 
         this.layoutRoot.addElement(new ResponsiveButton(10, 10, 50, 20, Component.literal("Back"), btn -> {
@@ -58,7 +57,8 @@ public class NetworkManagerScreen extends BaseResponsiveLodestoneScreen {
 
         this.layoutRoot.addElement(new ResponsiveButton(bx, 10, 100, 20, Component.literal("Add Physical Node"), btn -> {
             com.example.modmenu.client.ClientForgeEvents.networkLinkModeId = networkId;
-            PacketHandler.sendToServer(new ActionNetworkPacket(18, networkId));
+            com.example.modmenu.client.ClientForgeEvents.nodesAddedInSession = 0;
+            PacketHandler.sendToServer(NetworkControlPacket.setLinkMode(networkId));
             this.minecraft.setScreen(null);
         }));
         bx += 105;
@@ -84,11 +84,16 @@ public class NetworkManagerScreen extends BaseResponsiveLodestoneScreen {
         }));
         bx += 85;
 
+        this.layoutRoot.addElement(new ResponsiveButton(bx, 10, 100, 20, Component.literal("\u00A7dBlueprint..."), btn -> {
+            this.minecraft.setScreen(new BlueprintScreen(this, networkId, networkData));
+        }));
+        bx += 105;
+
         String simTxt = networkData.simulationActive ? "\u00A7bSIM: ON" : "\u00A77SIM: OFF";
         simButton = new ResponsiveButton(bx, 10, 80, 20, Component.literal(simTxt), btn -> {
             networkData.simulationActive = !networkData.simulationActive;
             updateButtonTexts();
-            PacketHandler.sendToServer(new ActionNetworkPacket(17, networkId));
+            PacketHandler.sendToServer(NetworkControlPacket.toggleSimulation(networkId));
         });
         this.layoutRoot.addElement(simButton);
         bx += 85;
@@ -97,7 +102,7 @@ public class NetworkManagerScreen extends BaseResponsiveLodestoneScreen {
         connButton = new ResponsiveButton(bx, 10, 100, 20, Component.literal(connTxt), btn -> {
             networkData.showConnections = !networkData.showConnections;
             updateButtonTexts();
-            PacketHandler.sendToServer(new ActionNetworkPacket(16, networkId));
+            PacketHandler.sendToServer(NetworkControlPacket.toggleVisibility(networkId));
         });
         this.layoutRoot.addElement(connButton);
         bx += 105;
@@ -113,10 +118,38 @@ public class NetworkManagerScreen extends BaseResponsiveLodestoneScreen {
 
         this.layoutRoot.addElement(new ResponsiveButton(bx, 10, 100, 20, Component.literal("\u00A75Set Overflow"), btn -> {
             this.minecraft.setScreen(new PickTargetScreen(this, networkData, (id, isGroup) -> {
-                PacketHandler.sendToServer(ActionNetworkPacket.setOverflowTarget(networkId, id, isGroup));
+                PacketHandler.sendToServer(NetworkControlPacket.setOverflow(networkId, id, isGroup));
             }));
         }));
         bx += 105;
+
+        this.layoutRoot.addElement(new ResponsiveButton(bx, 10, 20, 20, Component.literal("?"), btn -> {}) {
+            @Override
+            public void render(GuiGraphics g, int mx, int my, float pt) {
+                super.render(g, mx, my, pt);
+                if (isMouseOver(mx, my)) {
+                    addPostRenderTask(gui -> {
+                        java.util.List<Component> lines = new java.util.ArrayList<>();
+                        lines.add(Component.literal("\u00A76Neural Graph Controls:"));
+                        lines.add(Component.literal("\u00A7eLeft Drag: \u00A77Pan Camera"));
+                        lines.add(Component.literal("\u00A7eScroll: \u00A77Zoom In/Out"));
+                        lines.add(Component.literal("\u00A7eLeft Drag Node: \u00A77Move Node"));
+                        lines.add(Component.literal("\u00A7eShift + Left Drag: \u00A77Create Rule (Link)"));
+                        lines.add(Component.literal("\u00A7eCtrl + Click Node: \u00A77Expand/Collapse Group"));
+                        lines.add(Component.literal("\u00A7eRight Click Node: \u00A77Configure Node"));
+                        lines.add(Component.literal("\u00A7eBrush Mode: \u00A77Copy/Paste configuration between nodes."));
+                        lines.add(Component.literal(""));
+                        lines.add(Component.literal("\u00A76Visual Debugging:"));
+                        lines.add(Component.literal("\u00A7dMagenta Pulses: \u00A77Signals (Events)"));
+                        lines.add(Component.literal("\u00A7aGreen Pulses: \u00A77Successful Movement"));
+                        lines.add(Component.literal("\u00A75Purple Pulses: \u00A77Overflow Redirection"));
+                        lines.add(Component.literal("\u00A76Gold Pulses: \u00A77History Search Match"));
+                        gui.renderComponentTooltip(font, lines, absMouseX, absMouseY);
+                    });
+                }
+            }
+        });
+        bx += 25;
 
         historySearch = new net.minecraft.client.gui.components.EditBox(font, bx, 10, 120, 20, Component.literal("Search History..."));
         historySearch.setResponder(s -> {
@@ -149,7 +182,10 @@ public class NetworkManagerScreen extends BaseResponsiveLodestoneScreen {
                         com.example.modmenu.store.logistics.NodeGroup g2 = networkData.groups.stream().filter(gr -> gr.groupId.equals(networkData.overflowTargetId)).findFirst().orElse(null);
                         ov = "[G] " + (g2 != null ? g2.name : "???");
                     } else {
-                        com.example.modmenu.store.logistics.NetworkNode n = networkData.nodes.stream().filter(nd -> nd.nodeId.equals(networkData.overflowTargetId)).findFirst().orElse(null);
+                        com.example.modmenu.store.logistics.NetworkNode n = networkData.nodes.stream()
+                                .filter(java.util.Objects::nonNull)
+                                .filter(nd -> nd.nodeId.equals(networkData.overflowTargetId))
+                                .findFirst().orElse(null);
                         ov = n != null ? (n.customName != null ? n.customName : n.nodeType) : "???";
                     }
                 }
@@ -164,7 +200,9 @@ public class NetworkManagerScreen extends BaseResponsiveLodestoneScreen {
                 if (nd.networkId.equals(networkId)) {
                     // Diagnostic Buzz on error detected
                     if (this.networkData == null || !this.networkData.lastReport.equals(nd.lastReport)) {
-                        boolean hasMissing = nd.nodes.stream().anyMatch(n -> n.isMissing);
+                        boolean hasMissing = nd.nodes.stream()
+                                .filter(java.util.Objects::nonNull)
+                                .anyMatch(n -> n.isMissing);
                         if (hasMissing) {
                             Minecraft.getInstance().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.ZOMBIE_VILLAGER_CONVERTED, 2.0f));
                         }
